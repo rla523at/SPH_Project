@@ -1,6 +1,3 @@
-# 2024.07.01
-* 주제 정하기
-
 # 2024.07.02
 * 주제 선정 
   * SPH simulation
@@ -15,3 +12,6 @@
 * 참고 자료 학습
   * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf
   * 이 리뷰 논문을 기반으로 구현 예정
+
+# 2024.07.01
+* 주제 정하기
