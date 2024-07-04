@@ -1,3 +1,11 @@
 https://github.com/InteractiveComputerGraphics/SPlisHSPlasH
+- determineValues
+- computeDensities
+
+- SPHVolumeSampling_Jiang2015::step
+- SPHSamplingBase::computeDensities
+- SPHVolumeSampling_Jiang2015::computePressure
+- class CubicKernel
+
 https://sph-tutorial.physics-simulation.org/
 https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-30-real-time-simulation-and-rendering-3d-fluids

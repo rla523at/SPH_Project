@@ -15,14 +15,13 @@ struct Particle
 
 StructuredBuffer<Particle> particles : register(t0);
 
-// VSInput이 없이 vertexID만 사용
 VS_Output main(uint vertexID : SV_VertexID)
 {
     Particle p = particles[vertexID];
     
     VS_Output output;    
     output.color = float3(0.7,0.7,0.7);
-    output.position = float4(p.position.xyz, 1.0);
+    output.position = float4(p.position.xyz, 1.0); //NDC
 
     return output;
 }

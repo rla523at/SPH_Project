@@ -21,9 +21,6 @@
     <ClCompile Include="Device_Manager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Box.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -41,9 +38,6 @@
     <ClInclude Include="Device_Manager.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Box.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="SPH.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
@@ -55,12 +49,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="ColorPixelShader.hlsl">
-      <Filter>HLSL</Filter>
-    </FxCompile>
-    <FxCompile Include="ColorVertexShader.hlsl">
-      <Filter>HLSL</Filter>
-    </FxCompile>
     <FxCompile Include="SPHPS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>

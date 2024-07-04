@@ -1,3 +1,21 @@
+# 2024.07.04
+* 참고 자료 학습
+  * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf
+    * viscosity coefficient
+  * 2007 (Markus and Matthias) Weakly compressible SPH for free surface flows
+    * pressure coefficient
+    * time step
+
+* SPH 코드 개발
+  * 2014 논문 기반으로 update 함수 개발 완료
+  * Density가 너무 커지는 문제(미해결)
+    * 임시방편으로 upper bound 걸어놓음
+  * Negative pressure 문제(미해결)    
+    * 임시방편으로 lower bound 걸어놓음 
+    * density 문제가 해결되면 자연스럽게 해결될 가능성 높음
+  * Pressure driven force가 너무 큰 문제(미해결)
+    * 고민중...  
+
 # 2024.07.03
 * 참고 자료 학습
   * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf
