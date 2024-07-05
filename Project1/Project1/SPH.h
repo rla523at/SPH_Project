@@ -49,16 +49,18 @@ private:
   ComPtr<ID3D11Buffer>             _cptr_SB_VS_SRB; //staging buffer for VS_SRB
 
   //temporary
-  static constexpr size_t _num_particle = 10;
-  static constexpr float  _k            = 1.0e6f; //pressure coefficient
-  static constexpr float  _dt           = 1.0e-4f;
-  static constexpr float  _r            = 1.0f / 50.0f;
-  static constexpr float  _volume       = std::numbers::pi_v<float> * _r * _r;
-  static constexpr float  _density      = 1000;
-  static constexpr float  _mass         = _volume * _density;
-  static constexpr float  _h            = 2.0f*_r; //smoothing length
-  static constexpr float  _viscosity    = 1.0e-6f;
-  static constexpr float  _kernel_coeff = 1.0f / (_r * _r);
+  static constexpr size_t _num_particle   = 10;
+  static constexpr float  _k              = 1.0e6f; //pressure coefficient
+  static constexpr float  _dt             = 1.0e-3f;
+  static constexpr float  _r              = 1.0f / 50.0f;
+  static constexpr float  _volume         = std::numbers::pi_v<float> * _r * _r;
+  static constexpr float  _rest_density   = 1000;
+  static constexpr float  _h              = 2.0f * _r; //smoothing length
+  static constexpr float  _support_length = 2 * _h;
+  static constexpr float  _mass           = _volume * _rest_density;
+  static constexpr float  _mass_virtual   = _rest_density * std::numbers::pi_v<float> * _h * _h;
+  static constexpr float  _viscosity      = 1.0e-6f;
+  static constexpr float  _kernel_coeff   = 1.0f / (_h * _h);
 };
 
 } // namespace ms

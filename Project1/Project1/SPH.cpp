@@ -30,7 +30,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
   //}
 
   constexpr float x_start = -0.1f;
-  constexpr float x_end   = x_start + 0.1f;
+  constexpr float x_end   = x_start + 0.05f;
 
   Vector3 init_pos = {x_start, 0.0f, 0.0f};
   for (int i = 0; i < _num_particle; ++i)
@@ -44,7 +44,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
       init_pos.y += 2.0f * _r;
     }
 
-    _particles[i].density = _density;
+    _particles[i].density = _rest_density;
   }
 
   //init Vertex Shader Resource Buffer and Resource View
@@ -257,8 +257,8 @@ void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
     _particles[i].position += _particles[i].velocity * _dt;
   }
 
-  const float   cor           = 0.1f;                       // Coefficient Of Restitution
-  const float   ground_height = -0.8f;
+  const float cor           = 0.1f; // Coefficient Of Restitution
+  const float ground_height = -0.8f;
 
   for (auto& p : _particles)
   {
@@ -273,8 +273,6 @@ void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
       p.velocity.y *= -cor;
       p.position.y = 0.8f;
     }
-
-
 
     if (p.position.x < -0.9f && p.velocity.x < 0.0f)
     {
@@ -318,7 +316,7 @@ void SPH::update_density_pressure(void)
   for (size_t i = 0; i < _particles.size(); i++)
   {
     auto& current = _particles[i];
-    
+
     float new_density = 0.0;
 
     for (size_t j = 0; j < _particles.size(); j++)
@@ -329,17 +327,21 @@ void SPH::update_density_pressure(void)
       const auto  q    = dist / _h;
       const auto  w    = _kernel_coeff * fk(q);
 
-      const auto  mass = _volume * neighbor.density;
+      auto mass = _volume * neighbor.density;
+
+      if (i == j)
+        mass = _mass_virtual;
 
       new_density += mass * w;
     }
 
-    new_density = (std::min)(1.01f * _density, new_density);
+    new_density = (std::min)(1.01f * _rest_density, new_density);
 
     //Equation of State
-    const float new_pressure = (std::max)(0.0f, _k * (pow(new_density / _density, 7.0f) - 1.0f));
+    //const float new_pressure = (std::max)(0.0f, _k * (pow(new_density / _rest_density, 7.0f) - 1.0f));
+    const float new_pressure = _k * (pow(new_density / _rest_density, 7.0f) - 1.0f);
 
-    current.density = new_density;
+    current.density  = new_density;
     current.pressure = new_pressure;
   }
 }
@@ -394,7 +396,7 @@ void SPH::update_force(void)
       const Vector3 v_grad_pressure = coeff * v_grad_kernel;
 
       // cal laplacian_velocity
-      const auto    coeff2 = 2*_volume * v_xij.Dot(v_grad_kernel) / (rho_j * v_xij.Dot(v_xij) + 0.01f * _h * _h);
+      const auto    coeff2 = 2 * _volume * v_xij.Dot(v_grad_kernel) / (rho_j * v_xij.Dot(v_xij) + 0.01f * _h * _h);
       const Vector3 v_vij  = v_vi - v_vj;
 
       const Vector3 laplacian_velocity = coeff2 * v_vij;
@@ -406,7 +408,6 @@ void SPH::update_force(void)
     //모든 파티클이 동일한 질량과 밀도를 갖음
     v_viscosity_force *= _viscosity;
 
-
     current.force = v_pressure_force + v_viscosity_force + v_gravity_force;
   }
 }
@@ -415,7 +416,7 @@ float SPH::fk(const float q) const
 {
   REQUIRE(q >= 0.0f, "q should be positive");
 
-  constexpr float coeff = 3.0f / (2.0f* std::numbers::pi_v<float>);
+  constexpr float coeff = 3.0f / (2.0f * std::numbers::pi_v<float>);
 
   if (q < 1.0f)
     return coeff * (2.0f / 3.0f - q * q + 0.5f * q * q * q);
