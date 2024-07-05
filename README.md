@@ -1,3 +1,13 @@
+# 2024.07.05
+* 참고 자료 학습
+  * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf
+
+* SPH 코드 개발
+  * 힘이 너무 큰 문제(미해결)
+    * Pressure driven force가 너무 크다. 
+    * gradient kernel 값이 너무 크다.
+
+
 # 2024.07.04
 * 참고 자료 학습
   * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf

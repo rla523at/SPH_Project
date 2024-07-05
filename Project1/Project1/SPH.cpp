@@ -11,73 +11,8 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
 {
   _particles.resize(_num_particle);
 
-  // set initial pos
-
-  //std::random_device                    rd;
-  //std::mt19937                          gen(rd());
-  //std::uniform_real_distribution<float> random_theta(-3.141592f, 3.141592f);
-  //std::uniform_real_distribution<float> random_radius(0.0f, 1.0f);
-
-  //const auto v_source_center = Vector3(-0.5f, 0.5f, 0.0f);
-
-  //for (auto& particle : _particles)
-  //{
-  //  const float   theta  = random_theta(gen);
-  //  const float   radius = random_radius(gen);
-  //  const Vector3 v_dir  = {std::cos(theta), std::sin(theta), 0.0f};
-
-  //  particle.position = v_source_center + radius * v_dir;
-  //}
-
-  constexpr float x_start = -0.1f;
-  constexpr float x_end   = x_start + 0.05f;
-
-  Vector3 init_pos = {x_start, 0.0f, 0.0f};
-  for (int i = 0; i < _num_particle; ++i)
-  {
-    _particles[i].position = init_pos;
-
-    init_pos.x += 1.0f * _r;
-    if (init_pos.x > x_end)
-    {
-      init_pos.x = x_start;
-      init_pos.y += 2.0f * _r;
-    }
-
-    _particles[i].density = _rest_density;
-  }
-
-  //init Vertex Shader Resource Buffer and Resource View
-  {
-    const UINT data_size = sizeof(Particle);
-
-    D3D11_BUFFER_DESC buffer_desc   = {};
-    buffer_desc.ByteWidth           = static_cast<UINT>(data_size * _num_particle);
-    buffer_desc.Usage               = D3D11_USAGE_DEFAULT;
-    buffer_desc.BindFlags           = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-    buffer_desc.CPUAccessFlags      = NULL;
-    buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    buffer_desc.StructureByteStride = data_size;
-
-    D3D11_SUBRESOURCE_DATA buffer_data = {};
-    buffer_data.pSysMem                = _particles.data();
-    buffer_data.SysMemPitch            = 0;
-    buffer_data.SysMemSlicePitch       = 0;
-
-    const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_SRB.GetAddressOf());
-    REQUIRE(!FAILED(result), "vertex shader resource buffer creation should succeed");
-  }
-
-  //init Shader Resource View for Vertex Shader
-  {
-    D3D11_SHADER_RESOURCE_VIEW_DESC SRV_desc = {};
-    SRV_desc.Format                          = DXGI_FORMAT_UNKNOWN;
-    SRV_desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
-    SRV_desc.BufferEx.NumElements            = _num_particle;
-
-    const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRB.Get(), &SRV_desc, _cptr_VS_SRV.GetAddressOf());
-    REQUIRE(!FAILED(result), "vertex shader resource buffer creation should succeed");
-  }
+  this->init_VS_SRbuffer(cptr_device);
+  this->init_VS_SRview(cptr_device);
 
   //init Vertex Shader Staging Buffer
   {
@@ -248,6 +183,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
 
 void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
+  create_particle();
   update_density_pressure();
   update_force();
 
@@ -257,7 +193,7 @@ void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
     _particles[i].position += _particles[i].velocity * _dt;
   }
 
-  const float cor           = 0.1f; // Coefficient Of Restitution
+  const float cor           = 0.5f; // Coefficient Of Restitution
   const float ground_height = -0.8f;
 
   for (auto& p : _particles)
@@ -296,7 +232,7 @@ void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
   cptr_context->Unmap(_cptr_SB_VS_SRB.Get(), NULL);
 
   // Copy Staging Buffer to Vertex Shader Resource Buffer
-  cptr_context->CopyResource(_cptr_VS_SRB.Get(), _cptr_SB_VS_SRB.Get());
+  cptr_context->CopyResource(_cptr_VS_SRbuffer.Get(), _cptr_SB_VS_SRB.Get());
 }
 
 void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
@@ -306,8 +242,40 @@ void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
   cptr_context->PSSetShader(_cptr_pixel_shader.Get(), 0, 0);
 
   cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-  cptr_context->VSSetShaderResources(0, 1, _cptr_VS_SRV.GetAddressOf());
+  cptr_context->VSSetShaderResources(0, 1, _cptr_VS_SRview.GetAddressOf());
   cptr_context->Draw(UINT(_particles.size()), 0);
+}
+
+void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
+{
+  const UINT data_size = sizeof(Particle);
+
+  D3D11_BUFFER_DESC buffer_desc   = {};
+  buffer_desc.ByteWidth           = static_cast<UINT>(data_size * _num_particle);
+  buffer_desc.Usage               = D3D11_USAGE_DEFAULT;
+  buffer_desc.BindFlags           = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+  buffer_desc.CPUAccessFlags      = NULL;
+  buffer_desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+  buffer_desc.StructureByteStride = data_size;
+
+  D3D11_SUBRESOURCE_DATA buffer_data = {};
+  buffer_data.pSysMem                = _particles.data();
+  buffer_data.SysMemPitch            = 0;
+  buffer_data.SysMemSlicePitch       = 0;
+
+  const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_SRbuffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "vertex shader resource buffer creation should succeed");
+}
+
+void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
+{
+  D3D11_SHADER_RESOURCE_VIEW_DESC SRV_desc = {};
+  SRV_desc.Format                          = DXGI_FORMAT_UNKNOWN;
+  SRV_desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
+  SRV_desc.BufferEx.NumElements            = _num_particle;
+
+  const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRbuffer.Get(), &SRV_desc, _cptr_VS_SRview.GetAddressOf());
+  REQUIRE(!FAILED(result), "vertex shader resource buffer creation should succeed");
 }
 
 void SPH::update_density_pressure(void)
@@ -317,28 +285,40 @@ void SPH::update_density_pressure(void)
   {
     auto& current = _particles[i];
 
+    if (!current.is_alive)
+      break;
+
     float new_density = 0.0;
 
     for (size_t j = 0; j < _particles.size(); j++)
     {
+      //if (i == j)
+      //  continue;
+
       const auto& neighbor = _particles[j];
+
+      if (!neighbor.is_alive)
+        break;
 
       const float dist = (current.position - neighbor.position).Length();
       const auto  q    = dist / _h;
-      const auto  w    = _kernel_coeff * fk(q);
+
+      if (q > 2.0f)
+        continue;
+
+      const auto w = _kernel_coeff * fk(q);
 
       auto mass = _volume * neighbor.density;
 
-      if (i == j)
-        mass = _mass_virtual;
+      //if (i == j)
+      //  mass = _mass_virtual;
 
       new_density += mass * w;
     }
 
-    new_density = (std::min)(1.01f * _rest_density, new_density);
+    new_density = std::clamp(new_density, _rest_density, 1.01f * _rest_density);
 
     //Equation of State
-    //const float new_pressure = (std::max)(0.0f, _k * (pow(new_density / _rest_density, 7.0f) - 1.0f));
     const float new_pressure = _k * (pow(new_density / _rest_density, 7.0f) - 1.0f);
 
     current.density  = new_density;
@@ -348,12 +328,15 @@ void SPH::update_density_pressure(void)
 
 void SPH::update_force(void)
 {
-  const Vector3 v_gravity_force = Vector3(0.0f, -9.8f, 0.0f);
+  const Vector3 v_gravity_force = 1.0f * _mass * Vector3(0.0f, -9.8f, 0.0f);
 
 #pragma omp parallel for
-  for (int i = 0; i < _particles.size(); i++)
+  for (int i = 0; i < _num_particle; i++)
   {
     auto& current = _particles[i];
+
+    if (!current.is_alive)
+      break;
 
     Vector3 v_pressure_force(0.0f);
     Vector3 v_viscosity_force(0.0f);
@@ -363,7 +346,7 @@ void SPH::update_force(void)
     const Vector3& v_xi  = current.position;
     const Vector3& v_vi  = current.velocity;
 
-    for (size_t j = 0; j < _particles.size(); j++)
+    for (size_t j = 0; j < _num_particle; j++)
     {
       if (i == j)
         continue;
@@ -387,6 +370,7 @@ void SPH::update_force(void)
         continue;
 
       // cal v_grad_pressure
+      // 이후에 나누어질것이기 때문에 rho_i 무시
       const Vector3 v_grad_q      = 1.0f / (_h * dist) * v_xij;
       const Vector3 v_grad_kernel = _kernel_coeff * df_dq * v_grad_q;
 
@@ -438,6 +422,81 @@ float SPH::dfk_dq(const float q) const
     return coeff * -0.5f * (2.0f - q) * (2.0f - q);
   else // q >= 2.0f
     return 0.0f;
+}
+
+void SPH::create_particle(void)
+{
+  constexpr size_t max_frame = _num_particle / _num_creation_per_frame;
+  constexpr float  pi        = std::numbers::pi_v<float>;
+
+  static size_t frame_count = 0;
+
+  if (frame_count == max_frame)
+    return;
+
+  const size_t start_index = frame_count * _num_creation_per_frame;
+
+  constexpr float x_start  = -0.9f;
+  constexpr float vx_start = 4.0e0f;
+  constexpr float vy_start = -4.0e0f;
+  constexpr float r_source = 4 * _support_length;
+
+  // mass는 initial condition에 의해서 결정된다.
+  constexpr float total_mass = _rest_density * pi * r_source * r_source / 60.0f;
+
+  _mass = total_mass / _num_creation_per_frame;
+
+  std::random_device                    rd;
+  std::mt19937                          gen(rd());
+  std::uniform_real_distribution<float> random_y(-r_source, r_source);
+
+  for (size_t i = 0; i < _num_creation_per_frame; ++i)
+  {
+    auto& particle = _particles[start_index + i];
+
+    particle.position = {x_start, 0.5f + random_y(gen), 0.0f};
+    particle.velocity = {vx_start, vy_start, 0.0f};
+    particle.is_alive = TRUE;
+    particle.density  = _rest_density;
+  }
+
+  frame_count++;
+
+  // set initial pos
+
+  //std::random_device                    rd;
+  //std::mt19937                          gen(rd());
+  //std::uniform_real_distribution<float> random_theta(-3.141592f, 3.141592f);
+  //std::uniform_real_distribution<float> random_radius(0.0f, 1.0f);
+
+  //const auto v_source_center = Vector3(-0.5f, 0.5f, 0.0f);
+
+  //for (auto& particle : _particles)
+  //{
+  //  const float   theta  = random_theta(gen);
+  //  const float   radius = random_radius(gen);
+  //  const Vector3 v_dir  = {std::cos(theta), std::sin(theta), 0.0f};
+
+  //  particle.position = v_source_center + radius * v_dir;
+  //}
+
+  //constexpr float x_start = -0.1f;
+  //constexpr float x_end   = x_start + _support_length * 4;
+
+  //Vector3 init_pos = {x_start, 0.0f, 0.0f};
+  //for (int i = 0; i < _num_particle; ++i)
+  //{
+  //  _particles[i].position = init_pos;
+
+  //  init_pos.x += _support_length / 2;
+  //  if (init_pos.x > x_end)
+  //  {
+  //    init_pos.x = x_start;
+  //    init_pos.y += _support_length / 2;
+  //  }
+
+  //  _particles[i].density = _rest_density;
+  //}
 }
 
 } // namespace ms
