@@ -15,9 +15,10 @@
         * Pressure Constant
         * Smoothing Length
         * Particle Radius      
+        * Number of Particles
       * Kernel 함수
         * 논문은 3차원 기준으로 작성
-        * 상수배 차이이지만 혹시...
+        * 상수배 차이이지만 혹시...      
   * 힘이 너무 큰 문제(미해결)
     * Pressure driven force가 너무 크다. 
     * gradient kernel 값이 너무 크다.
