@@ -9,7 +9,7 @@ namespace ms
 
 SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
 {
-  _particles.resize(_num_particle);
+  create_particle();
 
   this->init_VS_SRbuffer(cptr_device);
   this->init_VS_SRview(cptr_device);
@@ -183,18 +183,24 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device)
 
 void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  create_particle();
-  update_density_pressure();
+  update_density_with_clamp();
+  update_pressure();
   update_force();
 
   for (int i = 0; i < _particles.size(); i++)
   {
-    _particles[i].velocity += _particles[i].force * _dt;
+    const auto acceleration = _particles[i].force / _mass;
+
+    _particles[i].velocity += acceleration * _dt;
     _particles[i].position += _particles[i].velocity * _dt;
   }
 
-  const float cor           = 0.5f; // Coefficient Of Restitution
-  const float ground_height = -0.8f;
+  const float     cor           = 0.5f; // Coefficient Of Restitution
+  constexpr float ground_height = -1.0f;
+  constexpr float min_wall_x    = -1.0f;
+  constexpr float max_wall_x    = 1.0f;
+  constexpr float min_wall_z    = -1.0f;
+  constexpr float max_wall_z    = 0.0f;
 
   for (auto& p : _particles)
   {
@@ -210,16 +216,28 @@ void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
       p.position.y = 0.8f;
     }
 
-    if (p.position.x < -0.9f && p.velocity.x < 0.0f)
+    if (p.position.x < min_wall_x && p.velocity.x < 0.0f)
     {
       p.velocity.x *= -cor;
-      p.position.x = -0.9f;
+      p.position.x = min_wall_x;
     }
 
-    if (p.position.x > 0.9f && p.velocity.x > 0.0f)
+    if (p.position.x > max_wall_x && p.velocity.x > 0.0f)
     {
       p.velocity.x *= -cor;
-      p.position.x = 0.9f;
+      p.position.x = max_wall_x;
+    }
+
+    if (p.position.z < min_wall_z && p.velocity.z < 0.0f)
+    {
+      p.velocity.z *= -cor;
+      p.position.z = min_wall_z;
+    }
+
+    if (p.position.z > max_wall_z && p.velocity.z > 0.0f)
+    {
+      p.velocity.z *= -cor;
+      p.position.z = max_wall_z;
     }
   }
 
@@ -272,33 +290,55 @@ void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
   D3D11_SHADER_RESOURCE_VIEW_DESC SRV_desc = {};
   SRV_desc.Format                          = DXGI_FORMAT_UNKNOWN;
   SRV_desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
-  SRV_desc.BufferEx.NumElements            = _num_particle;
+  SRV_desc.BufferEx.NumElements            = static_cast<UINT>(_num_particle);
 
   const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRbuffer.Get(), &SRV_desc, _cptr_VS_SRview.GetAddressOf());
   REQUIRE(!FAILED(result), "vertex shader resource buffer creation should succeed");
 }
 
-void SPH::update_density_pressure(void)
+void SPH::mass_2011_cornell(void)
 {
+  _mass = 1.0f;
+
+  this->update_density();
+
+  float rho_sum  = 0.0f;
+  float rho2_sum = 0.0f;
+
+  for (const auto& particle : _particles)
+  {
+    rho_sum += particle.density;
+    rho2_sum += particle.density * particle.density;
+  }
+
+  _mass *= _rest_density * rho_sum / rho2_sum;
+}
+
+void SPH::mass_1994_monaghan(void)
+{
+  const float volume_per_particle = _total_volume / _num_particle;
+  _mass                           = _rest_density * volume_per_particle;
+}
+
+void SPH::update_density_with_clamp(void)
+{
+  size_t min_count   = 1000;
+  size_t max_count   = 0;
+  float  min_density = 2000;
+  float  max_density = 0;
+
 #pragma omp parallel for
   for (size_t i = 0; i < _particles.size(); i++)
   {
     auto& current = _particles[i];
 
-    if (!current.is_alive)
-      break;
-
     float new_density = 0.0;
+
+    size_t neighbor_count = 0;
 
     for (size_t j = 0; j < _particles.size(); j++)
     {
-      //if (i == j)
-      //  continue;
-
       const auto& neighbor = _particles[j];
-
-      if (!neighbor.is_alive)
-        break;
 
       const float dist = (current.position - neighbor.position).Length();
       const auto  q    = dist / _h;
@@ -306,37 +346,102 @@ void SPH::update_density_pressure(void)
       if (q > 2.0f)
         continue;
 
+      ++neighbor_count;
+
       const auto w = _kernel_coeff * fk(q);
 
-      auto mass = _volume * neighbor.density;
-
-      //if (i == j)
-      //  mass = _mass_virtual;
-
-      new_density += mass * w;
+      new_density += _mass * w;
     }
 
-    new_density = std::clamp(new_density, _rest_density, 1.01f * _rest_density);
+    if (neighbor_count < min_count)
+      min_count = neighbor_count;
 
+    if (max_count < neighbor_count)
+      max_count = neighbor_count;
+
+    if (new_density < min_density)
+      min_density = new_density;
+
+    if (max_density < new_density)
+      max_density = new_density;
+
+    new_density     = std::clamp(new_density, _rest_density, 1.01f * _rest_density);
+    current.density = new_density;
+  }
+
+  std::cout << min_count << "\n";
+  std::cout << max_count << "\n";
+  std::cout << min_density << "\n";
+  std::cout << max_density << "\n\n\n";
+}
+
+void SPH::update_density(void)
+{
+  static size_t max_count   = 0;
+  static float  min_density = (std::numeric_limits<float>::max)();
+  static float  max_density = 0;
+
+#pragma omp parallel for
+  for (size_t i = 0; i < _particles.size(); i++)
+  {
+    auto& current = _particles[i];
+
+    float new_density = 0.0;
+
+    size_t neighbor_count = 0;
+
+    for (size_t j = 0; j < _particles.size(); j++)
+    {
+      const auto& neighbor = _particles[j];
+
+      const float dist = (current.position - neighbor.position).Length();
+      const auto  q    = dist / _h;
+
+      if (q > 2.0f)
+        continue;
+
+      ++neighbor_count;
+
+      const auto w = _kernel_coeff * fk(q);
+
+      new_density += _mass * w;
+    }
+
+    if (max_count < neighbor_count)
+      max_count = neighbor_count;
+
+    if (new_density < min_density)
+      min_density = new_density;
+
+    if (max_density < new_density)
+      max_density = new_density;
+
+    current.density = new_density;
+  }
+
+  std::cout << max_count << "\n";
+  std::cout << min_density << "\n";
+  std::cout << max_density << "\n\n\n";
+}
+
+void SPH::update_pressure(void)
+{
+  for (auto& particle : _particles)
+  {
     //Equation of State
-    const float new_pressure = _k * (pow(new_density / _rest_density, 7.0f) - 1.0f);
-
-    current.density  = new_density;
-    current.pressure = new_pressure;
+    const float new_pressure = _k * (pow(particle.density / _rest_density, 7.0f) - 1.0f);
+    particle.pressure        = new_pressure;
   }
 }
 
 void SPH::update_force(void)
 {
-  const Vector3 v_gravity_force = 1.0f * _mass * Vector3(0.0f, -9.8f, 0.0f);
+  const Vector3 v_gravity_force = _mass * Vector3(0.0f, -9.8f, 0.0f);
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     auto& current = _particles[i];
-
-    if (!current.is_alive)
-      break;
 
     Vector3 v_pressure_force(0.0f);
     Vector3 v_viscosity_force(0.0f);
@@ -360,27 +465,28 @@ void SPH::update_force(void)
 
       const Vector3 v_xij = v_xi - v_xj;
       const float   dist  = v_xij.Length();
-      if (dist < 1e-3f)
+
+      const auto q = dist / _h;
+
+      if (q > 2.0f)
         continue;
 
-      const auto q     = dist / _h;
+      if (dist < 0.03f) //distance가 0이면 df_dq = 0이되고 0으로나눠서 오류가남
+        continue;
+
       const auto df_dq = dfk_dq(q);
-
-      if (df_dq == 0.0)
-        continue;
 
       // cal v_grad_pressure
       // 이후에 나누어질것이기 때문에 rho_i 무시
       const Vector3 v_grad_q      = 1.0f / (_h * dist) * v_xij;
       const Vector3 v_grad_kernel = _kernel_coeff * df_dq * v_grad_q;
 
-      const auto mass  = rho_j * _volume;
-      const auto coeff = mass * (p_i / (rho_i * rho_i) + p_j / (rho_j * rho_j));
+      const auto coeff = _mass * (p_i / (rho_i * rho_i) + p_j / (rho_j * rho_j));
 
       const Vector3 v_grad_pressure = coeff * v_grad_kernel;
 
       // cal laplacian_velocity
-      const auto    coeff2 = 2 * _volume * v_xij.Dot(v_grad_kernel) / (rho_j * v_xij.Dot(v_xij) + 0.01f * _h * _h);
+      const auto    coeff2 = 2 * (_mass / rho_j) * v_xij.Dot(v_grad_kernel) / (v_xij.Dot(v_xij) + 0.01f * _h * _h);
       const Vector3 v_vij  = v_vi - v_vj;
 
       const Vector3 laplacian_velocity = coeff2 * v_vij;
@@ -389,10 +495,12 @@ void SPH::update_force(void)
       v_viscosity_force += laplacian_velocity;
     }
 
-    //모든 파티클이 동일한 질량과 밀도를 갖음
     v_viscosity_force *= _viscosity;
 
     current.force = v_pressure_force + v_viscosity_force + v_gravity_force;
+
+    
+
   }
 }
 
@@ -426,77 +534,66 @@ float SPH::dfk_dq(const float q) const
 
 void SPH::create_particle(void)
 {
-  constexpr size_t max_frame = _num_particle / _num_creation_per_frame;
-  constexpr float  pi        = std::numbers::pi_v<float>;
+  constexpr float pi = std::numbers::pi_v<float>;
 
-  static size_t frame_count = 0;
+  constexpr size_t num_particle_in_edge = 11;
+  constexpr float  delta                = 1.0f / (num_particle_in_edge - 1);
 
-  if (frame_count == max_frame)
-    return;
+  constexpr size_t num_particle     = num_particle_in_edge * num_particle_in_edge * num_particle_in_edge;
+  constexpr float  particle_density = num_particle / _total_volume;
 
-  const size_t start_index = frame_count * _num_creation_per_frame;
+  constexpr size_t desire_neighbor = 50;
 
-  constexpr float x_start  = -0.9f;
-  constexpr float vx_start = 4.0e0f;
-  constexpr float vy_start = -4.0e0f;
-  constexpr float r_source = 4 * _support_length;
+  _num_particle   = num_particle;
+  _support_length = 1 * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
+  _h              = 0.5f * _support_length;
+  _kernel_coeff   = 1.0f / (_h * _h * _h);
 
-  // mass는 initial condition에 의해서 결정된다.
-  constexpr float total_mass = _rest_density * pi * r_source * r_source / 60.0f;
+  //box
+  _particles.resize(_num_particle);
 
-  _mass = total_mass / _num_creation_per_frame;
+  constexpr float x_start = -1.0f;
+  constexpr float x_end   = 0.0f;
+  constexpr float z_start = -1.0f;
+  constexpr float z_end   = 0.0f;
 
-  std::random_device                    rd;
-  std::mt19937                          gen(rd());
-  std::uniform_real_distribution<float> random_y(-r_source, r_source);
-
-  for (size_t i = 0; i < _num_creation_per_frame; ++i)
+  Vector3 init_pos = {-1.0f, -1.0f, -1.0f};
+  for (int i = 0; i < _num_particle; ++i)
   {
-    auto& particle = _particles[start_index + i];
+    _particles[i].position = init_pos;
+    _particles[i].density  = _rest_density;
 
-    particle.position = {x_start, 0.5f + random_y(gen), 0.0f};
-    particle.velocity = {vx_start, vy_start, 0.0f};
-    particle.is_alive = TRUE;
-    particle.density  = _rest_density;
+    init_pos.x += delta;
+    if (init_pos.x > x_end)
+    {
+      init_pos.x = x_start;
+      init_pos.z += delta;
+      if (init_pos.z > z_end)
+      {
+        init_pos.z = z_start;
+        init_pos.y += delta;
+      }
+    }
   }
 
-  frame_count++;
+  //this->mass_2011_cornell();
+  this->mass_1994_monaghan();
 
-  // set initial pos
+  //const float dx = std::pow(4 * pi * _r * _r * _r / (3 * 50), 1.0f / 3.0f);
+  //const float dx = std::pow(pi * _r * _r / (20), 1.0f / 2.0f);
+  //const float dx = _r / 2.1f;
 
-  //std::random_device                    rd;
-  //std::mt19937                          gen(rd());
-  //std::uniform_real_distribution<float> random_theta(-3.141592f, 3.141592f);
-  //std::uniform_real_distribution<float> random_radius(0.0f, 1.0f);
+  //_mass = _rest_density * total_volume / _num_particle;
+  //_mass = _rest_density* 4 * pi * _r * _r * _r / (3 * 50);
+  //_mass = _rest_density * _r * _r * _r;
+  //_mass = _rest_density * dx * dx;
 
-  //const auto v_source_center = Vector3(-0.5f, 0.5f, 0.0f);
+  //_support_length = 2 * _h;
 
-  //for (auto& particle : _particles)
-  //{
-  //  const float   theta  = random_theta(gen);
-  //  const float   radius = random_radius(gen);
-  //  const Vector3 v_dir  = {std::cos(theta), std::sin(theta), 0.0f};
+  //_r = std::pow(_total_volume / _num_particle, 1.0f / 3.0f);
 
-  //  particle.position = v_source_center + radius * v_dir;
-  //}
-
-  //constexpr float x_start = -0.1f;
-  //constexpr float x_end   = x_start + _support_length * 4;
-
-  //Vector3 init_pos = {x_start, 0.0f, 0.0f};
-  //for (int i = 0; i < _num_particle; ++i)
-  //{
-  //  _particles[i].position = init_pos;
-
-  //  init_pos.x += _support_length / 2;
-  //  if (init_pos.x > x_end)
-  //  {
-  //    init_pos.x = x_start;
-  //    init_pos.y += _support_length / 2;
-  //  }
-
-  //  _particles[i].density = _rest_density;
-  //}
+  //_h = 1.0f * _r;
+  //_h = 0.5f * _r;
 }
 
 } // namespace ms
