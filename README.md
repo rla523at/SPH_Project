@@ -1,11 +1,32 @@
 # 2024.07.05
 * 참고 자료 학습
-  * 2014 (Markus et al) SPH Fluids in Computer Graphics.pdf
+  * 2003 (Matthias and Markus) Particle-Based Fluid Simulation for Interactive Applications
+  * 2007 (Markus and Matthias) Weakly compressible SPH for free surface flows
+  * 2014 (Markus et al) SPH Fluids in Computer Graphics
+
+* SPH simulation Rendering 관련 참고 자료 찾기
+  * [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
+  * 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
 
 * SPH 코드 개발
+  * 밀도 값이 이상한 문제(미해결)
+    * 예상되는 문제점들
+      * 상수 값
+        * Pressure Constant
+        * Smoothing Length
+        * Particle Radius      
+      * Kernel 함수
+        * 논문은 3차원 기준으로 작성
+        * 상수배 차이이지만 혹시...
   * 힘이 너무 큰 문제(미해결)
     * Pressure driven force가 너무 크다. 
     * gradient kernel 값이 너무 크다.
+
+* 2주차 계획 설정
+  * 2차원 개발 후 3차원 확장 고려 --> 3차원 확장후 문제 해결을 고려
+    * 논문이 전부 3차원 기준으로 작성
+    * SPH 특성상 2차원 개발과 3차원이 크게 다르지 않음
+    * 문제의 원인이 될 변수를 줄이기 위해(e.g. kernel 함수) 바로 3차원으로 확장 후 문제 해결을 고려
 
 
 # 2024.07.04
