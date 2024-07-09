@@ -10,6 +10,8 @@
     * 논문을 기반으로 simulation 결과가 타당해 보이게 약간의 조정
     * 2007 (Markus and Matthias) Weakly compressible SPH for free surface flows
   * 3차원으로 확장
+ 
+  ![2024-07-09 10 50 47](https://github.com/rla523at/SPH_Project/assets/60506879/dfa4d791-71f1-468d-8445-ab75995fdac2)
 
 * SPH Neighbor Search
   * Neighbor search를 brute force로 하고 있기 때문에 #Particle이 1000 +- 정도가 한계
