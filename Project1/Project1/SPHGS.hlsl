@@ -16,7 +16,7 @@ void main(point GS_Input input[1], uint primID : SV_PrimitiveID, inout TriangleS
     const float pi = 3.14159265;
     const float segments = 12;
     const float dtheta = 2*pi / segments;
-    const float r = 1.0/ 100.0;
+    const float r = 1.0/ 20.0;
 
     const float3 center = input[0].pos.xyz;
 

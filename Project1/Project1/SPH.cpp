@@ -322,10 +322,10 @@ void SPH::mass_1994_monaghan(void)
 
 void SPH::update_density_with_clamp(void)
 {
-  size_t min_count   = 1000;
-  size_t max_count   = 0;
-  float  min_density = 2000;
-  float  max_density = 0;
+  //size_t min_count   = 1000;
+  //size_t max_count   = 0;
+  //float  min_density = 2000;
+  //float  max_density = 0;
 
 #pragma omp parallel for
   for (size_t i = 0; i < _particles.size(); i++)
@@ -334,7 +334,7 @@ void SPH::update_density_with_clamp(void)
 
     float new_density = 0.0;
 
-    size_t neighbor_count = 0;
+    //size_t neighbor_count = 0;
 
     for (size_t j = 0; j < _particles.size(); j++)
     {
@@ -346,33 +346,33 @@ void SPH::update_density_with_clamp(void)
       if (q > 2.0f)
         continue;
 
-      ++neighbor_count;
+      //++neighbor_count;
 
       const auto w = _kernel_coeff * fk(q);
 
       new_density += _mass * w;
     }
 
-    if (neighbor_count < min_count)
-      min_count = neighbor_count;
+    //if (neighbor_count < min_count)
+    //  min_count = neighbor_count;
 
-    if (max_count < neighbor_count)
-      max_count = neighbor_count;
+    //if (max_count < neighbor_count)
+    //  max_count = neighbor_count;
 
-    if (new_density < min_density)
-      min_density = new_density;
+    //if (new_density < min_density)
+    //  min_density = new_density;
 
-    if (max_density < new_density)
-      max_density = new_density;
+    //if (max_density < new_density)
+    //  max_density = new_density;
 
     new_density     = std::clamp(new_density, _rest_density, 1.01f * _rest_density);
     current.density = new_density;
   }
 
-  std::cout << min_count << "\n";
-  std::cout << max_count << "\n";
-  std::cout << min_density << "\n";
-  std::cout << max_density << "\n\n\n";
+  //std::cout << min_count << "\n";
+  //std::cout << max_count << "\n";
+  //std::cout << min_density << "\n";
+  //std::cout << max_density << "\n\n\n";
 }
 
 void SPH::update_density(void)

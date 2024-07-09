@@ -1,3 +1,22 @@
+# 2024.07.08
+* SPH 코드 개발
+  * 질량 계산 방식 수정    
+    * 1994 (monaghan) Simulating Free Surface Flows with SPH
+  * Smoothing Length 계산 루틴 추가
+    * #Neighbor Particle 50 +-이 되게
+  * 밀도 값 보정
+    * 비 물리적인 Density fluctuation이 생기는 경우 clamp로 밀도값 수정
+  * Pressure Constant 보정
+    * 논문을 기반으로 simulation 결과가 타당해 보이게 약간의 조정
+    * 2007 (Markus and Matthias) Weakly compressible SPH for free surface flows
+  * 3차원으로 확장
+
+* SPH Neighbor Search
+  * Neighbor search를 brute force로 하고 있기 때문에 #Particle이 1000 +- 정도가 한계
+  * 관련 참고 자료 찾기
+    * 2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs
+    * 2003 (Matthias et al) Optimized Spatial Hashing for Collision Detection of Deformable Objects
+
 # 2024.07.05
 * 참고 자료 학습
   * 2003 (Matthias and Markus) Particle-Based Fluid Simulation for Interactive Applications

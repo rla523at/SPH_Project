@@ -71,8 +71,6 @@ private:
   float  _h              = 0.0f; //smoothing length
   float  _support_length = 0.0f;
   float  _kernel_coeff   = 0.0f;
-
-  //float  _r              = 0.0f;
 };
 
 } // namespace ms
