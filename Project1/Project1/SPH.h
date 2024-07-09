@@ -7,23 +7,23 @@
 
 namespace ms
 {
-
 using DirectX::SimpleMath::Vector3;
 using Microsoft::WRL::ComPtr;
+}
 
-struct Particle
+namespace ms
 {
-  Vector3 position = Vector3(0.0f);
-  Vector3 velocity = Vector3(0.0f);
-  Vector3 force    = Vector3(0.0f);
-  float   density  = 0.0f;
-  float   pressure = 0.0f;
-};
+class Fluid_Particles;
+}
+
+namespace ms
+{
 
 class SPH
 {
 public:
-  SPH(const ComPtr<ID3D11Device> cptr_device);
+  SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context);
+  ~SPH(void);
 
 public:
   void update(const ComPtr<ID3D11DeviceContext> cptr_context);
@@ -32,23 +32,13 @@ public:
 private:
   void init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device);
   void init_VS_SRview(const ComPtr<ID3D11Device> cptr_device);
-
-  void create_particle(void);
-
-  void mass_2011_cornell(void);
-  void mass_1994_monaghan(void);
-
-  void update_density_with_clamp(void);
-  void update_density(void);
-  void update_pressure(void);
-  void update_force(void);
+  void init_VS(const ComPtr<ID3D11Device> cptr_device);
+  void init_GS(const ComPtr<ID3D11Device> cptr_device);
+  void init_PS(const ComPtr<ID3D11Device> cptr_device);
+  void update_VS_SRview(const ComPtr<ID3D11DeviceContext> cptr_context);
 
 private:
-  float fk(const float q) const;
-  float dfk_dq(const float q) const;
-
-private:
-  std::vector<Particle> _particles;
+  std::unique_ptr<Fluid_Particles> _uptr_particles;
 
   ComPtr<ID3D11InputLayout>    _cptr_input_layout;
   ComPtr<ID3D11VertexShader>   _cptr_vertex_shader;
@@ -58,19 +48,6 @@ private:
   ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview;   //shader resource view using at vertex shader
   ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer; //shader resource buffer using at vertex shader
   ComPtr<ID3D11Buffer>             _cptr_SB_VS_SRB;   //staging buffer for VS_SRB
-
-  //temporary
-  static constexpr float _total_volume = 1.0f;
-  static constexpr float _k            = 4.0e6f; //pressure coefficient
-  static constexpr float _dt           = 1.0e-3f;
-  static constexpr float _rest_density = 1000;
-  static constexpr float _viscosity    = 8.0e-2f;
-
-  size_t _num_particle   = 0;
-  float  _mass           = 0.0f;
-  float  _h              = 0.0f; //smoothing length
-  float  _support_length = 0.0f;
-  float  _kernel_coeff   = 0.0f;
 };
 
 } // namespace ms

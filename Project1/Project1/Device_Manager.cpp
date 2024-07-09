@@ -37,7 +37,8 @@ float Device_Manager::aspect_ratio() const
 
 void Device_Manager::switch_buffer(void) const
 {
-  _cptr_swap_chain->Present(1, 0);
+  _cptr_swap_chain->Present(0, 0);
+  //_cptr_swap_chain->Present(1, 0);
 }
 
 void Device_Manager::prepare_render(void) const
@@ -46,8 +47,6 @@ void Device_Manager::prepare_render(void) const
   _cptr_context->ClearRenderTargetView(_cptr_render_target_view.Get(), clearColor);
   _cptr_context->ClearDepthStencilView(_cptr_depth_stencil_view.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-  // 비교: Depth Buffer를 사용하지 않는 경우
-  // _cptr_context->OMSetRenderTargets(1, _cptr_render_target_view.GetAddressOf(), nullptr);
   _cptr_context->OMSetRenderTargets(1, _cptr_render_target_view.GetAddressOf(), _cptr_depth_stencil_view.Get());
   _cptr_context->OMSetDepthStencilState(_cptr_depth_stencil_state.Get(), 0);
 
@@ -126,12 +125,11 @@ void Device_Manager::init_swap_chain_and_depth_stencil_buffer(const HWND output_
   }
 
   // intialize swap chain
-  constexpr auto target_HZ = 60;
 
   DXGI_MODE_DESC buffer_desc          = {};
   buffer_desc.Width                   = _num_pixel_width;
   buffer_desc.Height                  = _num_pixel_height;
-  buffer_desc.RefreshRate.Numerator   = target_HZ;
+  buffer_desc.RefreshRate.Numerator   = 0;
   buffer_desc.RefreshRate.Denominator = 1;
   buffer_desc.Format                  = swap_chain_format;
 

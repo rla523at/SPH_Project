@@ -1,0 +1,325 @@
+#include "Particles.h"
+
+#include "../_lib/_header/msexception/Exception.h"
+#include <algorithm>
+#include <numbers>
+
+namespace ms
+{
+Fluid_Particles::Fluid_Particles(const Material_Property& material_property, const Initial_Condition_Cube& initial_condition)
+    : _material_proeprty(material_property)
+{
+  constexpr float  pi              = std::numbers::pi_v<float>;
+  constexpr size_t desire_neighbor = 50;
+
+  const auto& ic = initial_condition;
+
+  _num_particle = static_cast<size_t>(std::pow(ic.num_particle_in_edge, 3));
+  _total_volume = std::pow(ic.edge_length, 3.0f);
+
+  _pressures.resize(_num_particle);
+  _densities.resize(_num_particle, _material_proeprty.rest_density);
+  _position_vectors.resize(_num_particle);
+  _velocity_vectors.resize(_num_particle);
+  _force_vectors.resize(_num_particle);
+
+  const float particle_density = _num_particle / _total_volume;
+
+  _support_length = 1 * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
+
+  const float delta = ic.edge_length / (ic.num_particle_in_edge - 1);
+
+  Vector3 pos     = ic.init_pos;
+  Vector3 end_pos = pos + Vector3(ic.edge_length, ic.edge_length, ic.edge_length);
+
+  for (int i = 0; i < _num_particle; ++i)
+  {
+    _position_vectors[i] = pos;
+
+    pos.x += delta;
+    if (pos.x > end_pos.x)
+    {
+      pos.x = ic.init_pos.x;
+      pos.z += delta;
+      if (pos.z > end_pos.z)
+      {
+        pos.z = ic.init_pos.z;
+        pos.y += delta;
+      }
+    }
+  }
+
+  _mass_per_particle = this->cal_mass_per_particle_1994_monaghan(_total_volume, _num_particle);
+}
+
+void Fluid_Particles::update(void)
+{
+  this->update_density_with_clamp();
+  this->update_pressure();
+  this->update_force();
+  this->time_integration();
+  this->apply_boundary_condition();
+}
+
+const Vector3* Fluid_Particles::position_data(void) const
+{
+  return _position_vectors.data();
+}
+
+size_t Fluid_Particles::num_particle(void) const
+{
+  return _num_particle;
+}
+
+void Fluid_Particles::update_density_with_clamp(void)
+{
+  //size_t min_count   = 1000;
+  //size_t max_count   = 0;
+  //float  min_density = 2000;
+  //float  max_density = 0;
+
+  const float h    = _support_length / 2;
+  const float m0   = _mass_per_particle;
+  const float rho0 = _material_proeprty.rest_density;
+
+  for (int i = 0; i < _num_particle; i++)
+  {
+    const auto& cur_pos = _position_vectors[i];
+    auto&       cur_rho = _densities[i];
+
+    cur_rho = 0.0;
+
+    //size_t neighbor_count = 0;
+
+    for (int j = 0; j < _num_particle; j++)
+    {
+      const auto& neighbor_pos = _position_vectors[j];
+
+      const float dist = (cur_pos - neighbor_pos).Length();
+      const auto  q    = dist / h;
+
+      if (q > 2.0f)
+        continue;
+
+      //++neighbor_count;
+
+      cur_rho += m0 * W(q);
+    }
+
+    //if (neighbor_count < min_count)
+    //  min_count = neighbor_count;
+
+    //if (max_count < neighbor_count)
+    //  max_count = neighbor_count;
+
+    //if (new_density < min_density)
+    //  min_density = new_density;
+
+    //if (max_density < new_density)
+    //  max_density = new_density;
+
+    cur_rho = std::clamp(cur_rho, rho0, 1.01f * rho0);
+  }
+
+  //std::cout << min_count << "\n";
+  //std::cout << max_count << "\n";
+  //std::cout << min_density << "\n";
+  //std::cout << max_density << "\n\n\n";
+}
+
+void Fluid_Particles::update_density(void)
+{
+}
+
+void Fluid_Particles::update_pressure(void)
+{
+  constexpr float gamma = 7.0f;
+
+  const float rho0 = _material_proeprty.rest_density;
+  const float k    = _material_proeprty.pressure_coefficient;
+
+  //Equation of State
+
+  for (int i = 0; i < _num_particle; i++)
+  {
+    const auto rho = _densities[i];
+
+    _pressures[i] = k * (pow(rho / rho0, gamma) - 1.0f);
+  }
+}
+
+void Fluid_Particles::update_force(void)
+{
+  const float m0 = _mass_per_particle;
+  const float h  = _support_length / 2;
+  const float mu = _material_proeprty.viscosity;
+
+  const Vector3 v_gravity_force = m0 * Vector3(0.0f, -9.8f, 0.0f);
+
+  //#pragma omp parallel for
+  for (int i = 0; i < _num_particle; i++)
+  {
+    Vector3 v_pressure_force(0.0f);
+    Vector3 v_viscosity_force(0.0f);
+
+    const float    rhoi = _densities[i];
+    const float    pi   = _pressures[i];
+    const Vector3& v_xi = _position_vectors[i];
+    const Vector3& v_vi = _velocity_vectors[i];
+
+    //#pragma omp parallel for
+    for (size_t j = 0; j < _num_particle; j++)
+    {
+      if (i == j)
+        continue;
+
+      const float    rhoj = _densities[j];
+      const float    pj   = _pressures[j];
+      const Vector3& v_xj = _position_vectors[j];
+      const Vector3& v_vj = _velocity_vectors[j];
+
+      const Vector3 v_xij = v_xi - v_xj;
+      const float   dist  = v_xij.Length();
+
+      const auto q = dist / h;
+
+      if (q > 2.0f)
+        continue;
+
+      // distance가 0이면 df_dq = 0이되고 0으로나눠서 오류가남
+      // 이거 없어도 문제 없을거 같은데..? 문제 상황이 뭐였더라...
+      if (dist < 0.03f)
+        continue;
+
+      // cal v_grad_pressure
+      // 이후에 나누어질것이기 때문에 rho_i 무시
+      const Vector3 v_grad_q      = 1.0f / (h * dist) * v_xij;
+      const Vector3 v_grad_kernel = dW_dq(q) * v_grad_q;
+
+      const auto coeff = m0 * (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
+
+      const Vector3 v_grad_pressure = coeff * v_grad_kernel;
+
+      // cal laplacian_velocity
+      const auto    coeff2 = 2 * (m0 / rhoj) * v_xij.Dot(v_grad_kernel) / (v_xij.Dot(v_xij) + 0.01f * h * h);
+      const Vector3 v_vij  = v_vi - v_vj;
+
+      const Vector3 laplacian_velocity = coeff2 * v_vij;
+
+      v_pressure_force -= v_grad_pressure;
+      v_viscosity_force += laplacian_velocity;
+    }
+
+    v_viscosity_force *= mu;
+
+    _force_vectors[i] = v_pressure_force + v_viscosity_force + v_gravity_force;
+  }
+}
+
+void Fluid_Particles::time_integration(void)
+{
+  constexpr float dt = 1.0e-3f;
+
+  const float m0 = _mass_per_particle;
+
+  for (int i = 0; i < _num_particle; i++)
+  {
+    const auto& v_f = _force_vectors[i];
+    const auto  v_a = v_f / m0;
+
+    _velocity_vectors[i] += v_a * dt;
+    _position_vectors[i] += _velocity_vectors[i] * dt;
+  }
+}
+
+void Fluid_Particles::apply_boundary_condition(void)
+{
+  const float     cor           = 0.5f; // Coefficient Of Restitution
+  constexpr float ground_height = -1.0f;
+  constexpr float min_wall_x    = -1.0f;
+  constexpr float max_wall_x    = 1.0f;
+  constexpr float min_wall_z    = -1.0f;
+  constexpr float max_wall_z    = 0.0f;
+
+  for (int i = 0; i < _num_particle; ++i)
+  {
+    auto& v_pos = _position_vectors[i];
+    auto& v_vel = _velocity_vectors[i];
+
+    if (v_pos.y < ground_height && v_vel.y < 0.0f)
+    {
+      v_vel.y *= -cor;
+      v_pos.y = ground_height;
+    }
+
+    if (v_pos.y > 0.8 && v_vel.y > 0.0f)
+    {
+      v_vel.y *= -cor;
+      v_pos.y = 0.8f;
+    }
+
+    if (v_pos.x < min_wall_x && v_vel.x < 0.0f)
+    {
+      v_vel.x *= -cor;
+      v_pos.x = min_wall_x;
+    }
+
+    if (v_pos.x > max_wall_x && v_vel.x > 0.0f)
+    {
+      v_vel.x *= -cor;
+      v_pos.x = max_wall_x;
+    }
+
+    if (v_pos.z < min_wall_z && v_vel.z < 0.0f)
+    {
+      v_vel.z *= -cor;
+      v_pos.z = min_wall_z;
+    }
+
+    if (v_pos.z > max_wall_z && v_vel.z > 0.0f)
+    {
+      v_vel.z *= -cor;
+      v_pos.z = max_wall_z;
+    }
+  }
+}
+
+float Fluid_Particles::W(const float q) const
+{
+  REQUIRE(q >= 0.0f, "q should be positive");
+
+  constexpr float pi    = std::numbers::pi_v<float>;
+  const float     h     = _support_length / 2;
+  const float     coeff = 3.0f / (2.0f * pi * h * h * h);
+
+  if (q < 1.0f)
+    return coeff * (2.0f / 3.0f - q * q + 0.5f * q * q * q);
+  else if (q < 2.0f)
+    return coeff * pow(2.0f - q, 3.0f) / 6.0f;
+  else // q >= 2.0f
+    return 0.0f;
+}
+
+float Fluid_Particles::dW_dq(const float q) const
+{
+  REQUIRE(q >= 0.0f, "q should be positive");
+
+  constexpr float pi    = std::numbers::pi_v<float>;
+  const float     h     = _support_length / 2;
+  const float     coeff = 3.0f / (2.0f * pi * h * h * h);
+
+  if (q < 1.0f)
+    return coeff * (-2.0f * q + 1.5f * q * q);
+  else if (q < 2.0f)
+    return coeff * -0.5f * (2.0f - q) * (2.0f - q);
+  else // q >= 2.0f
+    return 0.0f;
+}
+
+float Fluid_Particles::cal_mass_per_particle_1994_monaghan(const float total_volume, const size_t num_particle) const
+{
+  const float volume_per_particle = total_volume / num_particle;
+  return _material_proeprty.rest_density * volume_per_particle;
+}
+
+} // namespace ms

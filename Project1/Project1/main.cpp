@@ -22,7 +22,7 @@ int main()
 
   ms::GUI_Manager GUI_manager(main_window, device_manager);
 
-  ms::SPH sph(cptr_device);
+  ms::SPH sph(cptr_device, cptr_context);
 
   MSG msg = {0};
   while (WM_QUIT != msg.message)

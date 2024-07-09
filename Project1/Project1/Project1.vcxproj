@@ -22,12 +22,14 @@
     <ClCompile Include="Device_Manager.cpp" />
     <ClCompile Include="GUI_Manager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Particles.cpp" />
     <ClCompile Include="SPH.cpp" />
     <ClCompile Include="Window_Manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device_Manager.h" />
     <ClInclude Include="GUI_Manager.h" />
+    <ClInclude Include="Particles.h" />
     <ClInclude Include="SPH.h" />
     <ClInclude Include="Window_Manager.h" />
   </ItemGroup>
@@ -152,6 +154,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -168,6 +171,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
