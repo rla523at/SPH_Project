@@ -13,7 +13,8 @@
 
 메모리상 spatial locality를 높여 속도를 개선하는 시도를 함.
 
-[사진]
+![메모리](https://github.com/rla523at/SPH_Project/assets/60506879/3d4e7863-43cd-4c68-9e76-1a106c93270c)
+
 
 **결과**
 
@@ -30,7 +31,8 @@
 
 $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동을 하며, 현재 2197Particle 기준 400FPS 정도 나옴
 
-[캡쳐]
+![2197particle 400FPS](https://github.com/rla523at/SPH_Project/assets/60506879/c417e26f-5a07-401e-9c41-f1a28ed32adc)
+
 
 ## Neighbor Search
 2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs 학습
