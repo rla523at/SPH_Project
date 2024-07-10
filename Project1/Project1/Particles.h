@@ -37,7 +37,6 @@ public:
 
 private:
   void update_density_with_clamp(void);
-  void update_density(void);
   void update_pressure(void);
   void update_force(void);
   void time_integration(void);

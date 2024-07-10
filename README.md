@@ -1,3 +1,43 @@
+# 2024.07.09
+
+## SPH 코드
+### Vsync 제거
+실제 FPS를 알기 위해 Vsync를 제거.
+
+1331 Particle 기준 134FPS
+
+### Cache 친화적인 Data 구조 도입
+메인 계산 루틴중 update_density는 position 정보만, update_pressure는 density 정보만 필요.
+
+하지만 기존 Data 구조상 position 정보와 density 정보는 띄엄 띄엄 떨어져 있음.
+
+메모리상 spatial locality를 높여 속도를 개선하는 시도를 함.
+
+[사진]
+
+**결과**
+
+1331Particle 기준 134 FPS -> 139 FPS로 아주 약간 개선됨.
+
+유의미한 변화가 아니였던 이유를 유추해보면 기존 Particle 구조체가 44byte이고 시스템 L1캐시가 1.4MB니까 약 32000개 이상의 Particle이 있었으면 조금 더 유의미한 변화가 있었을 것 같다.
+
+### Open MP를 통한 병렬화
+모든 계산 루틴이 data dependency가 없어서 병렬화가 가능한 for loop이기 때문에 openMP를 이용한 for loop 병렬화를 시도.
+
+**결과**
+
+1331Particle 기준 1000 FPS정도 나옴.
+
+$dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동을 하며, 현재 2197Particle 기준 400FPS 정도 나옴
+
+[캡쳐]
+
+## Neighbor Search
+2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs 학습
+
+
+
+
 # 2024.07.08
 * SPH 코드 개발
   * 질량 계산 방식 수정    

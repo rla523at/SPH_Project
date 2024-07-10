@@ -82,6 +82,7 @@ void Fluid_Particles::update_density_with_clamp(void)
   const float m0   = _mass_per_particle;
   const float rho0 = _material_proeprty.rest_density;
 
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     const auto& cur_pos = _position_vectors[i];
@@ -127,10 +128,6 @@ void Fluid_Particles::update_density_with_clamp(void)
   //std::cout << max_density << "\n\n\n";
 }
 
-void Fluid_Particles::update_density(void)
-{
-}
-
 void Fluid_Particles::update_pressure(void)
 {
   constexpr float gamma = 7.0f;
@@ -140,6 +137,7 @@ void Fluid_Particles::update_pressure(void)
 
   //Equation of State
 
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     const auto rho = _densities[i];
@@ -156,7 +154,7 @@ void Fluid_Particles::update_force(void)
 
   const Vector3 v_gravity_force = m0 * Vector3(0.0f, -9.8f, 0.0f);
 
-  //#pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     Vector3 v_pressure_force(0.0f);
@@ -167,7 +165,6 @@ void Fluid_Particles::update_force(void)
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
 
-    //#pragma omp parallel for
     for (size_t j = 0; j < _num_particle; j++)
     {
       if (i == j)
@@ -222,6 +219,7 @@ void Fluid_Particles::time_integration(void)
 
   const float m0 = _mass_per_particle;
 
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     const auto& v_f = _force_vectors[i];
@@ -238,9 +236,10 @@ void Fluid_Particles::apply_boundary_condition(void)
   constexpr float ground_height = -1.0f;
   constexpr float min_wall_x    = -1.0f;
   constexpr float max_wall_x    = 1.0f;
-  constexpr float min_wall_z    = -1.0f;
-  constexpr float max_wall_z    = 0.0f;
+  constexpr float min_wall_z    = 0.0f;
+  constexpr float max_wall_z    = 1.0f;
 
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; ++i)
   {
     auto& v_pos = _position_vectors[i];

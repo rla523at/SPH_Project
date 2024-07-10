@@ -13,13 +13,13 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 {
   Material_Property mat_prop;
   mat_prop.rest_density         = 1.0e3f;
-  mat_prop.pressure_coefficient = 4.0e6f;
-  mat_prop.viscosity            = 8.0e-2f;
+  mat_prop.pressure_coefficient = 2.0e5f;
+  mat_prop.viscosity            = 3.0e-2f;
 
   Initial_Condition_Cube init_cond;
-  init_cond.init_pos             = {-1.0f, -1.0f, -1.0f};
+  init_cond.init_pos             = {-1.0f, -1.0f, 0.0f};
   init_cond.edge_length          = 1.0f;
-  init_cond.num_particle_in_edge = 11;
+  init_cond.num_particle_in_edge = 13;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond);
 
