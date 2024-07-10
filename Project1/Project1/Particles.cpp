@@ -5,6 +5,7 @@
 #include "../_lib/_header/msexception/Exception.h"
 #include <algorithm>
 #include <numbers>
+#include <omp.h>
 
 namespace ms
 {
@@ -15,7 +16,10 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   constexpr size_t desire_neighbor = 50;
 
   //2*desir_neighbor used to prevent overflow
-  //_neighbor_indexes.resize(desire_neighbor * 2);
+  const auto num_max_threads = omp_get_max_threads();
+  _thread_neighbor_indexes.resize(num_max_threads);
+  for (auto& neighbor_indexes : _thread_neighbor_indexes)
+    neighbor_indexes.resize(desire_neighbor * 100);
 
   const auto& ic = initial_condition;
 
@@ -104,8 +108,13 @@ void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood
     cur_rho       = 0.0;
 
     const auto& v_xi             = _position_vectors[i];
-    const auto  neighbor_indexes = neighborhood.search(v_xi);
-    const auto  num_neighbor     = neighbor_indexes.size();
+
+    const auto thread_num = omp_get_thread_num();
+    auto&      neighbor_indexes = _thread_neighbor_indexes[thread_num];
+    const auto num_neighbor     = neighborhood.search(v_xi, neighbor_indexes.data());
+
+    //const auto  neighbor_indexes = neighborhood.search(v_xi);
+    //const auto  num_neighbor     = neighbor_indexes.size();
 
     size_t real_neighbor = 0;
 
@@ -175,8 +184,12 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
 
-    const auto neighbor_indexes = neighborhood.search(v_xi);
-    const auto num_neighbor     = neighbor_indexes.size();
+    //const auto neighbor_indexes = neighborhood.search(v_xi);
+    //const auto num_neighbor     = neighbor_indexes.size();
+
+    const auto thread_num       = omp_get_thread_num();
+    auto&      neighbor_indexes = _thread_neighbor_indexes[thread_num];
+    const auto num_neighbor     = neighborhood.search(v_xi, neighbor_indexes.data());
 
     for (size_t j = 0; j < num_neighbor; j++)
     {

@@ -39,7 +39,7 @@
     <ClCompile Include="Particles.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Uniform_Grid.cpp">
+    <ClCompile Include="Neighborhood_Uniform_Grid.cpp">
       <Filter>소스 파일\Neighborhood</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,7 +62,10 @@
     <ClInclude Include="Neighborhood.h">
       <Filter>소스 파일\Neighborhood</Filter>
     </ClInclude>
-    <ClInclude Include="Uniform_Grid.h">
+    <ClInclude Include="Neighborhood_Uniform_Grid.h">
+      <Filter>소스 파일\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="Neighborhood_Brute_Force.h">
       <Filter>소스 파일\Neighborhood</Filter>
     </ClInclude>
   </ItemGroup>

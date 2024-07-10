@@ -1,7 +1,8 @@
 #include "SPH.h"
 
 #include "Particles.h"
-#include "Uniform_Grid.h"
+#include "Neighborhood_Uniform_Grid.h"
+#include "Neighborhood_Brute_Force.h"
 
 #include "../_lib/_header/msexception/Exception.h"
 #include <d3dcompiler.h>
@@ -35,10 +36,9 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   const float divide_length = _uptr_particles->support_length();
   const auto& pos_vecetors  = _uptr_particles->get_position_vectors();
 
-  _uptr_neighborhood = std::make_unique<Uniform_Grid>(domain, divide_length, pos_vecetors);
+  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid>(domain, divide_length, pos_vecetors);
   
   //const auto num_particles = _uptr_particles->num_particle();
-  //
   //_uptr_neighborhood = std::make_unique<Neighborhood_Brute_Force>(num_particles);
 
 
