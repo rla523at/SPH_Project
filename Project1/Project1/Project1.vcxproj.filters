@@ -16,6 +16,9 @@
     <Filter Include="HLSL">
       <UniqueIdentifier>{d528d9d6-d4fa-4c17-ad5c-c425ca2fc45f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Neighborhood">
+      <UniqueIdentifier>{5b0ab4cf-9014-47c8-b6bb-b77d058462b3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Device_Manager.cpp">
@@ -36,6 +39,9 @@
     <ClCompile Include="Particles.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Uniform_Grid.cpp">
+      <Filter>소스 파일\Neighborhood</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device_Manager.h">
@@ -52,6 +58,12 @@
     </ClInclude>
     <ClInclude Include="Particles.h">
       <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Neighborhood.h">
+      <Filter>소스 파일\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="Uniform_Grid.h">
+      <Filter>소스 파일\Neighborhood</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

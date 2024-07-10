@@ -9,11 +9,12 @@ namespace ms
 {
 using DirectX::SimpleMath::Vector3;
 using Microsoft::WRL::ComPtr;
-}
+} // namespace ms
 
 namespace ms
 {
 class Fluid_Particles;
+class Neighborhood;
 }
 
 namespace ms
@@ -39,6 +40,7 @@ private:
 
 private:
   std::unique_ptr<Fluid_Particles> _uptr_particles;
+  std::unique_ptr<Neighborhood>    _uptr_neighborhood;
 
   ComPtr<ID3D11InputLayout>    _cptr_input_layout;
   ComPtr<ID3D11VertexShader>   _cptr_vertex_shader;

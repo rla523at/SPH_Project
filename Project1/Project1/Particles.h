@@ -2,9 +2,16 @@
 #include <directxtk/SimpleMath.h>
 #include <vector>
 
+//abbreviation
 namespace ms
 {
 using DirectX::SimpleMath::Vector3;
+}
+
+//Forward Declaration
+namespace ms
+{
+class Neighborhood;
 }
 
 namespace ms
@@ -29,16 +36,19 @@ public:
   Fluid_Particles(const Material_Property& property, const Initial_Condition_Cube& initial_condition);
 
 public:
-  void update(void);
+  void update(const Neighborhood& neighborhood);
 
 public:
   const Vector3* position_data(void) const;
   size_t         num_particle(void) const;
+  float          support_length(void) const;
+
+  const std::vector<Vector3>& get_position_vectors(void) const;
 
 private:
-  void update_density_with_clamp(void);
+  void update_density_with_clamp(const Neighborhood& neighborhood);
   void update_pressure(void);
-  void update_force(void);
+  void update_force(const Neighborhood& neighborhood);
   void time_integration(void);
   void apply_boundary_condition(void);
 

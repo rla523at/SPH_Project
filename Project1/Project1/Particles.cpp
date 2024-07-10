@@ -1,5 +1,7 @@
 #include "Particles.h"
 
+#include "Neighborhood.h"
+
 #include "../_lib/_header/msexception/Exception.h"
 #include <algorithm>
 #include <numbers>
@@ -11,6 +13,9 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 {
   constexpr float  pi              = std::numbers::pi_v<float>;
   constexpr size_t desire_neighbor = 50;
+
+  //2*desir_neighbor used to prevent overflow
+  //_neighbor_indexes.resize(desire_neighbor * 2);
 
   const auto& ic = initial_condition;
 
@@ -52,11 +57,11 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   _mass_per_particle = this->cal_mass_per_particle_1994_monaghan(_total_volume, _num_particle);
 }
 
-void Fluid_Particles::update(void)
+void Fluid_Particles::update(const Neighborhood& neighborhood)
 {
-  this->update_density_with_clamp();
+  this->update_density_with_clamp(neighborhood);
   this->update_pressure();
-  this->update_force();
+  this->update_force(neighborhood);
   this->time_integration();
   this->apply_boundary_condition();
 }
@@ -71,7 +76,17 @@ size_t Fluid_Particles::num_particle(void) const
   return _num_particle;
 }
 
-void Fluid_Particles::update_density_with_clamp(void)
+float Fluid_Particles::support_length(void) const
+{
+  return _support_length;
+}
+
+const std::vector<Vector3>& Fluid_Particles::get_position_vectors(void) const
+{
+  return _position_vectors;
+}
+
+void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood)
 {
   //size_t min_count   = 1000;
   //size_t max_count   = 0;
@@ -85,39 +100,34 @@ void Fluid_Particles::update_density_with_clamp(void)
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
-    const auto& cur_pos = _position_vectors[i];
-    auto&       cur_rho = _densities[i];
+    auto& cur_rho = _densities[i];
+    cur_rho       = 0.0;
 
-    cur_rho = 0.0;
+    const auto& v_xi             = _position_vectors[i];
+    const auto  neighbor_indexes = neighborhood.search(v_xi);
+    const auto  num_neighbor     = neighbor_indexes.size();
 
-    //size_t neighbor_count = 0;
+    size_t real_neighbor = 0;
 
-    for (int j = 0; j < _num_particle; j++)
+    for (int j = 0; j < num_neighbor; j++)
     {
-      const auto& neighbor_pos = _position_vectors[j];
+      const size_t neighbor_index = neighbor_indexes[j];
 
-      const float dist = (cur_pos - neighbor_pos).Length();
+      const auto& v_xj = _position_vectors[neighbor_index];
+
+      const float dist = (v_xi - v_xj).Length();
       const auto  q    = dist / h;
 
       if (q > 2.0f)
         continue;
 
-      //++neighbor_count;
+      ++real_neighbor;
 
       cur_rho += m0 * W(q);
     }
 
-    //if (neighbor_count < min_count)
-    //  min_count = neighbor_count;
-
-    //if (max_count < neighbor_count)
-    //  max_count = neighbor_count;
-
-    //if (new_density < min_density)
-    //  min_density = new_density;
-
-    //if (max_density < new_density)
-    //  max_density = new_density;
+    ////debug
+    //std::cout << i << " particle has " << real_neighbor << " neighbors and " << cur_rho << " density \n";
 
     cur_rho = std::clamp(cur_rho, rho0, 1.01f * rho0);
   }
@@ -146,7 +156,7 @@ void Fluid_Particles::update_pressure(void)
   }
 }
 
-void Fluid_Particles::update_force(void)
+void Fluid_Particles::update_force(const Neighborhood& neighborhood)
 {
   const float m0 = _mass_per_particle;
   const float h  = _support_length / 2;
@@ -165,15 +175,20 @@ void Fluid_Particles::update_force(void)
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
 
-    for (size_t j = 0; j < _num_particle; j++)
+    const auto neighbor_indexes = neighborhood.search(v_xi);
+    const auto num_neighbor     = neighbor_indexes.size();
+
+    for (size_t j = 0; j < num_neighbor; j++)
     {
-      if (i == j)
+      const auto neighbor_index = neighbor_indexes[j];
+
+      if (i == neighbor_index)
         continue;
 
-      const float    rhoj = _densities[j];
-      const float    pj   = _pressures[j];
-      const Vector3& v_xj = _position_vectors[j];
-      const Vector3& v_vj = _velocity_vectors[j];
+      const float    rhoj = _densities[neighbor_index];
+      const float    pj   = _pressures[neighbor_index];
+      const Vector3& v_xj = _position_vectors[neighbor_index];
+      const Vector3& v_vj = _velocity_vectors[neighbor_index];
 
       const Vector3 v_xij = v_xi - v_xj;
       const float   dist  = v_xij.Length();

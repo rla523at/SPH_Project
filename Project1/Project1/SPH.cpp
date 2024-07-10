@@ -1,6 +1,7 @@
 #include "SPH.h"
 
 #include "Particles.h"
+#include "Uniform_Grid.h"
 
 #include "../_lib/_header/msexception/Exception.h"
 #include <d3dcompiler.h>
@@ -14,14 +15,32 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   Material_Property mat_prop;
   mat_prop.rest_density         = 1.0e3f;
   mat_prop.pressure_coefficient = 2.0e5f;
-  mat_prop.viscosity            = 3.0e-2f;
+  mat_prop.viscosity            = 1.2e-2f;
 
   Initial_Condition_Cube init_cond;
   init_cond.init_pos             = {-1.0f, -1.0f, 0.0f};
   init_cond.edge_length          = 1.0f;
-  init_cond.num_particle_in_edge = 13;
+  init_cond.num_particle_in_edge = 20;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond);
+
+  Domain domain;
+  domain.x_start = -1.0f;
+  domain.x_end   = 1.0f;
+  domain.y_start = -1.0f;
+  domain.y_end   = 1.0f;
+  domain.z_start = 0.0f;
+  domain.z_end   = 1.0f;
+
+  const float divide_length = _uptr_particles->support_length();
+  const auto& pos_vecetors  = _uptr_particles->get_position_vectors();
+
+  _uptr_neighborhood = std::make_unique<Uniform_Grid>(domain, divide_length, pos_vecetors);
+  
+  //const auto num_particles = _uptr_particles->num_particle();
+  //
+  //_uptr_neighborhood = std::make_unique<Neighborhood_Brute_Force>(num_particles);
+
 
   this->init_VS_SRbuffer(cptr_device);
   this->init_VS_SRview(cptr_device);
@@ -62,7 +81,10 @@ SPH::~SPH(void) = default;
 
 void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  _uptr_particles->update();
+  _uptr_particles->update(*_uptr_neighborhood);
+  
+  const auto& pos_vectors = _uptr_particles->get_position_vectors();
+  _uptr_neighborhood->update(pos_vectors);
 
   this->update_VS_SRview(cptr_context);
 }
