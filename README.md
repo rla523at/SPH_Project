@@ -1,12 +1,20 @@
 # 2024.07.09
 
-## SPH 코드
-### Vsync 제거
+## Vsync 제거
 실제 FPS를 알기 위해 Vsync를 제거.
 
 1331 Particle 기준 134FPS
 
+## SPH 코드 성능 개선
+$dt = 1.0e-3$인 상황에서 134FPS로는 부자연스러워 FPS를 높이기 위해 성능 개선 시도.
+
+Neighbor Search까지 CPU로 작업 후, 성능 개선이 더 필요한 경우 GPU 계산을 활용할 예정.
+
+### Neighbor Search
+2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs 학습
+
 ### Cache 친화적인 Data 구조 도입
+
 메인 계산 루틴중 update_density는 position 정보만, update_pressure는 density 정보만 필요.
 
 하지만 기존 Data 구조상 position 정보와 density 정보는 띄엄 띄엄 떨어져 있음.
@@ -32,12 +40,6 @@
 $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동을 하며, 현재 2197Particle 기준 400FPS 정도 나옴
 
 ![2197particle 400FPS](https://github.com/rla523at/SPH_Project/assets/60506879/c417e26f-5a07-401e-9c41-f1a28ed32adc)
-
-
-## Neighbor Search
-2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs 학습
-
-
 
 
 # 2024.07.08
