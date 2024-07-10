@@ -1,3 +1,51 @@
+# 2024.07.10
+## Neighbor Search - basic uniform grid 구현
+
+### Key Idea
+3차원 Domain의 bounding box를 일정한 크기를 갖는 정육면체로 나누어서 관리하는 데이터 구조.
+
+정육면체를 grid cell이라고 하며, grid cell마다 고유의 grid cell index vector $c$를 갖는다.
+
+$$ c = (i,j,k) $$
+
+정육면체의 한 면을 $h$라고 할 때, $h$가 smoothing length와 같다면, neighborhood를 검색하기 위해 최대 27개의 grid cell만 탐색하면 된다. 
+
+2D 예시
+
+[그림]
+
+정육면체의 한 면을 $h$, bounding box의 최소 좌표를 $(x_{min},y_{min},z_{min})$이라고 한다면 bounding box 내부의 point $x$가 속한 grid cell index vector는 다음과 같다.
+
+$$ c(x) = (\left\lceil \frac{x-x_{min}}{h}  \right\rceil, \left\lceil \frac{y-y_{min}}{h}  \right\rceil, \left\lceil \frac{z-z_{min}}{h}  \right\rceil $$
+
+### 병렬화 문제
+
+**문제점**
+
+particle들의 새로운 position이 주어졌을 떄, 다음 두가지 배열을 업데이트 해야 된다.
+* grid cell index마다 속한 particle의 index를 저장하는 이중 배열
+* particle index마다 neighbor particle의 index를 저장하는 이중 배열
+
+두 배열 모두, 기존 데이터를 지우고 새로운 데이터를 추가하는 과정이 필요하기 때문에 data dependency가 발생해 병렬화가 어렵다.
+
+**해결 방안**
+
+grid cell index마다 속한 particle의 index를 저장하는 이중 배열
+* 각 particle index마다 이전에 어떤 grid cell index에 속했었는지 저장하는 추가적인 배열을 만들어서 data를 제거하는 과정을 최소화 함
+
+particle index마다 neighbor particle의 index를 저장하는 이중 배열
+* 이 배열을 더이상 이용하지 않고 27개의 grid cell에 속한 모든 particle index를 넘긴다.
+* 문제점
+  * particle을 업데이트 할 때, neighbor인지 거리 검사를 해야 된다.
+  * density 계산할 때 한번, force 계산할 때 검사해서 중복 검사가 발생한다.
+* 장점
+  * 
+
+
+
+
+
+
 # 2024.07.09
 
 ## Vsync 제거

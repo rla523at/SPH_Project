@@ -32,6 +32,14 @@ Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(const Domain& domain, const
     _pid_to_gcid[pid] = gcid;
     _gcid_to_pids[gcid].push_back(pid);
   }
+
+  //
+  _pid_to_neighbor_pids.resize(num_particles);
+  for (auto& neighbor_pids : _pid_to_neighbor_pids)
+    neighbor_pids.reserve(100);
+
+  //
+  _neighbor_candidates.resize(num_particles);
 }
 
 size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
@@ -77,7 +85,7 @@ size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
 std::vector<size_t> Neighborhood_Uniform_Grid::search(const Vector3& pos) const
 {
   constexpr size_t    num_expect_neighbor = 50;
-  constexpr long long delta[3] = {-1, 0, 1};
+  constexpr long long delta[3]            = {-1, 0, 1};
 
   const auto gcid_vector = this->grid_cell_index_vector(pos);
 
@@ -94,7 +102,7 @@ std::vector<size_t> Neighborhood_Uniform_Grid::search(const Vector3& pos) const
         neighbor_gcid_vector.x = gcid_vector.x + delta[i];
         neighbor_gcid_vector.y = gcid_vector.y + delta[j];
         neighbor_gcid_vector.z = gcid_vector.z + delta[k];
-    
+
         if (!this->is_valid_index(neighbor_gcid_vector))
           continue;
 
@@ -112,16 +120,23 @@ std::vector<size_t> Neighborhood_Uniform_Grid::search(const Vector3& pos) const
   return result;
 }
 
+const std::vector<size_t>& Neighborhood_Uniform_Grid::search(const size_t pid) const
+{
+  return _pid_to_neighbor_pids[pid];
+}
+
 void Neighborhood_Uniform_Grid::update(const std::vector<Vector3>& pos_vectors)
 {
   const size_t num_particles = pos_vectors.size();
 
+  // update gcid_to_pids
   for (size_t pid = 0; pid < num_particles; ++pid)
   {
+    const auto& v_xi = pos_vectors[pid];
+
     const auto prev_gcid = _pid_to_gcid[pid];
 
-    const auto& v_pos    = pos_vectors[pid];
-    const auto  cur_gcid = this->grid_cell_index(v_pos);
+    const auto cur_gcid = this->grid_cell_index(v_xi);
 
     if (prev_gcid != cur_gcid)
     {
@@ -137,6 +152,8 @@ void Neighborhood_Uniform_Grid::update(const std::vector<Vector3>& pos_vectors)
       _pid_to_gcid[pid] = cur_gcid;
     }
   }
+
+  //this->update_pid_to_neighbor_pids(pos_vectors);
 }
 
 Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
@@ -182,6 +199,32 @@ bool Neighborhood_Uniform_Grid::is_valid_index(const Index_Vector& index_vector)
     return false;
 
   return true;
+}
+
+void Neighborhood_Uniform_Grid::update_pid_to_neighbor_pids(const std::vector<Vector3>& pos_vectors)
+{
+  const size_t num_particles = pos_vectors.size();
+
+  for (size_t pid = 0; pid < num_particles; ++pid)
+  {
+    auto& neighbor_pids = _pid_to_neighbor_pids[pid];
+    neighbor_pids.clear();
+
+    const auto& v_xi = pos_vectors[pid];
+
+    const auto num_candidates = this->search(v_xi, _neighbor_candidates.data());
+
+    for (size_t i = 0; i < num_candidates; ++i)
+    {
+      const auto  candidate_pid = _neighbor_candidates[i];
+      const auto& v_xj          = pos_vectors[candidate_pid];
+
+      if (_divide_length < (v_xi - v_xj).Length())
+        continue;
+
+      neighbor_pids.push_back(candidate_pid);
+    }
+  }
 }
 
 } // namespace ms

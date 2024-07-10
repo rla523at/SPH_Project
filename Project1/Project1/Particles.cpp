@@ -107,9 +107,12 @@ void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood
     auto& cur_rho = _densities[i];
     cur_rho       = 0.0;
 
-    const auto& v_xi             = _position_vectors[i];
+    const auto& v_xi = _position_vectors[i];
 
-    const auto thread_num = omp_get_thread_num();
+    //const auto& neighbor_indexes = neighborhood.search(i);
+    //const auto  num_neighbor     = neighbor_indexes.size();
+
+    const auto thread_num       = omp_get_thread_num();
     auto&      neighbor_indexes = _thread_neighbor_indexes[thread_num];
     const auto num_neighbor     = neighborhood.search(v_xi, neighbor_indexes.data());
 
@@ -135,16 +138,8 @@ void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood
       cur_rho += m0 * W(q);
     }
 
-    ////debug
-    //std::cout << i << " particle has " << real_neighbor << " neighbors and " << cur_rho << " density \n";
-
     cur_rho = std::clamp(cur_rho, rho0, 1.01f * rho0);
   }
-
-  //std::cout << min_count << "\n";
-  //std::cout << max_count << "\n";
-  //std::cout << min_density << "\n";
-  //std::cout << max_density << "\n\n\n";
 }
 
 void Fluid_Particles::update_pressure(void)
@@ -183,6 +178,9 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
     const float    pi   = _pressures[i];
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
+
+    //const auto& neighbor_indexes = neighborhood.search(i);
+    //const auto  num_neighbor     = neighbor_indexes.size();
 
     //const auto neighbor_indexes = neighborhood.search(v_xi);
     //const auto num_neighbor     = neighbor_indexes.size();

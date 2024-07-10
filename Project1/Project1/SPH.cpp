@@ -81,10 +81,10 @@ SPH::~SPH(void) = default;
 
 void SPH::update(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  _uptr_particles->update(*_uptr_neighborhood);
-  
   const auto& pos_vectors = _uptr_particles->get_position_vectors();
   _uptr_neighborhood->update(pos_vectors);
+
+  _uptr_particles->update(*_uptr_neighborhood);  
 
   this->update_VS_SRview(cptr_context);
 }
