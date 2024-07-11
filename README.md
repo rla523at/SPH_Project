@@ -58,7 +58,8 @@ grid cell은 고유의 grid cell index를 갖고 particle은 고유의 particle 
 std::vector<size_t> search(const Vector3& pos) const override;
 ```
 
-[그림]
+![vector allocation](https://github.com/rla523at/SPH_Project/assets/60506879/b5e240b3-eee6-44e5-b615-cba57de25206)
+
 
 이를 해결하기 위해, neighbor_index를 받아오는데 사용하기 위한 미리 생성된 배열을 만들어 두고 search 함수 형태를 바꿨다.
 
@@ -69,7 +70,8 @@ std::vector<size_t> _neighbor_indexes;
   size_t                     search(const Vector3& pos, size_t* pids) const override;
 ```
 
-[그림]
+![vector allocation개선](https://github.com/rla523at/SPH_Project/assets/60506879/a4bef065-2e84-4337-8675-2cb973016749)
+
 
 결론적으로 1000 Particle 기준 370 FPS -> 450 FPS로 성능 개선되었다.
 
@@ -118,6 +120,7 @@ const std::vector<size_t>& search(const size_t pid) const override; //업데이�
     }
 ```
 
+결론적으로, 8000Particle 기준 400FPS -> 600FPS로 개선하였다.
 
 
 # 2024.07.09
