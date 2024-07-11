@@ -6,10 +6,11 @@
 
 uniform grid를 사용하면, 각 grid cell마다 자신의 영역안에 포함된 particle들을 저장한다.
 
-그리고 임의의 particle의 neighborhood 검색 범위를 줄이기 위해 다음과 같은 단계를 따른다.
+neighborhood를 검색하기 위해 기존의 검색범위인 모든 particle을 줄이기 위해 uniform grid는 다음과 같은 방법으로 검색 범위를 줄인다.
 
 * 자신이 속한 grid cell을 찾는다.
-* grid cell의 Neighbor grid cell의 집합에 속한 particle만 검사한다. 
+* grid cell의 Neighbor grid cell의 집합을 찾는다.
+* Neighbor grid cell 속한 particle들로 검색 범위를 줄인다.
 
 ### 구현
 grid cell은 고유의 grid cell index를 갖고 particle은 고유의 particle index를 갖는다.
