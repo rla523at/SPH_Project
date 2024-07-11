@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <omp.h>
 
 namespace ms
 {
@@ -38,8 +39,10 @@ Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(const Domain& domain, const
   for (auto& neighbor_pids : _pid_to_neighbor_pids)
     neighbor_pids.reserve(100);
 
-  //
-  _neighbor_candidates.resize(num_particles);
+  const auto num_max_threads = omp_get_max_threads();
+  _thread_neighbor_candidates.resize(num_max_threads);
+  for (auto& candidates : _thread_neighbor_candidates)
+    candidates.resize(1000);
 }
 
 size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
@@ -82,44 +85,6 @@ size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
   return index;
 }
 
-std::vector<size_t> Neighborhood_Uniform_Grid::search(const Vector3& pos) const
-{
-  constexpr size_t    num_expect_neighbor = 50;
-  constexpr long long delta[3]            = {-1, 0, 1};
-
-  const auto gcid_vector = this->grid_cell_index_vector(pos);
-
-  std::vector<size_t> result;
-  result.reserve(num_expect_neighbor);
-
-  for (int i = 0; i < 3; ++i)
-  {
-    for (int j = 0; j < 3; ++j)
-    {
-      for (int k = 0; k < 3; ++k)
-      {
-        Index_Vector neighbor_gcid_vector;
-        neighbor_gcid_vector.x = gcid_vector.x + delta[i];
-        neighbor_gcid_vector.y = gcid_vector.y + delta[j];
-        neighbor_gcid_vector.z = gcid_vector.z + delta[k];
-
-        if (!this->is_valid_index(neighbor_gcid_vector))
-          continue;
-
-        const auto neighbor_gcid = grid_cell_index(neighbor_gcid_vector);
-
-        const auto&  neighbor_pids    = _gcid_to_pids[neighbor_gcid];
-        const size_t num_neighbor_pid = neighbor_pids.size();
-
-        for (size_t i = 0; i < num_neighbor_pid; ++i)
-          result.push_back(neighbor_pids[i]);
-      }
-    }
-  }
-
-  return result;
-}
-
 const std::vector<size_t>& Neighborhood_Uniform_Grid::search(const size_t pid) const
 {
   return _pid_to_neighbor_pids[pid];
@@ -153,7 +118,7 @@ void Neighborhood_Uniform_Grid::update(const std::vector<Vector3>& pos_vectors)
     }
   }
 
-  //this->update_pid_to_neighbor_pids(pos_vectors);
+  this->update_pid_to_neighbor_pids(pos_vectors);
 }
 
 Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
@@ -205,18 +170,21 @@ void Neighborhood_Uniform_Grid::update_pid_to_neighbor_pids(const std::vector<Ve
 {
   const size_t num_particles = pos_vectors.size();
 
-  for (size_t pid = 0; pid < num_particles; ++pid)
+#pragma omp parallel for
+  for (int pid = 0; pid < num_particles; ++pid)
   {
     auto& neighbor_pids = _pid_to_neighbor_pids[pid];
     neighbor_pids.clear();
 
     const auto& v_xi = pos_vectors[pid];
 
-    const auto num_candidates = this->search(v_xi, _neighbor_candidates.data());
+    const auto thread_num       = omp_get_thread_num();
+    auto&      neighbor_candidates = _thread_neighbor_candidates[thread_num];
+    const auto num_candidates     = this->search(v_xi, neighbor_candidates.data());
 
     for (size_t i = 0; i < num_candidates; ++i)
     {
-      const auto  candidate_pid = _neighbor_candidates[i];
+      const auto  candidate_pid = neighbor_candidates[i];
       const auto& v_xj          = pos_vectors[candidate_pid];
 
       if (_divide_length < (v_xi - v_xj).Length())

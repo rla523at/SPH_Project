@@ -36,9 +36,6 @@ public:
 public:
   void update(const std::vector<Vector3>& pos_vectors) override;
 
-  //fill neighbor particle ids into pids and return number of neighbor particles
-  size_t                     search(const Vector3& pos, size_t* pids) const override;
-  std::vector<size_t>        search(const Vector3& pos) const override;
   const std::vector<size_t>& search(const size_t pid) const override;
 
 private:
@@ -46,6 +43,9 @@ private:
   size_t       grid_cell_index(const Vector3& v_pos) const;
   size_t       grid_cell_index(const Index_Vector& index_vector) const;
   bool         is_valid_index(const Index_Vector& index_vector) const;
+
+  //fill neighbor particle ids into pids and return number of neighbor particles
+  size_t search(const Vector3& pos, size_t* pids) const;
 
   void update_pid_to_neighbor_pids(const std::vector<Vector3>& pos_vectors);
 
@@ -62,7 +62,7 @@ private:
   size_t _num_z_cell = 0;
 
   //prevent heap allocation
-  std::vector<size_t> _neighbor_candidates;
+  std::vector<std::vector<size_t>> _thread_neighbor_candidates;
 };
 
 } // namespace ms

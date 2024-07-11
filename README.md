@@ -2,47 +2,121 @@
 ## Neighbor Search - basic uniform grid 구현
 
 ### Key Idea
-3차원 Domain의 bounding box를 일정한 크기를 갖는 정육면체로 나누어서 관리하는 데이터 구조.
+3차원 Domain의 bounding box를 일정한 크기를 갖는 정육면체인 grid cell로 나누어서 관리하는 데이터 구조이다.
 
-정육면체를 grid cell이라고 하며, grid cell마다 고유의 grid cell index vector $c$를 갖는다.
+uniform grid를 사용하면, 각 grid cell마다 자신의 영역안에 포함된 particle들을 저장한다.
 
-$$ c = (i,j,k) $$
+그리고 임의의 particle의 neighborhood 검색 범위를 줄이기 위해 다음과 같은 단계를 따른다.
 
-정육면체의 한 면을 $h$라고 할 때, $h$가 smoothing length와 같다면, neighborhood를 검색하기 위해 최대 27개의 grid cell만 탐색하면 된다. 
+* 자신이 속한 grid cell을 찾는다.
+* grid cell의 Neighbor grid cell의 집합에 속한 particle만 검사한다. 
 
-2D 예시
+### 구현
+grid cell은 고유의 grid cell index를 갖고 particle은 고유의 particle index를 갖는다.
+
+따라서, grid cell마다 속한 particle을 저장하는 데이터 구조를 `grid cell index마다 속한 particle의 index를 저장하는 이중 배열`로 구현한다.
+
+### Update 개선
+물리적으로 연속성을 띄게 particle들이 움직이기 때문에, 매 Frame마다 grid cell index가 바뀌는 particle들은 많지 않다.
+
+따라서, 매 frame마다 이중 배열을 초기화하고 모든 particle들의 index data를 다시 넣는 방식은 매우 비효율적이다.
+
+이를 개선하기 위해, `particle index마다 이전에 속했던 grid cell index를 저장하는 배열`을 추가하여, 이전 Frame과 현재 Frame에서 바뀐 particle의 정보만 반영하도록 하였다.
+
+```cpp
+
+  // update gcid_to_pids
+  for (size_t pid = 0; pid < num_particles; ++pid)
+  {
+    const auto& v_xi = pos_vectors[pid];
+
+    const auto prev_gcid = _pid_to_gcid[pid];
+
+    const auto cur_gcid = this->grid_cell_index(v_xi);
+
+    if (prev_gcid != cur_gcid)
+    {
+      //erase data in previous
+      auto& prev_pids = _gcid_to_pids[prev_gcid];
+      prev_pids.erase(std::find(prev_pids.begin(), prev_pids.end(), pid));
+
+      //insert data in new
+      auto& new_pids = _gcid_to_pids[cur_gcid];
+      new_pids.push_back(pid);
+
+      //update gcid
+      _pid_to_gcid[pid] = cur_gcid;
+    }
+  }
+
+```
+
+### vector 객체 생성 문제
+각 Particle마다 주변의 grid cell에 속한 모든 particle index를 받을 때, vector를 return 하니 vector 객체를 생성하는데 많은 cost가 든다.
+
+```cpp
+std::vector<size_t> search(const Vector3& pos) const override;
+```
 
 [그림]
 
-정육면체의 한 면을 $h$, bounding box의 최소 좌표를 $(x_{min},y_{min},z_{min})$이라고 한다면 bounding box 내부의 point $x$가 속한 grid cell index vector는 다음과 같다.
+이를 해결하기 위해, neighbor_index를 받아오는데 사용하기 위한 미리 생성된 배열을 만들어 두고 search 함수 형태를 바꿨다.
 
-$$ c(x) = (\left\lceil \frac{x-x_{min}}{h}  \right\rceil, \left\lceil \frac{y-y_{min}}{h}  \right\rceil, \left\lceil \frac{z-z_{min}}{h}  \right\rceil $$
+```cpp
+std::vector<size_t> _neighbor_indexes;
+
+  //fill neighbor particle ids into pids and return number of neighbor particles
+  size_t                     search(const Vector3& pos, size_t* pids) const override;
+```
+
+[그림]
+
+결론적으로 1000 Particle 기준 370 FPS -> 450 FPS로 성능 개선되었다.
+
 
 ### 병렬화 문제
 
 **문제점**
 
-particle들의 새로운 position이 주어졌을 떄, 다음 두가지 배열을 업데이트 해야 된다.
-* grid cell index마다 속한 particle의 index를 저장하는 이중 배열
-* particle index마다 neighbor particle의 index를 저장하는 이중 배열
+Vector 객체를 생성할 때, _neighbor_index를 받아오는데 병렬화를 하게 되면 race condition이 발생하게 된다.
 
-두 배열 모두, 기존 데이터를 지우고 새로운 데이터를 추가하는 과정이 필요하기 때문에 data dependency가 발생해 병렬화가 어렵다.
+이를 해결하기 위해, thread마다 고유의 배열을 갖게 수정하였다.
 
-**해결 방안**
+```cpp
+  std::vector<std::vector<size_t>> _thread_neighbor_indexes;
+```
 
-grid cell index마다 속한 particle의 index를 저장하는 이중 배열
-* 각 particle index마다 이전에 어떤 grid cell index에 속했었는지 저장하는 추가적인 배열을 만들어서 data를 제거하는 과정을 최소화 함
+결론적으로, 병렬화가 가능해 졌고, 병렬화를 하면 8000Particle 기준 400FPS까지 나온다.
 
-particle index마다 neighbor particle의 index를 저장하는 이중 배열
-* 이 배열을 더이상 이용하지 않고 27개의 grid cell에 속한 모든 particle index를 넘긴다.
-* 문제점
-  * particle을 업데이트 할 때, neighbor인지 거리 검사를 해야 된다.
-  * density 계산할 때 한번, force 계산할 때 검사해서 중복 검사가 발생한다.
-* 장점
-  * 
+### 중복 업데이트 문제
+neighbor를 계산하는 과정이 현재는 density 계산할 때 한번, force 계산할 때 한번 검사해서 중복 검사가 발생한다.
 
+Uniform Grid에 `particle index마다 neighbor particle의 index를 저장하는 이중 배열`을 추가하고 uniform grid를 업데이트할 때, 한번만 업데이트 되고, search 함수에서는 업데이트된 data만 전달하는 형태로 바꿨다.
 
+```cpp
+std::vector<std::vector<size_t>> _pid_to_neighbor_pids;
 
+const std::vector<size_t>& search(const size_t pid) const override; //업데이트된 정보만 전달
+```
+
+그러면, 기존의 particle 관련 함수에서 거리를 비교하는 부분을 제거할 수 있다.
+
+```cpp
+    for (int j = 0; j < num_neighbor; j++)
+    {
+      const size_t neighbor_index = neighbor_indexes[j];
+
+      const auto& v_xj = _position_vectors[neighbor_index];
+
+      const float dist = (v_xi - v_xj).Length();
+      const auto  q    = dist / h;
+
+      //if (q > 2.0f)
+      //  continue;
+
+      cur_rho += m0 * W(q);
+    }
+```
 
 
 

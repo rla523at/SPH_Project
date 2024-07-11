@@ -15,12 +15,6 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   constexpr float  pi              = std::numbers::pi_v<float>;
   constexpr size_t desire_neighbor = 50;
 
-  //2*desir_neighbor used to prevent overflow
-  const auto num_max_threads = omp_get_max_threads();
-  _thread_neighbor_indexes.resize(num_max_threads);
-  for (auto& neighbor_indexes : _thread_neighbor_indexes)
-    neighbor_indexes.resize(desire_neighbor * 100);
-
   const auto& ic = initial_condition;
 
   _num_particle = static_cast<size_t>(std::pow(ic.num_particle_in_edge, 3));
@@ -92,11 +86,6 @@ const std::vector<Vector3>& Fluid_Particles::get_position_vectors(void) const
 
 void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood)
 {
-  //size_t min_count   = 1000;
-  //size_t max_count   = 0;
-  //float  min_density = 2000;
-  //float  max_density = 0;
-
   const float h    = _support_length / 2;
   const float m0   = _mass_per_particle;
   const float rho0 = _material_proeprty.rest_density;
@@ -109,15 +98,8 @@ void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood
 
     const auto& v_xi = _position_vectors[i];
 
-    //const auto& neighbor_indexes = neighborhood.search(i);
-    //const auto  num_neighbor     = neighbor_indexes.size();
-
-    const auto thread_num       = omp_get_thread_num();
-    auto&      neighbor_indexes = _thread_neighbor_indexes[thread_num];
-    const auto num_neighbor     = neighborhood.search(v_xi, neighbor_indexes.data());
-
-    //const auto  neighbor_indexes = neighborhood.search(v_xi);
-    //const auto  num_neighbor     = neighbor_indexes.size();
+    const auto& neighbor_indexes = neighborhood.search(i);
+    const auto  num_neighbor     = neighbor_indexes.size();
 
     size_t real_neighbor = 0;
 
@@ -129,9 +111,6 @@ void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood
 
       const float dist = (v_xi - v_xj).Length();
       const auto  q    = dist / h;
-
-      if (q > 2.0f)
-        continue;
 
       ++real_neighbor;
 
@@ -178,16 +157,9 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
     const float    pi   = _pressures[i];
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
-
-    //const auto& neighbor_indexes = neighborhood.search(i);
-    //const auto  num_neighbor     = neighbor_indexes.size();
-
-    //const auto neighbor_indexes = neighborhood.search(v_xi);
-    //const auto num_neighbor     = neighbor_indexes.size();
-
-    const auto thread_num       = omp_get_thread_num();
-    auto&      neighbor_indexes = _thread_neighbor_indexes[thread_num];
-    const auto num_neighbor     = neighborhood.search(v_xi, neighbor_indexes.data());
+        
+    const auto& neighbor_indexes = neighborhood.search(i);
+    const auto  num_neighbor     = neighbor_indexes.size();
 
     for (size_t j = 0; j < num_neighbor; j++)
     {
@@ -205,9 +177,6 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
       const float   dist  = v_xij.Length();
 
       const auto q = dist / h;
-
-      if (q > 2.0f)
-        continue;
 
       // distance가 0이면 df_dq = 0이되고 0으로나눠서 오류가남
       // 이거 없어도 문제 없을거 같은데..? 문제 상황이 뭐였더라...

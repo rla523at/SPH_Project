@@ -70,9 +70,6 @@ private:
   std::vector<float>   _pressures;
 
   Material_Property _material_proeprty;
-
-  //prevent heap allocation
-  std::vector<std::vector<size_t>> _thread_neighbor_indexes;
 };
 
 } // namespace ms
