@@ -102,7 +102,7 @@ std::vector<std::vector<size_t>> _pid_to_neighbor_pids;
 const std::vector<size_t>& search(const size_t pid) const override; //업데이트된 정보만 전달
 ```
 
-그러면, 기존의 particle 관련 함수에서 거리를 비교하는 부분을 제거할 수 있다.
+그러면, 중복 계산을 제거할 수 있으면 추가적으로 기존의 particle 관련 함수에서 거리를 비교하는 부분을 제거할 수 있다.
 
 ```cpp
     for (int j = 0; j < num_neighbor; j++)

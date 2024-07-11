@@ -21,7 +21,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   Initial_Condition_Cube init_cond;
   init_cond.init_pos             = {-1.0f, -1.0f, 0.0f};
   init_cond.edge_length          = 1.0f;
-  init_cond.num_particle_in_edge = 10;
+  init_cond.num_particle_in_edge = 20;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond);
 
