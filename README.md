@@ -122,6 +122,7 @@ const std::vector<size_t>& search(const size_t pid) const override; //업데이�
 ```
 
 결론적으로, 8000Particle 기준 400FPS -> 600FPS로 개선하였다.
+![2024-07-11 12 28 26](https://github.com/rla523at/SPH_Project/assets/60506879/21b8d312-e91f-44ba-ab0b-0a3c3b466021)
 
 
 # 2024.07.09
