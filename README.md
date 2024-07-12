@@ -1,3 +1,13 @@
+# 2024.07.11
+## dt 관련 참고자료 찾기
+* 2013 (Markus et al) Implicit Incompressible SPH
+
+## Rendering 관련 참고자료 학습
+* 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
+* [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
+
+particle을 sphere로 rendering하기 위해 spherical billboards를 활용하는 방법 학습 중
+
 # 2024.07.10
 ## Neighbor Search - basic uniform grid 구현
 
