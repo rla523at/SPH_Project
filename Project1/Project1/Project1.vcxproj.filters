@@ -19,21 +19,18 @@
     <Filter Include="소스 파일\Neighborhood">
       <UniqueIdentifier>{5b0ab4cf-9014-47c8-b6bb-b77d058462b3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Mesh">
+      <UniqueIdentifier>{dce09a6a-1ecc-4dbf-9957-e02d5e360598}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Manager">
+      <UniqueIdentifier>{8c42eed7-69b6-4df7-af2b-a46a9a6a7579}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Device_Manager.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="SPH.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Window_Manager.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="GUI_Manager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Particles.cpp">
@@ -42,18 +39,30 @@
     <ClCompile Include="Neighborhood_Uniform_Grid.cpp">
       <Filter>소스 파일\Neighborhood</Filter>
     </ClCompile>
+    <ClCompile Include="Device_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Window_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Billboard_Sphere.cpp">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Square.cpp">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Device_Manager.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="SPH.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Window_Manager.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="GUI_Manager.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="Particles.h">
@@ -68,6 +77,30 @@
     <ClInclude Include="Neighborhood_Brute_Force.h">
       <Filter>소스 파일\Neighborhood</Filter>
     </ClInclude>
+    <ClInclude Include="Device_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="GUI_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Window_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Billboard_Sphere.h">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Square.h">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="SPHPS.hlsl">
@@ -77,6 +110,21 @@
       <Filter>HLSL</Filter>
     </FxCompile>
     <FxCompile Include="SPHGS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="Billboard_Sphere_GS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="Billboard_Sphere_PS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="Billboard_Sphere_VS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="Square_PS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="Square_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
   </ItemGroup>
