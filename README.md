@@ -16,6 +16,8 @@ spherical billboards 구현 완료
 ## Camera 구현
 시점에 따른 rendering 할 수 있게 camera class 구현 완료
 
+<br/><br/><br/>
+
 # 2024.07.11
 ## dt 관련 참고자료 찾기
 * 2013 (Markus et al) Implicit Incompressible SPH
@@ -25,6 +27,8 @@ spherical billboards 구현 완료
 * [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
 
 particle을 sphere로 rendering하기 위해 spherical billboards를 활용하는 방법 학습 중
+
+<br/><br/><br/>
 
 # 2024.07.10
 ## Neighbor Search - basic uniform grid 구현
@@ -152,6 +156,7 @@ const std::vector<size_t>& search(const size_t pid) const override; //업데이�
 결론적으로, 8000Particle 기준 400FPS -> 600FPS로 개선하였다.
 ![2024-07-11 12 28 26](https://github.com/rla523at/SPH_Project/assets/60506879/21b8d312-e91f-44ba-ab0b-0a3c3b466021)
 
+<br/><br/><br/>
 
 # 2024.07.09
 
@@ -196,6 +201,7 @@ $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동�
 
 ![2197particle 400FPS](https://github.com/rla523at/SPH_Project/assets/60506879/c417e26f-5a07-401e-9c41-f1a28ed32adc)
 
+<br/><br/><br/>
 
 # 2024.07.08
 * SPH 코드 개발
@@ -217,6 +223,8 @@ $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동�
   * 관련 참고 자료 찾기
     * 2011 (Markus et al)  A paralle SPH implementation on multi-core CPUs
     * 2003 (Matthias et al) Optimized Spatial Hashing for Collision Detection of Deformable Objects
+
+<br/><br/><br/>
 
 # 2024.07.05
 * 참고 자료 학습
@@ -249,6 +257,7 @@ $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동�
     * SPH 특성상 2차원 개발과 3차원이 크게 다르지 않음
     * 문제의 원인이 될 변수를 줄이기 위해(e.g. kernel 함수) 바로 3차원으로 확장 후 문제 해결을 고려
 
+<br/><br/><br/>
 
 # 2024.07.04
 * 참고 자료 학습
@@ -272,6 +281,7 @@ $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동�
     * 중력보다 Pressure driven force가 너무 커서 물이 떨어지지 않고 폭발함 
     ![2024-07-05 11 14 20](https://github.com/rla523at/SPH_Project/assets/60506879/f3e74559-92f8-46e9-921d-951e026e9114)
 
+<br/><br/><br/>
 
 # 2024.07.03
 * 참고 자료 학습
@@ -289,6 +299,8 @@ $dt = 1.0e-3$인 상황에서 400FPS 이상 나와야 실제 물 처럼 거동�
 
 * SPH 코드 개발
   * 2014 논문 기반으로 update 함수 개발 중
+
+<br/><br/><br/>
 
 # 2024.07.02
 * 주제 선정 
