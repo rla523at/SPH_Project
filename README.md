@@ -6,7 +6,7 @@
 ## Spherical billboards rendering
 spherical billboards 구현 완료
 
-[그림]
+![Spherical billboards](https://github.com/user-attachments/assets/227ba3d1-679b-4b86-a9d3-2e30abe2c566)
 
 이를 Particle에 적용하게 확장 필요.
 
