@@ -1,3 +1,21 @@
+# 2024.07.12
+## Rendering 관련 참고자료 학습
+* 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
+* [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
+
+## Spherical billboards rendering
+spherical billboards 구현 완료
+
+[그림]
+
+이를 Particle에 적용하게 확장 필요.
+
+## 바닥 rendering 
+사각형에 texture를 입혀 간단하게 바닥을 rendering
+
+## Camera 구현
+시점에 따른 rendering 할 수 있게 camera class 구현 완료
+
 # 2024.07.11
 ## dt 관련 참고자료 찾기
 * 2013 (Markus et al) Implicit Incompressible SPH
