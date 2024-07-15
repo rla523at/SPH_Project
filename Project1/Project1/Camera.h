@@ -31,12 +31,13 @@ public:
   Vector3 up_vector(void) const;
 
 private:
-  Vector3 _v_pos = {0.0f, 4.0f, -5.0f};
+  Vector3 view_vector(void) const;
+  Vector3 right_vector(void) const;
+
+private:
+  Vector3 _v_pos = {0.0f, 5.0f, -10.0f};
   Matrix  _m_view;
   Matrix  _m_proj;
-
-  float _yaw   = 0.0f;
-  float _pitch = 0.0f;
 
   // GUI Component
   bool _use_perspective_projection = true;

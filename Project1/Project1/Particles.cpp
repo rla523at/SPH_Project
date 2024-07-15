@@ -9,8 +9,8 @@
 
 namespace ms
 {
-Fluid_Particles::Fluid_Particles(const Material_Property& material_property, const Initial_Condition_Cube& initial_condition)
-    : _material_proeprty(material_property)
+Fluid_Particles::Fluid_Particles(const Material_Property& material_property, const Initial_Condition_Cube& initial_condition, const Domain& domain)
+    : _material_proeprty(material_property), _domain(domain)
 {
   constexpr float  pi              = std::numbers::pi_v<float>;
   constexpr size_t desire_neighbor = 50;
@@ -30,9 +30,10 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 
   _support_length = 1 * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
 
-  const float delta = ic.edge_length / (ic.num_particle_in_edge - 1);
+  const float delta  = ic.edge_length / (ic.num_particle_in_edge - 1);
+  const float radius = _support_length * 0.5f;
 
-  Vector3 pos     = ic.init_pos;
+  Vector3 pos     = ic.init_pos + Vector3(radius, radius, radius);
   Vector3 end_pos = pos + Vector3(ic.edge_length, ic.edge_length, ic.edge_length);
 
   for (int i = 0; i < _num_particle; ++i)
@@ -42,11 +43,11 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
     pos.x += delta;
     if (pos.x > end_pos.x)
     {
-      pos.x = ic.init_pos.x;
+      pos.x = ic.init_pos.x + radius;
       pos.z += delta;
       if (pos.z > end_pos.z)
       {
-        pos.z = ic.init_pos.z;
+        pos.z = ic.init_pos.z + radius;
         pos.y += delta;
       }
     }
@@ -157,7 +158,7 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
     const float    pi   = _pressures[i];
     const Vector3& v_xi = _position_vectors[i];
     const Vector3& v_vi = _velocity_vectors[i];
-        
+
     const auto& neighbor_indexes = neighborhood.search(i);
     const auto  num_neighbor     = neighbor_indexes.size();
 
@@ -227,12 +228,15 @@ void Fluid_Particles::time_integration(void)
 
 void Fluid_Particles::apply_boundary_condition(void)
 {
-  const float     cor           = 0.5f; // Coefficient Of Restitution
-  constexpr float ground_height = -1.0f;
-  constexpr float min_wall_x    = -1.0f;
-  constexpr float max_wall_x    = 1.0f;
-  constexpr float min_wall_z    = 0.0f;
-  constexpr float max_wall_z    = 1.0f;
+  const float cor = 0.5f; // Coefficient Of Restitution
+
+  const float radius       = _support_length * 0.5f;
+  const float wall_x_start = _domain.x_start + radius;
+  const float wall_x_end   = _domain.x_end - radius;
+  const float wall_y_start = _domain.y_start + radius;
+  const float wall_y_end   = _domain.y_end - radius;
+  const float wall_z_start = _domain.z_start + radius;
+  const float wall_z_end   = _domain.z_end - radius;
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; ++i)
@@ -240,40 +244,40 @@ void Fluid_Particles::apply_boundary_condition(void)
     auto& v_pos = _position_vectors[i];
     auto& v_vel = _velocity_vectors[i];
 
-    if (v_pos.y < ground_height && v_vel.y < 0.0f)
-    {
-      v_vel.y *= -cor;
-      v_pos.y = ground_height;
-    }
-
-    if (v_pos.y > 0.8 && v_vel.y > 0.0f)
-    {
-      v_vel.y *= -cor;
-      v_pos.y = 0.8f;
-    }
-
-    if (v_pos.x < min_wall_x && v_vel.x < 0.0f)
+    if (v_pos.x < wall_x_start && v_vel.x < 0.0f)
     {
       v_vel.x *= -cor;
-      v_pos.x = min_wall_x;
+      v_pos.x = wall_x_start;
     }
 
-    if (v_pos.x > max_wall_x && v_vel.x > 0.0f)
+    if (v_pos.x > wall_x_end && v_vel.x > 0.0f)
     {
       v_vel.x *= -cor;
-      v_pos.x = max_wall_x;
+      v_pos.x = wall_x_end;
     }
 
-    if (v_pos.z < min_wall_z && v_vel.z < 0.0f)
+    if (v_pos.y < wall_y_start && v_vel.y < 0.0f)
     {
-      v_vel.z *= -cor;
-      v_pos.z = min_wall_z;
+      v_vel.y *= -cor;
+      v_pos.y = wall_y_start;
     }
 
-    if (v_pos.z > max_wall_z && v_vel.z > 0.0f)
+    if (v_pos.y > wall_y_end && v_vel.y > 0.0f)
+    {
+      v_vel.y *= -cor;
+      v_pos.y = wall_y_end;
+    }
+
+    if (v_pos.z < wall_z_start && v_vel.z < 0.0f)
     {
       v_vel.z *= -cor;
-      v_pos.z = max_wall_z;
+      v_pos.z = wall_z_start;
+    }
+
+    if (v_pos.z > wall_z_end && v_vel.z > 0.0f)
+    {
+      v_vel.z *= -cor;
+      v_pos.z = wall_z_end;
     }
   }
 }

@@ -3,6 +3,7 @@
 #include "GUI_Manager.h"
 #include "Window_Manager.h"
 
+#include <DirectXMath.h>
 #include <iostream>
 #include <numbers>
 
@@ -31,33 +32,46 @@ void Camera::register_GUI_component(GUI_Manager& GUI_manager)
 
 void Camera::update(const float dt)
 {
-  constexpr Vector3 v_origin_view  = {0.0f, 0.0f, 1.0f};
-  constexpr Vector3 v_origin_right = {1.0f, 0.0f, 0.0f};
-  constexpr Vector3 v_origin_up    = {0.0f, 1.0f, 0.0f};
+  constexpr float moving_speed = 10.0f;
 
-  constexpr float pi = std::numbers::pi_v<float>;
+  float pitch_diff = 0.0f;
+  float yaw_diff   = 0.0f;
 
-  //_yaw   = Window_Manager::mouse_x_pos_NDC() * pi;
-  //_pitch = Window_Manager::mouse_y_pos_NDC() * pi / 2;
+  if (Window_Manager::is_Up_key_pressed())
+    pitch_diff += dt;
+  if (Window_Manager::is_Down_key_pressed())
+    pitch_diff -= dt;
+  if (Window_Manager::is_Right_key_pressed())
+    yaw_diff += dt;
+  if (Window_Manager::is_Left_key_pressed())
+    yaw_diff -= dt;
 
-  const auto m_rot_yaw   = Matrix::CreateRotationY(_yaw);
-  const auto m_rot_pitch = Matrix::CreateRotationX(-_pitch);
+  //v_right는 항상 Global XZ Plane에 둔다.
+  //= rotation은 항상 Global Y축에 대해서 진행한다.
+  //= rotation 후 v_up과 v_right는 더이상 orthognal 하지 않는다.
+  const auto v_cur_right = this->right_vector();
+  const auto m_rot_yaw   = Matrix::CreateRotationY(yaw_diff);
+  const auto v_right     = Vector3::Transform(v_cur_right, m_rot_yaw);
 
-  const auto v_view  = Vector3::Transform(v_origin_view, m_rot_yaw * m_rot_pitch);
-  const auto v_up    = Vector3::Transform(v_origin_up, m_rot_pitch);
-  const auto v_right = Vector3::Transform(v_origin_right, m_rot_yaw);
+  const auto v_cur_up    = this->up_vector();
+  const auto m_rot_pitch = DirectX::XMMatrixRotationAxis(v_right, -pitch_diff);
+  auto       v_up        = Vector3::Transform(v_cur_up, m_rot_pitch);
 
-  Vector3 v_forward = {v_view.x, 0.0f, v_view.z};
-  v_forward.Normalize();
+  auto v_view = v_right.Cross(v_up);
+  v_view.Normalize();
+
+  // v_up을 v_right와 orthogonal 하게 바꾼다.
+  v_up = v_view.Cross(v_right);
+  v_up.Normalize();
 
   if (Window_Manager::is_Wkey_pressed())
-    _v_pos += v_forward * dt;
+    _v_pos += moving_speed * v_view * dt;
   if (Window_Manager::is_Skey_pressed())
-    _v_pos -= v_forward * dt;
+    _v_pos -= moving_speed * v_view * dt;
   if (Window_Manager::is_Akey_pressed())
-    _v_pos -= v_right * dt;
+    _v_pos -= moving_speed * v_right * dt;
   if (Window_Manager::is_Dkey_pressed())
-    _v_pos += v_right * dt;
+    _v_pos += moving_speed * v_right * dt;
 
   _m_view = XMMatrixLookToLH(_v_pos, v_view, v_up);
 }
@@ -79,7 +93,17 @@ Vector3 Camera::position_vector(void) const
 
 Vector3 Camera::up_vector(void) const
 {
-  return {_m_view(1, 0), _m_view(1, 1), _m_view(1, 2)};
+  return {_m_view(0, 1), _m_view(1, 1), _m_view(2, 1)};
+}
+
+Vector3 Camera::view_vector(void) const
+{
+  return {_m_view(0, 2), _m_view(1, 2), _m_view(2, 2)};
+}
+
+Vector3 Camera::right_vector(void) const
+{
+  return {_m_view(0, 0), _m_view(1, 0), _m_view(2, 0)};
 }
 
 } // namespace ms

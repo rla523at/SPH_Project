@@ -40,6 +40,7 @@ void Square::render(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   this->set_graphics_pipe_line(cptr_context);
   cptr_context->DrawIndexed(_num_index, 0, 0);
+  this->reset_graphics_pipe_line(cptr_context);
 }
 
 void Square::set_model_matrix(const Matrix& m_model)
@@ -301,6 +302,23 @@ void Square::set_graphics_pipe_line(const ComPtr<ID3D11DeviceContext> cptr_conte
   cptr_context->PSSetShaderResources(0, 1, _cptr_texture_RView.GetAddressOf());
   cptr_context->PSSetSamplers(0, 1, _cptr_texture_sample_state.GetAddressOf());
   cptr_context->PSSetShader(_cptr_PS.Get(), 0, 0);
+}
+
+void Square::reset_graphics_pipe_line(const ComPtr<ID3D11DeviceContext> cptr_context)
+{
+  UINT stride = sizeof(Square_Vertex_Data);
+  UINT offset = 0;
+  cptr_context->IASetVertexBuffers(0, 0, nullptr, &stride, &offset);
+  cptr_context->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+  cptr_context->IASetInputLayout(nullptr);
+  cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
+
+  cptr_context->VSSetConstantBuffers(0, 0, nullptr);
+  cptr_context->VSSetShader(nullptr, nullptr, 0);
+
+  cptr_context->PSSetShaderResources(0, 0, nullptr);
+  cptr_context->PSSetSamplers(0, 0, nullptr);
+  cptr_context->PSSetShader(nullptr, nullptr, 0);
 }
 
 } // namespace ms

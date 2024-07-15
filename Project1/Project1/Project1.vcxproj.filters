@@ -16,28 +16,25 @@
     <Filter Include="HLSL">
       <UniqueIdentifier>{d528d9d6-d4fa-4c17-ad5c-c425ca2fc45f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\Neighborhood">
-      <UniqueIdentifier>{5b0ab4cf-9014-47c8-b6bb-b77d058462b3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="소스 파일\Mesh">
       <UniqueIdentifier>{dce09a6a-1ecc-4dbf-9957-e02d5e360598}</UniqueIdentifier>
     </Filter>
     <Filter Include="소스 파일\Manager">
       <UniqueIdentifier>{8c42eed7-69b6-4df7-af2b-a46a9a6a7579}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\SPH">
+      <UniqueIdentifier>{b7c656f2-90ba-4d08-9a3b-635e884967c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\SPH\Neighborhood">
+      <UniqueIdentifier>{5b0ab4cf-9014-47c8-b6bb-b77d058462b3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="SPH.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Particles.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="Neighborhood_Uniform_Grid.cpp">
-      <Filter>소스 파일\Neighborhood</Filter>
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClCompile>
     <ClCompile Include="Device_Manager.cpp">
       <Filter>소스 파일\Manager</Filter>
@@ -60,22 +57,22 @@
     <ClCompile Include="Camera.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Particles.cpp">
+      <Filter>소스 파일\SPH</Filter>
+    </ClCompile>
+    <ClCompile Include="SPH.cpp">
+      <Filter>소스 파일\SPH</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SPH.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Particles.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Neighborhood.h">
-      <Filter>소스 파일\Neighborhood</Filter>
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClInclude>
     <ClInclude Include="Neighborhood_Uniform_Grid.h">
-      <Filter>소스 파일\Neighborhood</Filter>
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClInclude>
     <ClInclude Include="Neighborhood_Brute_Force.h">
-      <Filter>소스 파일\Neighborhood</Filter>
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClInclude>
     <ClInclude Include="Device_Manager.h">
       <Filter>소스 파일\Manager</Filter>
@@ -101,15 +98,24 @@
     <ClInclude Include="Camera.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Particles.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="SPH.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="SPH_Common_Data.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="SPHPS.hlsl">
+    <FxCompile Include="SPH_PS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="SPHVS.hlsl">
+    <FxCompile Include="SPH_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="SPHGS.hlsl">
+    <FxCompile Include="SPH_GS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
     <FxCompile Include="Billboard_Sphere_GS.hlsl">

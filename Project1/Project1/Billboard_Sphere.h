@@ -14,12 +14,9 @@ class Camera;
 }
 
 // Abbreviation
-namespace ms
-{
 using DirectX::SimpleMath::Matrix;
 using DirectX::SimpleMath::Vector3;
 using Microsoft::WRL::ComPtr;
-} // namespace ms
 
 // Data Struct
 namespace ms
@@ -49,8 +46,8 @@ public:
   Billboard_Sphere(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context);
 
 public:
-  void update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_context);
-  void render(const ComPtr<ID3D11DeviceContext> cptr_context);
+  void update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_context) override;
+  void render(const ComPtr<ID3D11DeviceContext> cptr_context) override;
   void register_GUI_component(GUI_Manager& GUI_manager) override{};
   void set_model_matrix(const Matrix& m_model) override{};
 

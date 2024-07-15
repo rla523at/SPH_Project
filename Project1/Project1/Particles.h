@@ -1,12 +1,11 @@
 #pragma once
+#include "SPH_Common_Data.h"
+
 #include <directxtk/SimpleMath.h>
 #include <vector>
 
 //abbreviation
-namespace ms
-{
 using DirectX::SimpleMath::Vector3;
-}
 
 //Forward Declaration
 namespace ms
@@ -33,7 +32,7 @@ struct Initial_Condition_Cube
 class Fluid_Particles
 {
 public:
-  Fluid_Particles(const Material_Property& property, const Initial_Condition_Cube& initial_condition);
+  Fluid_Particles(const Material_Property& property, const Initial_Condition_Cube& initial_condition, const Domain& domain);
 
 public:
   void update(const Neighborhood& neighborhood);
@@ -70,6 +69,7 @@ private:
   std::vector<float>   _pressures;
 
   Material_Property _material_proeprty;
+  Domain _domain;
 };
 
 } // namespace ms

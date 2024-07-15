@@ -57,6 +57,7 @@ private:
   void update_square_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context);
 
   void set_graphics_pipe_line(const ComPtr<ID3D11DeviceContext> cptr_context);
+  void reset_graphics_pipe_line(const ComPtr<ID3D11DeviceContext> cptr_context);
 
 protected:
   ComPtr<ID3D11Buffer>       _cptr_Vbuffer;

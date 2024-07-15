@@ -236,12 +236,12 @@ void Billboard_Sphere::set_graphics_pipeline(const ComPtr<ID3D11DeviceContext> c
   cptr_context->IASetInputLayout(_cptr_input_layout.Get());
   cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-  cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, NULL);
+  cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, 0);
 
   cptr_context->GSSetConstantBuffers(0, 1, _cptr_GS_Cbuffer.GetAddressOf());
-  cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, NULL);
+  cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, 0);
 
-  cptr_context->PSSetShader(_cptr_PS.Get(), nullptr, NULL);
+  cptr_context->PSSetShader(_cptr_PS.Get(), nullptr, 0);
 }
 
 void Billboard_Sphere::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
@@ -249,15 +249,15 @@ void Billboard_Sphere::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext>
   UINT stride = 0;
   UINT offset = 0;
 
-  cptr_context->IASetVertexBuffers(0, 1, nullptr, &stride, &offset);
+  cptr_context->IASetVertexBuffers(0, 0, nullptr, &stride, &offset);
   cptr_context->IASetInputLayout(nullptr);
 
-  cptr_context->VSSetShader(nullptr, nullptr, NULL);
+  cptr_context->VSSetShader(nullptr, nullptr, 0);
 
-  cptr_context->GSSetConstantBuffers(0, 1, nullptr);
-  cptr_context->GSSetShader(nullptr, nullptr, NULL);
+  cptr_context->GSSetConstantBuffers(0, 0, nullptr);
+  cptr_context->GSSetShader(nullptr, nullptr, 0);
 
-  cptr_context->PSSetShader(nullptr, nullptr, NULL);
+  cptr_context->PSSetShader(nullptr, nullptr, 0);
 }
 
 void Billboard_Sphere::update_GS_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)

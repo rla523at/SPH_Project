@@ -75,6 +75,23 @@ bool Window_Manager::is_Dkey_pressed(void)
   return _is_key_pressed[0x44];
 }
 
+bool Window_Manager::is_Up_key_pressed(void)
+{
+  return _is_key_pressed[0x26];
+}
+bool Window_Manager::is_Down_key_pressed(void)
+{
+  return _is_key_pressed[0x28];
+};
+bool Window_Manager::is_Right_key_pressed(void)
+{
+  return _is_key_pressed[0x27];
+};
+bool Window_Manager::is_Left_key_pressed(void)
+{
+  return _is_key_pressed[0x25];
+};
+
 float Window_Manager::mouse_x_pos_NDC(void)
 {
   // 마우스 커서의 x 위치(pixel) -> NDC로 변환

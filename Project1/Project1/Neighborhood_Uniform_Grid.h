@@ -1,5 +1,6 @@
 #pragma once
 #include "Neighborhood.h"
+#include "SPH_Common_Data.h"
 
 //abbreviation
 //pid	: particle index
@@ -15,15 +16,6 @@ struct Index_Vector
   size_t z = 0;
 };
 
-struct Domain
-{
-  float x_start = 0.0f;
-  float x_end   = 0.0f;
-  float y_start = 0.0f;
-  float y_end   = 0.0f;
-  float z_start = 0.0f;
-  float z_end   = 0.0f;
-};
 } // namespace ms
 
 namespace ms
