@@ -16,17 +16,17 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 {
   Material_Property mat_prop;
   mat_prop.rest_density         = 1.0e3f;
-  mat_prop.pressure_coefficient = 1.0e5f;
-  mat_prop.viscosity            = 1.0e-2f;
+  mat_prop.pressure_coefficient = 5.0e5f;
+  mat_prop.viscosity            = 5.0e-3f;
 
   Initial_Condition_Cube init_cond;
-  init_cond.init_pos             = {-1.0f, 0.0f, 0.0f};
+  init_cond.init_pos             = {-0.9f, 0.0f, 0.0f};
   init_cond.edge_length          = 1.0f;
-  init_cond.num_particle_in_edge = 20;
+  init_cond.num_particle_in_edge = 30;
 
   Domain domain;
   domain.x_start = -1.0f;
-  domain.x_end   = 1.0f;
+  domain.x_end   = 3.0f;
   domain.y_start = 0.0f;
   domain.y_end   = 3.0f;
   domain.z_start = 0.0f;

@@ -28,13 +28,13 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 
   const float particle_density = _num_particle / _total_volume;
 
-  _support_length = 1 * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
+  _support_length = 1.0f * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
 
   const float delta  = ic.edge_length / (ic.num_particle_in_edge - 1);
   const float radius = _support_length * 0.5f;
 
   Vector3 pos     = ic.init_pos + Vector3(radius, radius, radius);
-  Vector3 end_pos = pos + Vector3(ic.edge_length, ic.edge_length, ic.edge_length);
+  Vector3 end_pos = pos + Vector3(ic.edge_length/2, ic.edge_length, ic.edge_length);
 
   for (int i = 0; i < _num_particle; ++i)
   {

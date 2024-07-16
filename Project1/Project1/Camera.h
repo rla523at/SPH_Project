@@ -35,7 +35,7 @@ private:
   Vector3 right_vector(void) const;
 
 private:
-  Vector3 _v_pos = {0.0f, 5.0f, -10.0f};
+  Vector3 _v_pos = {0.0f, 3.0f, -5.0f};
   Matrix  _m_view;
   Matrix  _m_proj;
 

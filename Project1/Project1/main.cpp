@@ -19,11 +19,12 @@ int main()
   constexpr int   num_pixel_width  = 1280;
   constexpr int   num_pixel_height = 960;
   constexpr float pi               = std::numbers::pi_v<float>;
+  constexpr bool  is_vsync_on      = false;
 
   ms::Window_Manager window_manager(num_pixel_width, num_pixel_height);
   const auto         main_window = window_manager.main_window();
 
-  ms::Device_Manager device_manager(main_window, num_pixel_width, num_pixel_height);
+  ms::Device_Manager device_manager(main_window, num_pixel_width, num_pixel_height, is_vsync_on);
   const auto         cptr_device  = device_manager.device_cptr();
   const auto         cptr_context = device_manager.context_cptr();
 

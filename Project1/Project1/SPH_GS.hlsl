@@ -1,7 +1,6 @@
 struct GS_Input
 {
     float4 pos : SV_POSITION;
-    //float3 color : COLOR;
 };
 
 struct GS_Output
@@ -25,6 +24,10 @@ void main(point GS_Input input[1], uint primID : SV_PrimitiveID, inout TriangleS
     const float3 v_point_pos = input[0].pos.xyz;
     const float3 v_dir = normalize(v_point_pos - v_cam_pos);
     const float3 v_right = cross(v_cam_up, v_dir);
+
+    // 0 ¦¡ 1
+    // ¦¢   ¦¢
+    // 2 ¦¡ 3
 
     const float2 offsets[4] = {
         float2(-1.0, 1.0),

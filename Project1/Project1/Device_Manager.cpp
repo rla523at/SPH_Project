@@ -6,10 +6,11 @@
 namespace ms
 {
 
-Device_Manager::Device_Manager(const HWND main_window, const int num_row_pixel, const int num_col_pixel)
+Device_Manager::Device_Manager(const HWND main_window, const int num_row_pixel, const int num_col_pixel, const bool is_vsync_on)
 {
-  _num_pixel_width = num_row_pixel;
+  _num_pixel_width  = num_row_pixel;
   _num_pixel_height = num_col_pixel;
+  _is_vsync_on      = is_vsync_on;
 
   this->init_device_device_context();
   this->init_view_port();
@@ -37,8 +38,10 @@ float Device_Manager::aspect_ratio() const
 
 void Device_Manager::switch_buffer(void) const
 {
-  _cptr_swap_chain->Present(0, 0);
-  //_cptr_swap_chain->Present(1, 0);
+  if (_is_vsync_on)
+    _cptr_swap_chain->Present(1, 0);
+  else
+    _cptr_swap_chain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
 }
 
 void Device_Manager::prepare_render(void) const
@@ -141,7 +144,10 @@ void Device_Manager::init_swap_chain_and_depth_stencil_buffer(const HWND output_
   swap_chain_desc.OutputWindow         = output_window;
   swap_chain_desc.Windowed             = TRUE;                                   // windowed/full-screen mode
   swap_chain_desc.Flags                = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // allow full-screen switching
-  swap_chain_desc.SwapEffect           = DXGI_SWAP_EFFECT_DISCARD;
+  swap_chain_desc.SwapEffect           = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+  if (!_is_vsync_on)
+    swap_chain_desc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
   ComPtr<IDXGIFactory> cptr_DXGI_factory;
   {

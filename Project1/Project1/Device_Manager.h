@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <d3d11.h>
-#include <wrl.h> // ComPtr
 #include <utility>
+#include <wrl.h> // ComPtr
 
 namespace ms
 {
@@ -10,13 +10,13 @@ using Microsoft::WRL::ComPtr;
 class Device_Manager
 {
 public:
-  Device_Manager(const HWND main_window, const int num_row_pixel, const int num_col_pixel);
+  Device_Manager(const HWND main_window, const int num_pixel_width, const int num_pixel_height, const bool is_vsync_on);
 
 public:
   ComPtr<ID3D11Device>        device_cptr(void) const;
   ComPtr<ID3D11DeviceContext> context_cptr(void) const;
-  float                       aspect_ratio() const;
-  void                        switch_buffer(void) const;  
+  float                       aspect_ratio(void) const;
+  void                        switch_buffer(void) const;
   void                        prepare_render(void) const;
   std::pair<int, int>         render_size(void) const;
 
@@ -29,12 +29,11 @@ private:
   void init_render_target_view(void);
   void init_depth_stencil_view(void);
 
-
-
 protected:
+  bool           _is_vsync_on      = true;
   int            _num_pixel_width  = 0;
-  int            _num_pixel_height  = 0;
-  D3D11_VIEWPORT _screen_viewport = {};
+  int            _num_pixel_height = 0;
+  D3D11_VIEWPORT _screen_viewport  = {};
 
   ComPtr<ID3D11Device>           _cptr_device;
   ComPtr<ID3D11DeviceContext>    _cptr_context;
