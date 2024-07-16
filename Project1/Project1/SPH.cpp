@@ -16,7 +16,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 {
   Material_Property mat_prop;
   mat_prop.rest_density         = 1.0e3f;
-  mat_prop.pressure_coefficient = 2.5e5f;
+  mat_prop.pressure_coefficient = 1.0e5f;
   mat_prop.viscosity            = 1.0e-2f;
 
   Initial_Condition_Cube init_cond;

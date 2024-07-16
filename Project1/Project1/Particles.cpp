@@ -146,7 +146,8 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
   const float h  = _support_length / 2;
   const float mu = _material_proeprty.viscosity;
 
-  const Vector3 v_gravity_force = m0 * Vector3(0.0f, -9.8f, 0.0f);
+  //const Vector3 v_gravity_force = m0 * Vector3(0.0f, -9.8f, 0.0f);
+  const Vector3 v_gravity_force = Vector3(0.0f, -9.8f, 0.0f);
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
@@ -218,8 +219,10 @@ void Fluid_Particles::time_integration(void)
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
-    const auto& v_f = _force_vectors[i];
-    const auto  v_a = v_f / m0;
+    const auto& v_a = _force_vectors[i];
+
+    //const auto& v_f = _force_vectors[i];
+    //const auto  v_a = v_f / m0;
 
     _velocity_vectors[i] += v_a * dt;
     _position_vectors[i] += _velocity_vectors[i] * dt;

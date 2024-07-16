@@ -141,7 +141,7 @@ void Device_Manager::init_swap_chain_and_depth_stencil_buffer(const HWND output_
   swap_chain_desc.OutputWindow         = output_window;
   swap_chain_desc.Windowed             = TRUE;                                   // windowed/full-screen mode
   swap_chain_desc.Flags                = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // allow full-screen switching
-  swap_chain_desc.SwapEffect           = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+  swap_chain_desc.SwapEffect           = DXGI_SWAP_EFFECT_DISCARD;
 
   ComPtr<IDXGIFactory> cptr_DXGI_factory;
   {

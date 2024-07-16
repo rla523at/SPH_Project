@@ -1,3 +1,17 @@
+# 2024.07.13
+## Rendering 관련 참고자료 학습
+* 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
+* [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
+
+## Particle Rendering using Spherical billboard
+
+spherical billboards를 활용하여 particle rendering 구현.
+
+
+
+<br/><br/><br/>
+
+
 # 2024.07.12
 ## Rendering 관련 참고자료 학습
 * 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
