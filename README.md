@@ -52,7 +52,7 @@ particle을 sphere로 rendering하기 위해 spherical billboards를 활용하�
 
 uniform grid를 사용하면, 각 grid cell마다 자신의 영역안에 포함된 particle들을 저장한다.
 
-neighborhood를 검색하기 위해 기존의 검색범위인 모든 particle을 줄이기 위해 uniform grid는 다음과 같은 방법으로 검색 범위를 줄인다.
+neighborhood를 검색을 위한 기존의 검색범위(모든 particle)를 줄이기 위해 uniform grid는 다음과 같은 방법을 사용한다.
 
 * 자신이 속한 grid cell을 찾는다.
 * grid cell의 Neighbor grid cell의 집합을 찾는다.
