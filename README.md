@@ -1,4 +1,4 @@
-# 2024.07.13
+# 2024.07.15
 ## Rendering 관련 참고자료 학습
 * 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow
 * [note-GDC] 2010 (Simon) Screen Space Fluid Rendering for Games
