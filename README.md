@@ -7,6 +7,7 @@
 
 spherical billboards를 활용하여 particle rendering 구현.
 
+![2024-07-16 11 03 28](https://github.com/user-attachments/assets/36080d1b-5973-4cbe-8f5c-be716dfbfa4c)
 
 
 <br/><br/><br/>
