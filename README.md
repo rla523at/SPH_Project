@@ -1,3 +1,19 @@
+# 2024.07.16
+## Rendering
+* view space에서 particle sphere의 normal과 depth 계산 방법 학습
+  * pixel shader에서 spherrical billboards의 texture coordinate 활용
+
+## Solver
+* 피드백: 시뮬레이션 결과가 물에 비해 점성 커보임
+  * dynamic viscosity 값을 줄여서 점성을 줄이면 개선 가능
+  * 그러나 충분히 줄이기 전에 particle이 계속 진동하는 현상 발생 --> solver 개선 필요
+
+Solver 개선을 위해 참고자료 학습
+* 2022 (Dan et al) A Survey on SPH Methods in Computer Graphics
+* 2013 (Markus et al) Implicit Incompressible SPH
+* 2006 (Guermond et al) An overview of projection methods for incompressible flows
+
+
 # 2024.07.15
 ## Rendering 관련 참고자료 학습
 * 2009 (Wladimir et al) Screen Space Fluid Rendering with Curvature Flow

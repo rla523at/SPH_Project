@@ -24,7 +24,7 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   _densities.resize(_num_particle, _material_proeprty.rest_density);
   _position_vectors.resize(_num_particle);
   _velocity_vectors.resize(_num_particle);
-  _force_vectors.resize(_num_particle);
+  _accelaration_vectors.resize(_num_particle);
 
   const float particle_density = _num_particle / _total_volume;
 
@@ -34,7 +34,7 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   const float radius = _support_length * 0.5f;
 
   Vector3 pos     = ic.init_pos + Vector3(radius, radius, radius);
-  Vector3 end_pos = pos + Vector3(ic.edge_length/2, ic.edge_length, ic.edge_length);
+  Vector3 end_pos = pos + Vector3(ic.edge_length / 2, ic.edge_length, ic.edge_length);
 
   for (int i = 0; i < _num_particle; ++i)
   {
@@ -58,9 +58,9 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 
 void Fluid_Particles::update(const Neighborhood& neighborhood)
 {
-  this->update_density_with_clamp(neighborhood);
+  this->update_density(neighborhood);
   this->update_pressure();
-  this->update_force(neighborhood);
+  this->update_acceleration(neighborhood);
   this->time_integration();
   this->apply_boundary_condition();
 }
@@ -85,7 +85,7 @@ const std::vector<Vector3>& Fluid_Particles::get_position_vectors(void) const
   return _position_vectors;
 }
 
-void Fluid_Particles::update_density_with_clamp(const Neighborhood& neighborhood)
+void Fluid_Particles::update_density(const Neighborhood& neighborhood)
 {
   const float h    = _support_length / 2;
   const float m0   = _mass_per_particle;
@@ -140,20 +140,19 @@ void Fluid_Particles::update_pressure(void)
   }
 }
 
-void Fluid_Particles::update_force(const Neighborhood& neighborhood)
+void Fluid_Particles::update_acceleration(const Neighborhood& neighborhood)
 {
   const float m0 = _mass_per_particle;
   const float h  = _support_length / 2;
   const float mu = _material_proeprty.viscosity;
 
-  //const Vector3 v_gravity_force = m0 * Vector3(0.0f, -9.8f, 0.0f);
-  const Vector3 v_gravity_force = Vector3(0.0f, -9.8f, 0.0f);
+  const Vector3 v_a_gravity = Vector3(0.0f, -9.8f, 0.0f);
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
-    Vector3 v_pressure_force(0.0f);
-    Vector3 v_viscosity_force(0.0f);
+    Vector3 v_a_pressure(0.0f);
+    Vector3 v_a_viscosity(0.0f);
 
     const float    rhoi = _densities[i];
     const float    pi   = _pressures[i];
@@ -195,18 +194,18 @@ void Fluid_Particles::update_force(const Neighborhood& neighborhood)
       const Vector3 v_grad_pressure = coeff * v_grad_kernel;
 
       // cal laplacian_velocity
-      const auto    coeff2 = 2 * (m0 / rhoj) * v_xij.Dot(v_grad_kernel) / (v_xij.Dot(v_xij) + 0.01f * h * h);
+      const auto    coeff2 = 10 * (m0 / rhoj) * v_xij.Dot(v_grad_kernel) / (v_xij.Dot(v_xij) + 0.01f * h * h);
       const Vector3 v_vij  = v_vi - v_vj;
 
       const Vector3 laplacian_velocity = coeff2 * v_vij;
 
-      v_pressure_force -= v_grad_pressure;
-      v_viscosity_force += laplacian_velocity;
+      v_a_pressure -= v_grad_pressure;
+      v_a_viscosity += laplacian_velocity;
     }
 
-    v_viscosity_force *= mu;
+    v_a_viscosity *= mu;
 
-    _force_vectors[i] = v_pressure_force + v_viscosity_force + v_gravity_force;
+    _accelaration_vectors[i] = v_a_pressure + v_a_viscosity + v_a_gravity;
   }
 }
 
@@ -219,7 +218,7 @@ void Fluid_Particles::time_integration(void)
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
-    const auto& v_a = _force_vectors[i];
+    const auto& v_a = _accelaration_vectors[i];
 
     //const auto& v_f = _force_vectors[i];
     //const auto  v_a = v_f / m0;

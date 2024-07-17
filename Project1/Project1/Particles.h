@@ -45,9 +45,9 @@ public:
   const std::vector<Vector3>& get_position_vectors(void) const;
 
 private:
-  void update_density_with_clamp(const Neighborhood& neighborhood);
+  void update_density(const Neighborhood& neighborhood);
   void update_pressure(void);
-  void update_force(const Neighborhood& neighborhood);
+  void update_acceleration(const Neighborhood& neighborhood);
   void time_integration(void);
   void apply_boundary_condition(void);
 
@@ -64,7 +64,7 @@ private:
 
   std::vector<Vector3> _position_vectors;
   std::vector<Vector3> _velocity_vectors;
-  std::vector<Vector3> _force_vectors;
+  std::vector<Vector3> _accelaration_vectors;
   std::vector<float>   _densities;
   std::vector<float>   _pressures;
 
