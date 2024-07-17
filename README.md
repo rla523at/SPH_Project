@@ -13,6 +13,7 @@ Solver 개선을 위해 참고자료 학습
 * 2013 (Markus et al) Implicit Incompressible SPH
 * 2006 (Guermond et al) An overview of projection methods for incompressible flows
 
+<br/><br/><br/>
 
 # 2024.07.15
 ## Rendering 관련 참고자료 학습
