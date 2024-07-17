@@ -42,7 +42,9 @@ Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(const Domain& domain, const
   const auto num_max_threads = omp_get_max_threads();
   _thread_neighbor_candidates.resize(num_max_threads);
   for (auto& candidates : _thread_neighbor_candidates)
-    candidates.resize(1000);
+    candidates.resize(10000);
+
+  this->update_pid_to_neighbor_pids(pos_vectors);
 }
 
 size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const

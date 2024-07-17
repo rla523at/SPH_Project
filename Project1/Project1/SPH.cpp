@@ -14,34 +14,47 @@ namespace ms
 
 SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
+  Domain init_cond_domain;
+  init_cond_domain.x_start = 0.0f;
+  init_cond_domain.x_end   = 0.5f;
+  init_cond_domain.y_start = 0.1f;
+  init_cond_domain.y_end   = 2.1f;
+  init_cond_domain.z_start = 0.0f;
+  init_cond_domain.z_end   = 1.0f;
+
+  constexpr float rest_density = 1.0e3f;
+  constexpr float gamma        = 7.0f;
+  constexpr float eta          = 0.01f; // Tait's equation parameter
+  const float     sqare_cvel   = 2.0f * 9.8f * init_cond_domain.dy();
+
   Material_Property mat_prop;
-  mat_prop.rest_density         = 1.0e3f;
-  mat_prop.pressure_coefficient = 1.0e6f;
-  //mat_prop.pressure_coefficient = 2.0e3f;
-  mat_prop.viscosity            = 3.0e-3f;
+  mat_prop.rest_density         = rest_density;
+  mat_prop.gamma                = gamma;
+  mat_prop.pressure_coefficient = rest_density * sqare_cvel / (gamma * eta);
+  mat_prop.viscosity            = 1.0e-2f;
 
   Initial_Condition_Cube init_cond;
-  init_cond.init_pos             = {-0.9f, 0.0f, 0.0f};
-  init_cond.edge_length          = 1.0f;
-  init_cond.num_particle_in_edge = 20;
+  init_cond.domain            = init_cond_domain;
+  init_cond.num_particle_in_x = 6;
+  init_cond.num_particle_in_y = 21;
+  init_cond.num_particle_in_z = 11;
 
-  Domain domain;
-  domain.x_start = -1.0f;
-  domain.x_end   = 3.0f;
-  domain.y_start = 0.0f;
-  domain.y_end   = 5.0f;
-  domain.z_start = 0.0f;
-  domain.z_end   = 1.1f;
+  Domain solution_domain;
+  solution_domain.x_start = -1.0f;
+  solution_domain.x_end   = 2.0f;
+  solution_domain.y_start = 0.0f;
+  solution_domain.y_end   = 5.0f;
+  solution_domain.z_start = 0.0f;
+  solution_domain.z_end   = 1.0f;
 
-  _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, domain);
+  _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
   const float divide_length = _uptr_particles->support_length();
   const auto& pos_vecetors  = _uptr_particles->get_position_vectors();
 
-  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid>(domain, divide_length, pos_vecetors);
+  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, pos_vecetors);
 
-  //const auto num_particles = _uptr_particles->num_particle();
-  //_uptr_neighborhood = std::make_unique<Neighborhood_Brute_Force>(num_particles);
+  _uptr_particles->init_mass(*_uptr_neighborhood);
 
   _GS_Cbuffer_data.radius = _uptr_particles->support_length() / 2;
 
@@ -119,104 +132,104 @@ void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
 
 void SPH::init_VS(const ComPtr<ID3D11Device> cptr_device)
 {
-//  constexpr auto* file_name                   = L"SPH_VS.hlsl";
-//  constexpr auto* entry_point_name            = "main";
-//  constexpr auto* sharder_target_profile_name = "vs_5_0";
-//
-//  D3D11_INPUT_ELEMENT_DESC pos_desc = {};
-//  pos_desc.SemanticName             = "POSITION";
-//  pos_desc.SemanticIndex            = 0;
-//  pos_desc.Format                   = DXGI_FORMAT_R32G32B32_FLOAT;
-//  pos_desc.InputSlot                = 0;
-//  pos_desc.AlignedByteOffset        = 0;
-//  pos_desc.InputSlotClass           = D3D11_INPUT_PER_VERTEX_DATA;
-//  pos_desc.InstanceDataStepRate     = 0;
-//
-//  constexpr UINT           num_input                      = 1;
-//  D3D11_INPUT_ELEMENT_DESC input_element_descs[num_input] = {pos_desc};
-//
-//#if defined(_DEBUG)
-//  constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-//#else
-//  constexpr UINT compile_flags = NULL;
-//#endif
-//
-//  ComPtr<ID3DBlob> shader_blob;
-//  ComPtr<ID3DBlob> error_blob;
-//
-//  {
-//    const auto result = D3DCompileFromFile(
-//      file_name,
-//      nullptr,
-//      nullptr,
-//      entry_point_name,
-//      sharder_target_profile_name,
-//      compile_flags,
-//      NULL,
-//      &shader_blob,
-//      &error_blob);
-//
-//    REQUIRE(!FAILED(result), "SPH vertex shader compiling should succeed");
-//  }
-//
-//  {
-//    const auto result = cptr_device->CreateInputLayout(
-//      input_element_descs,
-//      num_input,
-//      shader_blob->GetBufferPointer(),
-//      shader_blob->GetBufferSize(),
-//      _cptr_input_layout.GetAddressOf());
-//
-//    REQUIRE(!FAILED(result), "SPH input layout creation should succeed");
-//  }
-//
-//  {
-//    const auto result = cptr_device->CreateVertexShader(
-//      shader_blob->GetBufferPointer(),
-//      shader_blob->GetBufferSize(),
-//      NULL,
-//      _cptr_VS.GetAddressOf());
-//
-//    REQUIRE(!FAILED(result), "SPH vertex shader creation should succeed");
-//  }
+  //  constexpr auto* file_name                   = L"SPH_VS.hlsl";
+  //  constexpr auto* entry_point_name            = "main";
+  //  constexpr auto* sharder_target_profile_name = "vs_5_0";
+  //
+  //  D3D11_INPUT_ELEMENT_DESC pos_desc = {};
+  //  pos_desc.SemanticName             = "POSITION";
+  //  pos_desc.SemanticIndex            = 0;
+  //  pos_desc.Format                   = DXGI_FORMAT_R32G32B32_FLOAT;
+  //  pos_desc.InputSlot                = 0;
+  //  pos_desc.AlignedByteOffset        = 0;
+  //  pos_desc.InputSlotClass           = D3D11_INPUT_PER_VERTEX_DATA;
+  //  pos_desc.InstanceDataStepRate     = 0;
+  //
+  //  constexpr UINT           num_input                      = 1;
+  //  D3D11_INPUT_ELEMENT_DESC input_element_descs[num_input] = {pos_desc};
+  //
+  //#if defined(_DEBUG)
+  //  constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+  //#else
+  //  constexpr UINT compile_flags = NULL;
+  //#endif
+  //
+  //  ComPtr<ID3DBlob> shader_blob;
+  //  ComPtr<ID3DBlob> error_blob;
+  //
+  //  {
+  //    const auto result = D3DCompileFromFile(
+  //      file_name,
+  //      nullptr,
+  //      nullptr,
+  //      entry_point_name,
+  //      sharder_target_profile_name,
+  //      compile_flags,
+  //      NULL,
+  //      &shader_blob,
+  //      &error_blob);
+  //
+  //    REQUIRE(!FAILED(result), "SPH vertex shader compiling should succeed");
+  //  }
+  //
+  //  {
+  //    const auto result = cptr_device->CreateInputLayout(
+  //      input_element_descs,
+  //      num_input,
+  //      shader_blob->GetBufferPointer(),
+  //      shader_blob->GetBufferSize(),
+  //      _cptr_input_layout.GetAddressOf());
+  //
+  //    REQUIRE(!FAILED(result), "SPH input layout creation should succeed");
+  //  }
+  //
+  //  {
+  //    const auto result = cptr_device->CreateVertexShader(
+  //      shader_blob->GetBufferPointer(),
+  //      shader_blob->GetBufferSize(),
+  //      NULL,
+  //      _cptr_VS.GetAddressOf());
+  //
+  //    REQUIRE(!FAILED(result), "SPH vertex shader creation should succeed");
+  //  }
 
-    constexpr auto* file_name                   = L"SPH_VS.hlsl";
-    constexpr auto* entry_point_name            = "main";
-    constexpr auto* sharder_target_profile_name = "vs_5_0";
-  
-  #if defined(_DEBUG)
-    constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-  #else
-    constexpr UINT compile_flags = NULL;
-  #endif
-  
-    ComPtr<ID3DBlob> shader_blob;
-    ComPtr<ID3DBlob> error_blob;
-  
-    {
-      const auto result = D3DCompileFromFile(
-        file_name,
-        nullptr,
-        nullptr,
-        entry_point_name,
-        sharder_target_profile_name,
-        compile_flags,
-        NULL,
-        &shader_blob,
-        &error_blob);
-  
-      REQUIRE(!FAILED(result), "vertex shader creation should succeed");
-    }
-  
-    {
-      const auto result = cptr_device->CreateVertexShader(
-        shader_blob->GetBufferPointer(),
-        shader_blob->GetBufferSize(),
-        NULL,
-        _cptr_VS.GetAddressOf());
-  
-      REQUIRE(!FAILED(result), "ID3D11VertexShader creation should succeed");
-    }
+  constexpr auto* file_name                   = L"SPH_VS.hlsl";
+  constexpr auto* entry_point_name            = "main";
+  constexpr auto* sharder_target_profile_name = "vs_5_0";
+
+#if defined(_DEBUG)
+  constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+  constexpr UINT compile_flags = NULL;
+#endif
+
+  ComPtr<ID3DBlob> shader_blob;
+  ComPtr<ID3DBlob> error_blob;
+
+  {
+    const auto result = D3DCompileFromFile(
+      file_name,
+      nullptr,
+      nullptr,
+      entry_point_name,
+      sharder_target_profile_name,
+      compile_flags,
+      NULL,
+      &shader_blob,
+      &error_blob);
+
+    REQUIRE(!FAILED(result), "vertex shader creation should succeed");
+  }
+
+  {
+    const auto result = cptr_device->CreateVertexShader(
+      shader_blob->GetBufferPointer(),
+      shader_blob->GetBufferSize(),
+      NULL,
+      _cptr_VS.GetAddressOf());
+
+    REQUIRE(!FAILED(result), "ID3D11VertexShader creation should succeed");
+  }
 }
 
 void SPH::init_GS_Cbuffer(const ComPtr<ID3D11Device> cptr_device)
@@ -377,6 +390,8 @@ void SPH::set_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
   //cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, 0);
 
   //cptr_context->PSSetShader(_cptr_PS.Get(), nullptr, 0);
+
+  cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
   cptr_context->VSSetShaderResources(0, 1, _cptr_VS_SRview.GetAddressOf());
   cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, 0);

@@ -18,15 +18,17 @@ namespace ms
 struct Material_Property
 {
   float rest_density         = 0.0f;
+  float gamma                = 0.0f; // Tait's equation parameter
   float pressure_coefficient = 0.0f;
   float viscosity            = 0.0f;
 };
 
 struct Initial_Condition_Cube
 {
-  Vector3 init_pos;
-  float   edge_length          = 0.0f;
-  size_t  num_particle_in_edge = 0;
+  Domain domain;
+  size_t num_particle_in_x = 0;
+  size_t num_particle_in_y = 0;
+  size_t num_particle_in_z = 0;
 };
 
 class Fluid_Particles
@@ -36,6 +38,9 @@ public:
 
 public:
   void update(const Neighborhood& neighborhood);
+
+  void init_mass(const Neighborhood& neighborhood);
+
 
 public:
   const Vector3* position_data(void) const;
@@ -69,7 +74,7 @@ private:
   std::vector<float>   _pressures;
 
   Material_Property _material_proeprty;
-  Domain _domain;
+  Domain            _domain;
 };
 
 } // namespace ms

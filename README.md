@@ -1,3 +1,8 @@
+# 2024.07.17
+## Solver
+* Laplacian of the velocity 계산 방법 수정
+  * 
+
 # 2024.07.16
 ## Rendering
 * view space에서 particle sphere의 normal과 depth 계산 방법 학습
