@@ -1,6 +1,7 @@
 #include "Neighborhood_Uniform_Grid.h"
 
 #include <algorithm>
+#include <iostream>
 #include <cmath>
 #include <omp.h>
 
@@ -91,6 +92,7 @@ const std::vector<size_t>& Neighborhood_Uniform_Grid::search(const size_t pid) c
 {
   return _pid_to_neighbor_pids[pid];
 }
+
 
 void Neighborhood_Uniform_Grid::update(const std::vector<Vector3>& pos_vectors)
 {

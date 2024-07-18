@@ -1,8 +1,6 @@
 #include "SPH.h"
 
 #include "Camera.h"
-#include "Neighborhood_Brute_Force.h"
-#include "Neighborhood_Uniform_Grid.h"
 #include "Particles.h"
 
 #include "../_lib/_header/msexception/Exception.h"
@@ -14,49 +12,77 @@ namespace ms
 
 SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  Domain init_cond_domain;
-  init_cond_domain.x_start = 0.0f;
-  init_cond_domain.x_end   = 0.2f;
-  init_cond_domain.y_start = 0.1f;
-  init_cond_domain.y_end   = 0.3f;
-  init_cond_domain.z_start = 0.0f;
-  init_cond_domain.z_end   = 0.2f;
+  Domain solution_domain;
+  solution_domain.x_start = -2.5f;
+  solution_domain.x_end   = 2.5f;
+  solution_domain.y_start = 0.0f;
+  solution_domain.y_end   = 6.0f;
+  solution_domain.z_start = -2.5f;
+  solution_domain.z_end   = 2.5f;
+
+  ////zero gravity domain
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = 0.0f;
+  //init_cond_domain.x_end   = 0.2f;
+  //init_cond_domain.y_start = 1.0f;
+  //init_cond_domain.y_end   = 1.2f;
+  //init_cond_domain.z_start = 0.0f;
+  //init_cond_domain.z_end   = 0.2f;
+
+  //// Dam breaking
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = -2.4f;
+  //init_cond_domain.x_end   = -1.4f;
+  //init_cond_domain.y_start = 0.1f;
+  //init_cond_domain.y_end   = 2.1f;
+  //init_cond_domain.z_start = -2.4f;
+  //init_cond_domain.z_end   = -1.4f;
+
+  //Initial_Condition_Dam init_cond;
+  //init_cond.dam             = init_cond_domain;
+  //init_cond.division_length = 0.05f;
+
+  //constexpr float rest_density = 1.0e3f;
+  //constexpr float gamma        = 7.0f;
+  //constexpr float eta          = 0.01f; // Tait's equation parameter
+  //const float     sqare_cvel   = 2.0f * 9.8f * init_cond_domain.dy();
+
+  // Double Dam breaking
+  Domain dam1;
+  dam1.x_start = -2.4f;
+  dam1.x_end   = -1.4f;
+  dam1.y_start = 0.1f;
+  dam1.y_end   = 5.1f;
+  dam1.z_start = -2.4f;
+  dam1.z_end   = -1.4f;
+
+  Domain dam2;
+  dam2.x_start = 1.4f;
+  dam2.x_end   = 2.4f;
+  dam2.y_start = 0.1f;
+  dam2.y_end   = 5.1f;
+  dam2.z_start = 1.4f;
+  dam2.z_end   = 2.4f;
+
+  Initial_Condition_Double_Dam init_cond;
+  init_cond.dam1            = dam1;
+  init_cond.dam2            = dam2;
+  init_cond.division_length = 0.1f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f;
   constexpr float eta          = 0.01f; // Tait's equation parameter
-  const float     sqare_cvel   = 2.0f * 9.8f * init_cond_domain.dy();
+  const float     sqare_cvel   = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy());
 
   Material_Property mat_prop;
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * sqare_cvel / (gamma * eta);
-  mat_prop.viscosity            = 1.0e-4f;
-
-  Initial_Condition_Cube init_cond;
-  init_cond.domain            = init_cond_domain;
-  init_cond.division_length   = 0.1f;
-
-  Domain solution_domain;
-  solution_domain.x_start = -1.0f;
-  solution_domain.x_end   = 2.0f;
-  solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 5.0f;
-  solution_domain.z_start = 0.0f;
-  solution_domain.z_end   = 1.0f;
+  mat_prop.viscosity            = 1.0e-6f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
-  const float divide_length = _uptr_particles->support_length();
-  const auto& pos_vecetors  = _uptr_particles->get_position_vectors();
-
-  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, pos_vecetors);
-
-  _uptr_particles->init_mass(*_uptr_neighborhood);
-
   _GS_Cbuffer_data.radius = _uptr_particles->support_length() / 2;
-
-  //cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
   //this->init_Vbuffer(cptr_device);
 
@@ -105,9 +131,7 @@ void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_co
   //_GS_Cbuffer_data.m_proj    = camera.proj_matrix();
   //this->update_GS_Cbuffer(cptr_context);
 
-  const auto& pos_vectors = _uptr_particles->get_position_vectors();
-  _uptr_neighborhood->update(pos_vectors);
-  _uptr_particles->update(*_uptr_neighborhood);
+  _uptr_particles->update();
   this->update_VS_SRview(cptr_context);
 
   _GS_Cbuffer_data.v_cam_pos = camera.position_vector();

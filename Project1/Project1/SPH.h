@@ -12,7 +12,6 @@ namespace ms
 {
 class Camera;
 class Fluid_Particles;
-class Neighborhood;
 } // namespace ms
 
 // Abbreviation
@@ -67,7 +66,6 @@ private:
 
 private:
   std::unique_ptr<Fluid_Particles> _uptr_particles;
-  std::unique_ptr<Neighborhood>    _uptr_neighborhood;
   SPH_GS_Cbuffer_Data              _GS_Cbuffer_data;
 
   ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview;   //shader resource view for vertex shader
