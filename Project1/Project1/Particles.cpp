@@ -17,18 +17,12 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 
   const auto& ic = initial_condition;
 
-  _num_particle = ic.num_particle_in_x * ic.num_particle_in_y * ic.num_particle_in_z;
-  _total_volume = ic.domain.dx() * ic.domain.dy() * ic.domain.dz();
+  const size_t num_particle_in_x = static_cast<size_t>(ic.domain.dx() / ic.division_length) + 1;
+  const size_t num_particle_in_y = static_cast<size_t>(ic.domain.dy() / ic.division_length) + 1;
+  const size_t num_particle_in_z = static_cast<size_t>(ic.domain.dz() / ic.division_length) + 1;
 
-  const float particle_density = _num_particle / _total_volume;
-  _support_length              = 2.0f * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
-
-  const float dx = ic.domain.dx() / (ic.num_particle_in_x - 1);
-  const float dy = ic.domain.dy() / (ic.num_particle_in_y - 1);
-  const float dz = ic.domain.dz() / (ic.num_particle_in_z - 1);
-
-  const float dr  = (dx + dy + dz) / 3;
-  _support_length = dr * 1.2f;
+  _num_particle   = num_particle_in_x * num_particle_in_y * num_particle_in_z;
+  _support_length = ic.division_length * 1.2f;
 
   _pressures.resize(_num_particle);
   _densities.resize(_num_particle, _material_proeprty.rest_density);
@@ -39,45 +33,32 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
   Vector3 v_pos = {ic.domain.x_start, ic.domain.y_start, ic.domain.z_start};
 
   size_t index = 0;
-  for (size_t i = 0; i < ic.num_particle_in_y; ++i)
+  for (size_t i = 0; i < num_particle_in_y; ++i)
   {
-    for (size_t j = 0; j < ic.num_particle_in_z; ++j)
+    for (size_t j = 0; j < num_particle_in_z; ++j)
     {
-      for (size_t k = 0; k < ic.num_particle_in_x; ++k)
+      for (size_t k = 0; k < num_particle_in_x; ++k)
       {
         _position_vectors[index] = v_pos;
 
         ++index;
-        v_pos.x += dx;
+        v_pos.x += ic.division_length;
       }
 
       v_pos.x = ic.domain.x_start;
-      v_pos.z += dz;
+      v_pos.z += ic.division_length;
     }
 
     v_pos.x = ic.domain.x_start;
     v_pos.z = ic.domain.z_start;
-    v_pos.y += dy;
+    v_pos.y += ic.division_length;
   }
 
-  //for (int i = 0; i < _num_particle; ++i)
-  //{
-  //  _position_vectors[i] = pos;
+  //_total_volume = ic.domain.dx() * ic.domain.dy() * ic.domain.dz();
 
-  //  pos.x += delta;
-  //  if (pos.x > end_pos.x)
-  //  {
-  //    pos.x = ic.init_pos.x + radius;
-  //    pos.z += delta;
-  //    if (pos.z > end_pos.z)
-  //    {
-  //      pos.z = ic.init_pos.z + radius;
-  //      pos.y += delta;
-  //    }
-  //  }
-  //}
-
-  _mass_per_particle = this->cal_mass_per_particle_1994_monaghan(_total_volume, _num_particle);
+  //const float particle_density = _num_particle / _total_volume;
+  //_support_length              = 2.0f * std::pow(desire_neighbor * 3 / (particle_density * 4 * pi), 1.0f / 3.0f);
+  //_mass_per_particle = this->cal_mass_per_particle_1994_monaghan(_total_volume, _num_particle);
 }
 
 void Fluid_Particles::update(const Neighborhood& neighborhood)
@@ -149,7 +130,7 @@ void Fluid_Particles::update_density(const Neighborhood& neighborhood)
   const float m0   = _mass_per_particle;
   const float rho0 = _material_proeprty.rest_density;
 
-#pragma omp parallel for
+//#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     auto& cur_rho = _densities[i];
@@ -172,7 +153,7 @@ void Fluid_Particles::update_density(const Neighborhood& neighborhood)
       cur_rho += m0 * W(q);
     }
 
-    cur_rho = std::clamp(cur_rho, rho0, 1.01f * rho0);
+    //cur_rho = std::clamp(cur_rho, rho0, 1.01f * rho0);
   }
 }
 
@@ -200,9 +181,9 @@ void Fluid_Particles::update_acceleration(const Neighborhood& neighborhood)
   const float h  = _support_length / 2;
   const float mu = _material_proeprty.viscosity;
 
-  const Vector3 v_a_gravity = Vector3(0.0f, -9.8f, 0.0f);
+  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
 
-  //#pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     Vector3 v_a_pressure(0.0f);
@@ -270,7 +251,8 @@ void Fluid_Particles::update_acceleration(const Neighborhood& neighborhood)
 
 void Fluid_Particles::time_integration(void)
 {
-  constexpr float dt = 1.0e-4f;
+  constexpr float dt = 5.0e-6f;
+  //constexpr float dt = 1.0e-5f;
 
   const float m0 = _mass_per_particle;
 

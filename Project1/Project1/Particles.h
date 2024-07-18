@@ -26,9 +26,7 @@ struct Material_Property
 struct Initial_Condition_Cube
 {
   Domain domain;
-  size_t num_particle_in_x = 0;
-  size_t num_particle_in_y = 0;
-  size_t num_particle_in_z = 0;
+  float  division_length   = 0.0f;
 };
 
 class Fluid_Particles
@@ -40,7 +38,6 @@ public:
   void update(const Neighborhood& neighborhood);
 
   void init_mass(const Neighborhood& neighborhood);
-
 
 public:
   const Vector3* position_data(void) const;

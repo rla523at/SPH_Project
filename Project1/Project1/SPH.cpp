@@ -16,11 +16,11 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 {
   Domain init_cond_domain;
   init_cond_domain.x_start = 0.0f;
-  init_cond_domain.x_end   = 0.5f;
+  init_cond_domain.x_end   = 0.2f;
   init_cond_domain.y_start = 0.1f;
-  init_cond_domain.y_end   = 2.1f;
+  init_cond_domain.y_end   = 0.3f;
   init_cond_domain.z_start = 0.0f;
-  init_cond_domain.z_end   = 1.0f;
+  init_cond_domain.z_end   = 0.2f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f;
@@ -31,13 +31,11 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * sqare_cvel / (gamma * eta);
-  mat_prop.viscosity            = 1.0e-2f;
+  mat_prop.viscosity            = 1.0e-4f;
 
   Initial_Condition_Cube init_cond;
   init_cond.domain            = init_cond_domain;
-  init_cond.num_particle_in_x = 6;
-  init_cond.num_particle_in_y = 21;
-  init_cond.num_particle_in_z = 11;
+  init_cond.division_length   = 0.1f;
 
   Domain solution_domain;
   solution_domain.x_start = -1.0f;

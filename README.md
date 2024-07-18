@@ -1,7 +1,18 @@
 # 2024.07.17
 ## Solver
-* Laplacian of the velocity 계산 방법 수정
-  * 
+solver의 문제점을 파악하기 위해 밀도값 제한을 풀어서 시뮬레이션을 돌림
+
+**문제점**
+* SPH Particle들이 압축 후 팽창하는 현상 발견
+
+[그림]
+
+**해결 방안**
+* density, pressure, acceleration 값들을 보면서, 문제 원인 분석
+* 여러 논문으로 solver에 구현된 수식 교차 검증
+* 여러 논문으로 solver에 적용된 상수 값 교차 검증
+
+<br/><br/><br/>
 
 # 2024.07.16
 ## Rendering
