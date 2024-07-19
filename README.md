@@ -1,3 +1,95 @@
+# 2024.07.18
+## Solver
+
+### 압축 후 팽창하는 문제
+
+* 원인: Boundary와의 상호작용.
+
+$z=0$ 위치에 있는 particle들이 움직이는 과정에서 $z=0$ boundary와 상호작용이 발생한다.
+
+상호작용이 발생하게 되면 순간적으로 위치와 속도가 조정이 되고 이 영향으로 폭발적으로 팽창하게 된다
+
+<br/>
+
+* 해결
+
+![2024-07-19 10 33 06](https://github.com/user-attachments/assets/5c27710d-effe-44aa-8c26-651900078a2f)
+
+particle들의 초기 위치를 boundary와 약간(particle지름 만큼) 떨어뜨림으로써, boundary와의 상호작용으로 인한 영향을 없에 폭발적으로 팽창하는 문제는 해결
+
+### 압축 팽창 반복 문제
+
+* 원인 : 밀도 불균형
+
+물리적으로, 물은 $\rho_0 = 1000$이라는 rest density를 가져야 한다.
+
+하지만 partic들의 $\rho$를 계산하면 973, 982, 991, 1000의 4가지 값을 갖게 된다. 
+
+이 떄, 1000보다 작은 밀도를 갖는 particle들이 압축시키는 힘을 만들어내고, 이로 인해 거리가 가까워지면 $\rho$값이 증가하여 다시 팽창시키는 힘이 만들어진다.
+
+이 과정을 통해 압축 팽창이 반복되게 된다.
+
+<br/>
+
+* 밀도 불균형의 원인 : SPH descritization
+
+partic들의 $\rho$가 왜 모두 1000이란 값으로 계산될 수 없는지는  SPH descritization에 근본적인 한계 때문이다.
+
+SPH descritization에서 $x$ 위치에서 밀도는 다음과 같다.
+
+$$ \rho(x) =  \sum_j m_j W(x,x_j,h) $$
+
+이 때, 일반적으로 $m_j$는 particle마다 전부 동일하다는 가정으로 상수값으로 두어 식을 다음과 같이 단순화한다.
+
+$$ \rho(x) = m \sum_j  W(x,x_j,h) $$
+
+즉, $\rho$는 결국 $m$과 $W$에 의해 결정된다.
+
+이 때, $W$ 함수의 성질에 의해 $\sum_j W(x,x_j,h)$ 값은 $x$ 위치에서의 particle의 number density(밀집정도)를 나타내는 값이 된다.
+
+따라서, boundary에서 particle의 number density는 감소하게 됨으로 $\sum_j W(x,x_j,h)$ 값의 불균형으로 인한 density의 불균형은 SPH descritization에서 필연적이다.
+
+<br/>
+
+* 밀도 불균형 해결 : $m$을 잘 결정하자
+
+$\rho$는 $m$을 어떻게 결정하는지에 따라서도 달라진다.
+
+현재 $m$을 2012 (Mostafa et al)에서 제시한 다음 수식으로 결정한다.
+
+$$ m_i = \frac{\rho_0}{\max(N)} $$
+
+이 떄, $N$은 particle의 number density의 집합이다.
+
+즉, 가장 밀집된 곳에 있는 particle의 밀도가 $\rho_0$가 되게끔 결정되고 있다.
+
+이를 다음과 같이 수정한다.
+
+$$ m_i = \frac{\rho_0}{\text{avg}(N)} $$
+
+즉, 평균적인 밀집정도를 갖는 곳에 있는 particle의 밀도가 $\rho_0$가 되게끔 결정하게 되고
+
+이는 density fluctuation $\frac{|\rho-\rho_0|}{\rho_0}$을 줄일 수 있다.
+
+그 결과 압축 팽창 정도를 많이 줄일 수 있다.
+
+![2024-07-19 11 27 20 avg](https://github.com/user-attachments/assets/23b824c3-40ff-4d7b-9c4b-ca2d41a771cf)
+
+* 추가 고려 사항
+  * 각 particle마다 고유의 질량 값을 부여함으로써, 모든 particle의 초기 밀도가 $\rho_0$가 되게 맞출 수 있어 이를 테스트 해볼 예정.
+  * 실제 simulation에서 어떤 차이를 보이는지 테스트해볼 예정
+
+
+### Time Integration
+
+많은 논문에서 Time integration으로 사용하는 semi implicit euler scheme과 leap frog scheme을 구현하여 dt를 바꿔가며 stability를 비교하였다.
+
+결론적으로, dt를 10-4 단위로 바꿔가면서 test 해본 결과 둘의 stability는 유의미하게 차이가 나지 않았다.
+
+계산 algorithm이 단순하여 가장 성능이 좋은 semi implicit euler scheme을 사용하기로 결정하였다.
+
+<br/><br/><br/>
+
 # 2024.07.17
 ## Solver
 solver의 문제점을 파악하기 위해 밀도값 제한을 풀어서 시뮬레이션을 돌림
