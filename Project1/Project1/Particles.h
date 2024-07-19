@@ -65,15 +65,16 @@ private:
   void apply_boundary_condition(void);
 
   void time_integration(void);
-  void semi_implicit_euler(void);
-  void leap_frog_DKD(void);
-  void leap_frog_KDK(void);
+  void semi_implicit_euler(const float dt);
+  void leap_frog_DKD(const float dt);
+  void leap_frog_KDK(const float dt);
 
   float W(const float q) const; //kernel function
   float dW_dq(const float q) const;
 
   float cal_mass_per_particle_number_density_mean(void) const;
   float cal_mass_per_particle_number_density_max(void) const;
+  float cal_mass_per_particle_number_density_min(void) const;
   float cal_mass_per_particle_1994_monaghan(const float total_volume) const;
 
 private:

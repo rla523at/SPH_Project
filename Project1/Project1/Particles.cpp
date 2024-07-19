@@ -59,6 +59,12 @@ Fluid_Particles::Fluid_Particles(const Material_Property& material_property, con
 
   // cal mass
   _mass_per_particle = this->cal_mass_per_particle_number_density_mean();
+  //_mass_per_particle = this->cal_mass_per_particle_number_density_max();
+  //_mass_per_particle = this->cal_mass_per_particle_number_density_min();
+
+
+  //const float total_volume = ic.dam.dx() * ic.dam.dy() * ic.dam.dz();
+  //_mass_per_particle = this->cal_mass_per_particle_1994_monaghan(total_volume);
 }
 
 Fluid_Particles::Fluid_Particles(
@@ -214,8 +220,8 @@ void Fluid_Particles::update_acceleration(void)
   const float h  = _support_length / 2;
   const float mu = _material_proeprty.viscosity;
 
-  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
+  //constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
+  constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
@@ -279,16 +285,24 @@ void Fluid_Particles::update_acceleration(void)
 
 void Fluid_Particles::time_integration(void)
 {
-  this->semi_implicit_euler();
-  //this->leap_frog_DKD();
-  //this->leap_frog_KDK();
+  constexpr float dt = 1.0e-5f;
+
+  static float time   = 0.0f;
+  static float target = 0.24f;
+
+  time += dt;
+  if (time > target)
+  {
+    target += 0.02f;
+  }
+
+  this->semi_implicit_euler(dt);
+  //this->leap_frog_DKD(dt);
+  //this->leap_frog_KDK(dt);
 }
 
-void Fluid_Particles::semi_implicit_euler(void)
+void Fluid_Particles::semi_implicit_euler(const float dt)
 {
-  constexpr float dt = 5.0e-4f;
-
-  //semi-implicit Euler
   _uptr_neighborhood->update(_position_vectors);
   this->update_acceleration();
 
@@ -303,17 +317,15 @@ void Fluid_Particles::semi_implicit_euler(void)
   this->apply_boundary_condition();
 }
 
-void Fluid_Particles::leap_frog_DKD(void)
+void Fluid_Particles::leap_frog_DKD(const float dt)
 {
-  constexpr float dt = 1.0e-3f;
-
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
   {
     const auto& v_v = _velocity_vectors[i];
     auto&       v_p = _position_vectors[i];
 
-    v_p += v_v * 0.5 * dt;
+    v_p += v_v * 0.5f * dt;
   }
   this->apply_boundary_condition();
   _uptr_neighborhood->update(_position_vectors);
@@ -328,14 +340,12 @@ void Fluid_Particles::leap_frog_DKD(void)
     auto&       v_p = _position_vectors[i];
 
     v_v += dt * v_a;
-    v_p += v_v * 0.5 * dt;
+    v_p += v_v * 0.5f * dt;
   }
 }
 
-void Fluid_Particles::leap_frog_KDK(void)
+void Fluid_Particles::leap_frog_KDK(const float dt)
 {
-  constexpr float dt = 1.0e-3f;
-
   this->update_acceleration();
 
 #pragma omp parallel for
@@ -346,7 +356,7 @@ void Fluid_Particles::leap_frog_KDK(void)
 
     const auto& v_a = _accelaration_vectors[i];
 
-    v_v += 0.5 * dt * v_a;
+    v_v += 0.5f * dt * v_a;
     v_p += dt * v_v;
   }
   this->apply_boundary_condition();
@@ -360,7 +370,7 @@ void Fluid_Particles::leap_frog_KDK(void)
 
     const auto& v_a = _accelaration_vectors[i];
 
-    v_v += 0.5 * dt * v_a;
+    v_v += 0.5f * dt * v_a;
   }
 }
 
@@ -489,6 +499,39 @@ float Fluid_Particles::cal_mass_per_particle_number_density_max(void) const
   }
 
   return _material_proeprty.rest_density / max_number_density;
+}
+
+float Fluid_Particles::cal_mass_per_particle_number_density_min(void) const
+{
+  const float h = _support_length / 2;
+
+  float min_number_density = (std::numeric_limits<float>::max)();
+
+  for (int i = 0; i < _num_particle; i++)
+  {
+    float number_density = 0.0;
+
+    const auto& v_xi = _position_vectors[i];
+
+    const auto& neighbor_indexes = _uptr_neighborhood->search(i);
+    const auto  num_neighbor     = neighbor_indexes.size();
+
+    for (int j = 0; j < num_neighbor; j++)
+    {
+      const auto neighbor_index = neighbor_indexes[j];
+
+      const auto& v_xj = _position_vectors[neighbor_index];
+
+      const float dist = (v_xi - v_xj).Length();
+      const auto  q    = dist / h;
+
+      number_density += W(q);
+    }
+
+    min_number_density = (std::min)(min_number_density, number_density);
+  }
+
+  return _material_proeprty.rest_density / min_number_density;
 }
 
 float Fluid_Particles::cal_mass_per_particle_number_density_mean(void) const

@@ -20,14 +20,20 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   solution_domain.z_start = -2.5f;
   solution_domain.z_end   = 2.5f;
 
-  ////zero gravity domain
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = 0.0f;
-  //init_cond_domain.x_end   = 0.2f;
-  //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.2f;
-  //init_cond_domain.z_start = 0.0f;
-  //init_cond_domain.z_end   = 0.2f;
+  //zero gravity domain
+  Domain init_cond_domain;
+  init_cond_domain.x_start = 0.0f;
+  init_cond_domain.x_end   = 0.2f;
+  init_cond_domain.y_start = 1.0f;
+  init_cond_domain.y_end   = 1.2f;
+  init_cond_domain.z_start = 0.0f;
+  init_cond_domain.z_end   = 0.2f;
+    
+  Initial_Condition_Dam init_cond;
+  init_cond.dam             = init_cond_domain;
+  init_cond.division_length = 0.1f;
+
+  constexpr float square_cvel = 1500;
 
   //// Dam breaking
   //Domain init_cond_domain;
@@ -42,42 +48,41 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   //init_cond.dam             = init_cond_domain;
   //init_cond.division_length = 0.05f;
 
-  //constexpr float rest_density = 1.0e3f;
-  //constexpr float gamma        = 7.0f;
   //constexpr float eta          = 0.01f; // Tait's equation parameter
-  //const float     sqare_cvel   = 2.0f * 9.8f * init_cond_domain.dy();
+  //const float     square_cvel   = 2.0f * 9.8f * init_cond_domain.dy() / eta;
 
-  // Double Dam breaking
-  Domain dam1;
-  dam1.x_start = -2.4f;
-  dam1.x_end   = -1.4f;
-  dam1.y_start = 0.1f;
-  dam1.y_end   = 5.1f;
-  dam1.z_start = -2.4f;
-  dam1.z_end   = -1.4f;
+  //// Double Dam breaking
+  //Domain dam1;
+  //dam1.x_start = -2.4f;
+  //dam1.x_end   = -1.4f;
+  //dam1.y_start = 0.1f;
+  //dam1.y_end   = 5.1f;
+  //dam1.z_start = -2.4f;
+  //dam1.z_end   = -1.4f;
 
-  Domain dam2;
-  dam2.x_start = 1.4f;
-  dam2.x_end   = 2.4f;
-  dam2.y_start = 0.1f;
-  dam2.y_end   = 5.1f;
-  dam2.z_start = 1.4f;
-  dam2.z_end   = 2.4f;
+  //Domain dam2;
+  //dam2.x_start = 1.4f;
+  //dam2.x_end   = 2.4f;
+  //dam2.y_start = 0.1f;
+  //dam2.y_end   = 5.1f;
+  //dam2.z_start = 1.4f;
+  //dam2.z_end   = 2.4f;
 
-  Initial_Condition_Double_Dam init_cond;
-  init_cond.dam1            = dam1;
-  init_cond.dam2            = dam2;
-  init_cond.division_length = 0.1f;
+  //Initial_Condition_Double_Dam init_cond;
+  //init_cond.dam1            = dam1;
+  //init_cond.dam2            = dam2;
+  //init_cond.division_length = 0.1f;
+
+  //constexpr float eta          = 0.01f; // Tait's equation parameter
+  //const float square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
 
   constexpr float rest_density = 1.0e3f;
-  constexpr float gamma        = 7.0f;
-  constexpr float eta          = 0.01f; // Tait's equation parameter
-  const float     sqare_cvel   = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy());
+  constexpr float gamma        = 7.0f; // Tait's equation parameter
 
   Material_Property mat_prop;
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
-  mat_prop.pressure_coefficient = rest_density * sqare_cvel / (gamma * eta);
+  mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
   mat_prop.viscosity            = 1.0e-6f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
