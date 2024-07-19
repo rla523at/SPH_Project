@@ -75,8 +75,7 @@ $$ m_i = \frac{\rho_0}{\text{avg}(N)} $$
 
 ![2024-07-19 11 27 20 avg](https://github.com/user-attachments/assets/23b824c3-40ff-4d7b-9c4b-ca2d41a771cf)
 
-* 추가 고려 사항
-  * 각 particle마다 고유의 질량 값을 부여함으로써, 모든 particle의 초기 밀도가 $\rho_0$가 되게 맞출 수 있어 이를 테스트 해볼 예정.
+* 추가 고려 사항  
   * 실제 simulation에서 어떤 차이를 보이는지 테스트해볼 예정
 
 
