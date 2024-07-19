@@ -16,37 +16,38 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   solution_domain.x_start = -2.5f;
   solution_domain.x_end   = 2.5f;
   solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 6.0f;
+  solution_domain.y_end   = 10.0f;
   solution_domain.z_start = -2.5f;
   solution_domain.z_end   = 2.5f;
 
+  std::vector<Domain> init_cond_domains;
+
+  // IC Start
+
   //zero gravity domain
   Domain init_cond_domain;
-  init_cond_domain.x_start = 0.0f;
-  init_cond_domain.x_end   = 0.2f;
+  init_cond_domain.x_start = 1.0f;
+  init_cond_domain.x_end   = 1.2f;
   init_cond_domain.y_start = 1.0f;
   init_cond_domain.y_end   = 1.2f;
-  init_cond_domain.z_start = 0.0f;
-  init_cond_domain.z_end   = 0.2f;
-    
-  Initial_Condition_Dam init_cond;
-  init_cond.dam             = init_cond_domain;
-  init_cond.division_length = 0.1f;
+  init_cond_domain.z_start = 1.0f;
+  init_cond_domain.z_end   = 1.2f;
+  
+  init_cond_domains.push_back(init_cond_domain);
 
-  constexpr float square_cvel = 1500;
+  constexpr float square_cvel = 10;
+
 
   //// Dam breaking
   //Domain init_cond_domain;
   //init_cond_domain.x_start = -2.4f;
   //init_cond_domain.x_end   = -1.4f;
   //init_cond_domain.y_start = 0.1f;
-  //init_cond_domain.y_end   = 2.1f;
-  //init_cond_domain.z_start = -2.4f;
-  //init_cond_domain.z_end   = -1.4f;
+  //init_cond_domain.y_end   = 4.1f;
+  //init_cond_domain.z_start = 1.4f;
+  //init_cond_domain.z_end   = 2.4f;
 
-  //Initial_Condition_Dam init_cond;
-  //init_cond.dam             = init_cond_domain;
-  //init_cond.division_length = 0.05f;
+  //init_cond_domains.push_back(init_cond_domain);
 
   //constexpr float eta          = 0.01f; // Tait's equation parameter
   //const float     square_cvel   = 2.0f * 9.8f * init_cond_domain.dy() / eta;
@@ -68,13 +69,17 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   //dam2.z_start = 1.4f;
   //dam2.z_end   = 2.4f;
 
-  //Initial_Condition_Double_Dam init_cond;
-  //init_cond.dam1            = dam1;
-  //init_cond.dam2            = dam2;
-  //init_cond.division_length = 0.1f;
+  //init_cond_domains.push_back(dam1);
+  //init_cond_domains.push_back(dam2);
 
-  //constexpr float eta          = 0.01f; // Tait's equation parameter
-  //const float square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
+  //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
+
+  // IC END
+
+  Initial_Condition_Cubes init_cond;
+  init_cond.domains         = init_cond_domains;
+  init_cond.division_length = 0.01f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter
@@ -83,7 +88,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 1.0e-6f;
+  mat_prop.viscosity            = 0.0e-6f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
@@ -93,56 +98,27 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   this->init_VS_SRbuffer(cptr_device);
   this->init_VS_SRview(cptr_device);
+  this->init_VS_Sbuffer(cptr_device);
   this->init_VS(cptr_device);
   this->init_GS_Cbuffer(cptr_device);
   this->init_GS(cptr_device);
   this->init_PS(cptr_device);
-
-  //init Vertex Shader Staging Buffer
-  {
-    const UINT data_size    = sizeof(Vector3);
-    const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
-
-    D3D11_BUFFER_DESC buffer_desc   = {};
-    buffer_desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
-    buffer_desc.Usage               = D3D11_USAGE_STAGING;
-    buffer_desc.BindFlags           = NULL;
-    buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
-    buffer_desc.MiscFlags           = NULL;
-    buffer_desc.StructureByteStride = NULL;
-
-    D3D11_SUBRESOURCE_DATA buffer_data = {};
-    buffer_data.pSysMem                = _uptr_particles->position_data();
-    buffer_data.SysMemPitch            = 0;
-    buffer_data.SysMemSlicePitch       = 0;
-
-    const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_Sbuffer.GetAddressOf());
-    REQUIRE(!FAILED(result), "staging buffer creation should succeed");
-  }
 }
 
 SPH::~SPH(void) = default;
 
 void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  //const auto& pos_vectors = _uptr_particles->get_position_vectors();
-  //_uptr_neighborhood->update(pos_vectors);
-  //_uptr_particles->update(*_uptr_neighborhood);
-  //this->update_Vbuffer(cptr_context);
-
-  //_GS_Cbuffer_data.v_cam_pos = camera.position_vector();
-  //_GS_Cbuffer_data.v_cam_up  = camera.up_vector();
-  //_GS_Cbuffer_data.m_view    = camera.view_matrix();
-  //_GS_Cbuffer_data.m_proj    = camera.proj_matrix();
-  //this->update_GS_Cbuffer(cptr_context);
-
   _uptr_particles->update();
+
   this->update_VS_SRview(cptr_context);
+  //this->update_Vbuffer(cptr_context);
 
   _GS_Cbuffer_data.v_cam_pos = camera.position_vector();
   _GS_Cbuffer_data.v_cam_up  = camera.up_vector();
   _GS_Cbuffer_data.m_view    = camera.view_matrix();
   _GS_Cbuffer_data.m_proj    = camera.proj_matrix();
+
   this->update_GS_Cbuffer(cptr_context);
 }
 
@@ -474,6 +450,28 @@ void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
 
   const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_SRbuffer.GetAddressOf());
   REQUIRE(!FAILED(result), "SPH vertex shader resource buffer creation should succeed");
+}
+
+void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
+{
+  const UINT data_size    = sizeof(Vector3);
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
+
+  D3D11_BUFFER_DESC buffer_desc   = {};
+  buffer_desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
+  buffer_desc.Usage               = D3D11_USAGE_STAGING;
+  buffer_desc.BindFlags           = NULL;
+  buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
+  buffer_desc.MiscFlags           = NULL;
+  buffer_desc.StructureByteStride = NULL;
+
+  D3D11_SUBRESOURCE_DATA buffer_data = {};
+  buffer_data.pSysMem                = _uptr_particles->position_data();
+  buffer_data.SysMemPitch            = 0;
+  buffer_data.SysMemSlicePitch       = 0;
+
+  const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_Sbuffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "SPH vertex shader staging buffer creation should succeed");
 }
 
 void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)

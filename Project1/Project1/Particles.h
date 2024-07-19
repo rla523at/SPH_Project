@@ -23,32 +23,20 @@ struct Material_Property
   float viscosity            = 0.0f;
 };
 
-struct Initial_Condition_Dam
+struct Initial_Condition_Cubes
 {
-  Domain dam;
-  float  division_length = 0.0f;
-};
-
-struct Initial_Condition_Double_Dam
-{
-  Domain dam1;
-  Domain dam2;
-  float  division_length = 0.0f;
+  std::vector<Domain> domains;
+  float               division_length = 0.0f;
 };
 
 class Fluid_Particles
 {
 public:
   Fluid_Particles(
-	  const Material_Property& property, 
-	  const Initial_Condition_Dam& initial_condition, 
-	  const Domain& solution_domain);
+    const Material_Property&       property,
+    const Initial_Condition_Cubes& initial_condition,
+    const Domain&                  solution_domain);
 
-  Fluid_Particles(
-	  const Material_Property& property, 
-	  const Initial_Condition_Double_Dam& initial_condition, 
-	  const Domain& domain);
-  
   ~Fluid_Particles(void);
 
 public:
@@ -72,6 +60,7 @@ private:
   float W(const float q) const; //kernel function
   float dW_dq(const float q) const;
 
+  void  init_mass(void);
   float cal_mass_per_particle_number_density_mean(void) const;
   float cal_mass_per_particle_number_density_max(void) const;
   float cal_mass_per_particle_number_density_min(void) const;
@@ -81,6 +70,8 @@ private:
   size_t _num_particle      = 0;
   float  _support_length    = 0.0f;
   float  _mass_per_particle = 0.0f;
+
+  std::vector<float> _mass;
 
   std::vector<Vector3> _position_vectors;
   std::vector<Vector3> _velocity_vectors;

@@ -1,4 +1,14 @@
 https://github.com/InteractiveComputerGraphics/SPlisHSPlasH
+- Pressure
+    - TimeStepWCSPH::step
+    - TimeStepWCSPH::TimeStepWCSPH(m_stiffness = 50.0, m_exponent=7.0)
+
+- Time Integration
+    - TimeStepWCSPH::step
+    - semi implicit Euler
+
+- 
+
 - determineValues
 - computeDensities
 

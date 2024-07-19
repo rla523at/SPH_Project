@@ -51,6 +51,7 @@ private:
   void init_Vbuffer(const ComPtr<ID3D11Device> cptr_device);
   
   void init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device);
   void init_VS_SRview(const ComPtr<ID3D11Device> cptr_device);
   void init_VS(const ComPtr<ID3D11Device> cptr_device);
   void init_GS_Cbuffer(const ComPtr<ID3D11Device> cptr_device);
