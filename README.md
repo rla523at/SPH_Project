@@ -1,3 +1,13 @@
+# 2024.07.19
+## Solver
+Surface Tension Force와 Boundary Particle 관련 내용 학습
+* 1994 (monaghan) Simulating Free Surface Flows with SPH
+* 2000 (Joseph) Simulating surface tension with SPH
+* 2005 (monaghan) Smoothed Particle Hydrodynamics
+* 2007 (Markus and Matthias) Weakly compressible SPH for free surface flows
+* 2022 (Dan et al) A Survey on SPH Methods in Computer Graphics
+
+
 # 2024.07.18
 ## Solver
 

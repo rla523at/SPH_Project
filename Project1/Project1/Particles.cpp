@@ -47,7 +47,7 @@ Fluid_Particles::Fluid_Particles(
     _num_particle += num_x * num_y * num_z;
   }
 
-  _support_length = ic.division_length * 1.6f;
+  _support_length = 1.2f * ic.division_length;
 
   _pressures.resize(_num_particle);
   _densities.resize(_num_particle, _material_proeprty.rest_density);
@@ -137,6 +137,8 @@ void Fluid_Particles::update_density_and_pressure(void)
     const auto& neighbor_indexes = _uptr_neighborhood->search(i);
     const auto  num_neighbor     = neighbor_indexes.size();
 
+    const float m0 = _mass[i];
+
     for (int j = 0; j < num_neighbor; j++)
     {
       const size_t neighbor_index = neighbor_indexes[j];
@@ -146,7 +148,7 @@ void Fluid_Particles::update_density_and_pressure(void)
       const float dist = (v_xi - v_xj).Length();
       const auto  q    = dist / h;
 
-      const float m0 = _mass[neighbor_index];
+      //const float m0 = _mass[neighbor_index];
 
       cur_rho += m0 * W(q);
     }
@@ -162,10 +164,10 @@ void Fluid_Particles::update_acceleration(void)
   //const float m0    = _mass_per_particle;
   const float h     = _support_length / 2;
   const float mu    = _material_proeprty.viscosity;
-  const float sigma = 0.2e0f;
+  const float sigma = 0.0e0f;
 
-  //constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
+  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
+  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
 
 #pragma omp parallel for
   for (int i = 0; i < _num_particle; i++)
@@ -248,17 +250,17 @@ void Fluid_Particles::update_acceleration(void)
 
 void Fluid_Particles::time_integration(void)
 {
-  constexpr float dt = 1.0e-5f;
+  constexpr float dt = 1.0e-4f;
 
-  static float time = 0.0f;
-  static float target = 0.01f;
-  time += dt;
+  //static float time = 0.0f;
+  //static float target = 0.01f;
+  //time += dt;
 
-  if (time > target)
-  {
-    target += 0.01f;
-    std::cout << time << "\n";
-  }
+  //if (time > target)
+  //{
+  //  target += 0.01f;
+  //  std::cout << time << "\n";
+  //}
 
   this->semi_implicit_euler(dt);
   //this->leap_frog_DKD(dt);
@@ -501,37 +503,37 @@ float Fluid_Particles::cal_mass_per_particle_number_density_min(void) const
 
 void Fluid_Particles::init_mass(void)
 {
-  //_mass_per_particle = this->cal_mass_per_particle_number_density_mean();
-  //_mass.resize(_num_particle, _mass_per_particle);
+  _mass_per_particle = this->cal_mass_per_particle_number_density_mean();
+  _mass.resize(_num_particle, _mass_per_particle);
 
-  _mass.resize(_num_particle);
+  //_mass.resize(_num_particle);
 
-  const float rho0 = _material_proeprty.rest_density;
-  const float h    = _support_length / 2;
+  //const float rho0 = _material_proeprty.rest_density;
+  //const float h    = _support_length / 2;
 
-  for (int i = 0; i < _num_particle; i++)
-  {
-    float number_density = 0.0;
+  //for (int i = 0; i < _num_particle; i++)
+  //{
+  //  float number_density = 0.0;
 
-    const auto& v_xi = _position_vectors[i];
+  //  const auto& v_xi = _position_vectors[i];
 
-    const auto& neighbor_indexes = _uptr_neighborhood->search(i);
-    const auto  num_neighbor     = neighbor_indexes.size();
+  //  const auto& neighbor_indexes = _uptr_neighborhood->search(i);
+  //  const auto  num_neighbor     = neighbor_indexes.size();
 
-    for (int j = 0; j < num_neighbor; j++)
-    {
-      const auto neighbor_index = neighbor_indexes[j];
+  //  for (int j = 0; j < num_neighbor; j++)
+  //  {
+  //    const auto neighbor_index = neighbor_indexes[j];
 
-      const auto& v_xj = _position_vectors[neighbor_index];
+  //    const auto& v_xj = _position_vectors[neighbor_index];
 
-      const float dist = (v_xi - v_xj).Length();
-      const auto  q    = dist / h;
+  //    const float dist = (v_xi - v_xj).Length();
+  //    const auto  q    = dist / h;
 
-      number_density += W(q);
-    }
+  //    number_density += W(q);
+  //  }
 
-    _mass[i] = rho0 / number_density;
-  }
+  //  _mass[i] = rho0 / number_density;
+  //}
 }
 
 float Fluid_Particles::cal_mass_per_particle_number_density_mean(void) const

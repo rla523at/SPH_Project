@@ -24,33 +24,33 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   // IC Start
 
-  //zero gravity domain
-  Domain init_cond_domain;
-  init_cond_domain.x_start = 1.0f;
-  init_cond_domain.x_end   = 1.2f;
-  init_cond_domain.y_start = 1.0f;
-  init_cond_domain.y_end   = 1.2f;
-  init_cond_domain.z_start = 1.0f;
-  init_cond_domain.z_end   = 1.2f;
-  
-  init_cond_domains.push_back(init_cond_domain);
-
-  constexpr float square_cvel = 10;
-
-
-  //// Dam breaking
+  ////zero gravity domain
   //Domain init_cond_domain;
-  //init_cond_domain.x_start = -2.4f;
-  //init_cond_domain.x_end   = -1.4f;
-  //init_cond_domain.y_start = 0.1f;
-  //init_cond_domain.y_end   = 4.1f;
-  //init_cond_domain.z_start = 1.4f;
-  //init_cond_domain.z_end   = 2.4f;
-
+  //init_cond_domain.x_start = 1.0f;
+  //init_cond_domain.x_end   = 1.2f;
+  //init_cond_domain.y_start = 1.0f;
+  //init_cond_domain.y_end   = 1.2f;
+  //init_cond_domain.z_start = 1.0f;
+  //init_cond_domain.z_end   = 1.2f;
+  //
   //init_cond_domains.push_back(init_cond_domain);
 
-  //constexpr float eta          = 0.01f; // Tait's equation parameter
-  //const float     square_cvel   = 2.0f * 9.8f * init_cond_domain.dy() / eta;
+  //constexpr float square_cvel = 1000;
+
+
+  // Dam breaking
+  Domain init_cond_domain;
+  init_cond_domain.x_start = 1.4f;
+  init_cond_domain.x_end   = 2.4f;
+  init_cond_domain.y_start = 0.1f;
+  init_cond_domain.y_end   = 4.1f;
+  init_cond_domain.z_start = -2.4f;
+  init_cond_domain.z_end   = -1.4f;
+
+  init_cond_domains.push_back(init_cond_domain);
+
+  constexpr float eta          = 0.01f; // Tait's equation parameter
+  const float     square_cvel   = 2.0f * 9.8f * init_cond_domain.dy() / eta;
 
   //// Double Dam breaking
   //Domain dam1;
@@ -79,7 +79,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains         = init_cond_domains;
-  init_cond.division_length = 0.01f;
+  init_cond.division_length = 0.1f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter
