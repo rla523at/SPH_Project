@@ -133,5 +133,11 @@
     <FxCompile Include="Square_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
+    <FxCompile Include="SPH_boundary_VS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="SPH_boundary_PS.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

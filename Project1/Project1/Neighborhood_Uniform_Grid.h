@@ -23,12 +23,19 @@ namespace ms
 class Neighborhood_Uniform_Grid : public Neighborhood
 {
 public:
-  Neighborhood_Uniform_Grid(const Domain& domain, const float divide_length, const std::vector<Vector3>& pos_vectors);
+  Neighborhood_Uniform_Grid(
+    const Domain&               domain,
+    const float                 divide_length,
+    const std::vector<Vector3>& fluid_particle_pos_vectors,
+    const std::vector<Vector3>& boundary_particle_pos_vectors);
 
 public:
-  void update(const std::vector<Vector3>& pos_vectors) override;
+  void update(
+    const std::vector<Vector3>& fluid_particle_pos_vectors,
+    const std::vector<Vector3>& boundary_particle_pos_vectors) override;
 
-  const std::vector<size_t>& search(const size_t pid) const override;
+  const std::vector<size_t>& search_for_fluid(const size_t fpid) const override;
+  const std::vector<size_t>& search_for_boundary(const size_t bpid) const override;
 
 private:
   Index_Vector grid_cell_index_vector(const Vector3& v_pos) const;
@@ -39,12 +46,20 @@ private:
   //fill neighbor particle ids into pids and return number of neighbor particles
   size_t search(const Vector3& pos, size_t* pids) const;
 
-  void update_pid_to_neighbor_pids(const std::vector<Vector3>& pos_vectors);
+  void update_fpid_to_neighbor_fpids(const std::vector<Vector3>& pos_vectors);
+  void update_bpid_to_neighbor_fpids(
+    const std::vector<Vector3>& fluid_particle_pos_vectors,
+    const std::vector<Vector3>& boundary_particle_pos_vectors);
+
+  void init_gcid_to_neighbor_gcids(void);
 
 private:
-  std::vector<std::vector<size_t>> _gcid_to_pids;
-  std::vector<size_t>              _pid_to_gcid;
-  std::vector<std::vector<size_t>> _pid_to_neighbor_pids;
+  std::vector<std::vector<size_t>> _gcid_to_neighbor_gcids;
+  std::vector<std::vector<size_t>> _gcid_to_fpids;
+  std::vector<size_t>              _fpid_to_gcid;
+  std::vector<size_t>              _bpid_to_gcid;
+  std::vector<std::vector<size_t>> _fpid_to_neighbor_fpids;
+  std::vector<std::vector<size_t>> _bpid_to_neighbor_fpids;
 
   Domain _domain;
   float  _divide_length = 0.0f;
@@ -54,7 +69,7 @@ private:
   size_t _num_z_cell = 0;
 
   //prevent heap allocation
-  std::vector<std::vector<size_t>> _thread_neighbor_candidates;
+  //std::vector<std::vector<size_t>> _thread_neighbor_candidates;
 };
 
 } // namespace ms

@@ -17,6 +17,7 @@ namespace ms
 {
 struct Material_Property
 {
+  float sqaure_sound_speed   = 0.0f;
   float rest_density         = 0.0f;
   float gamma                = 0.0f; // Tait's equation parameter
   float pressure_coefficient = 0.0f;
@@ -43,14 +44,16 @@ public:
   void update(void);
 
 public:
-  const Vector3* position_data(void) const;
-  size_t         num_particle(void) const;
+  const Vector3* fluid_particle_position_data(void) const;
+  const Vector3* boundary_particle_position_data(void) const;
+  size_t         num_fluid_particle(void) const;
+  size_t         num_boundary_particle(void) const;
   float          support_length(void) const;
 
 private:
   void update_density_and_pressure(void);
   void update_acceleration(void);
-  void apply_boundary_condition(void);
+  //void apply_boundary_condition(void);
 
   void time_integration(void);
   void semi_implicit_euler(const float dt);
@@ -59,6 +62,7 @@ private:
 
   float W(const float q) const; //kernel function
   float dW_dq(const float q) const;
+  float B(const float dist) const; //boundary function
 
   void  init_mass(void);
   float cal_mass_per_particle_number_density_mean(void) const;
@@ -66,20 +70,23 @@ private:
   float cal_mass_per_particle_number_density_min(void) const;
   float cal_mass_per_particle_1994_monaghan(const float total_volume) const;
 
+  void init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length);
+
 private:
-  size_t _num_particle      = 0;
-  float  _support_length    = 0.0f;
-  float  _mass_per_particle = 0.0f;
+  size_t _num_fluid_particle = 0;
+  float  _support_length     = 0.0f;
+  float  _mass_per_particle  = 0.0f;
 
   std::vector<float> _mass;
 
-  std::vector<Vector3> _position_vectors;
-  std::vector<Vector3> _velocity_vectors;
-  std::vector<Vector3> _accelaration_vectors;
-  std::vector<float>   _densities;
-  std::vector<float>   _pressures;
+  std::vector<Vector3> _fluid_position_vectors;
+  std::vector<Vector3> _fluid_velocity_vectors;
+  std::vector<Vector3> _fluid_accelaration_vectors;
+  std::vector<float>   _fluid_densities;
+  std::vector<float>   _fluid_pressures;
 
-  std::vector<Vector3> _leap_frog;
+  std::vector<Vector3> _boundary_position_vectors;
+  std::vector<Vector3> _boundary_normal_vectors;
 
   Material_Property             _material_proeprty;
   Domain                        _domain;

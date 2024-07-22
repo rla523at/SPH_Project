@@ -16,9 +16,16 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   solution_domain.x_start = -2.5f;
   solution_domain.x_end   = 2.5f;
   solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 10.0f;
-  solution_domain.z_start = -2.5f;
-  solution_domain.z_end   = 2.5f;
+  solution_domain.y_end   = 4.0f;
+  solution_domain.z_start = -1.0f;
+  solution_domain.z_end   = 1.0f;
+
+  //solution_domain.x_start = 2.4f;
+  //solution_domain.x_end   = 2.5f;
+  //solution_domain.y_start = 0.1f;
+  //solution_domain.y_end   = 0.2f;
+  //solution_domain.z_start = 0.9f;
+  //solution_domain.z_end   = 1.0f;
 
   std::vector<Domain> init_cond_domains;
 
@@ -37,20 +44,33 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   //constexpr float square_cvel = 1000;
 
-
-  // Dam breaking
+  // Solo Particle
   Domain init_cond_domain;
-  init_cond_domain.x_start = 1.4f;
-  init_cond_domain.x_end   = 2.4f;
-  init_cond_domain.y_start = 0.1f;
-  init_cond_domain.y_end   = 4.1f;
-  init_cond_domain.z_start = -2.4f;
-  init_cond_domain.z_end   = -1.4f;
+  init_cond_domain.x_start = -2.4f;
+  init_cond_domain.x_end   = -2.3f;
+  init_cond_domain.y_start = 0.2f;
+  init_cond_domain.y_end   = 0.3f;
+  init_cond_domain.z_start = -0.4f;
+  init_cond_domain.z_end   = 0.4f;
 
   init_cond_domains.push_back(init_cond_domain);
 
-  constexpr float eta          = 0.01f; // Tait's equation parameter
-  const float     square_cvel   = 2.0f * 9.8f * init_cond_domain.dy() / eta;
+  constexpr float eta         = 0.01f; // Tait's equation parameter
+  const float     square_cvel = 100.0f;
+
+  //// Dam breaking
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = -2.4f;
+  //init_cond_domain.x_end   = -2.4f;
+  //init_cond_domain.y_start = 0.4f;
+  //init_cond_domain.y_end   = 0.4f;
+  //init_cond_domain.z_start = -0.4f;
+  //init_cond_domain.z_end   = 0.4f;
+
+  //init_cond_domains.push_back(init_cond_domain);
+
+  //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
 
   //// Double Dam breaking
   //Domain dam1;
@@ -85,6 +105,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   constexpr float gamma        = 7.0f; // Tait's equation parameter
 
   Material_Property mat_prop;
+  mat_prop.sqaure_sound_speed   = square_cvel;
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
@@ -94,8 +115,6 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   _GS_Cbuffer_data.radius = _uptr_particles->support_length() / 2;
 
-  //this->init_Vbuffer(cptr_device);
-
   this->init_VS_SRbuffer(cptr_device);
   this->init_VS_SRview(cptr_device);
   this->init_VS_Sbuffer(cptr_device);
@@ -103,6 +122,11 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   this->init_GS_Cbuffer(cptr_device);
   this->init_GS(cptr_device);
   this->init_PS(cptr_device);
+
+  this->init_boundary_Vbuffer(cptr_device);
+  this->init_boundary_VS(cptr_device);
+  this->init_boundary_PS(cptr_device);
+  this->init_boundary_blender_state(cptr_device);
 }
 
 SPH::~SPH(void) = default;
@@ -124,78 +148,20 @@ void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_co
 
 void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  this->set_graphics_pipeline(cptr_context);
+  this->set_fluid_graphics_pipeline(cptr_context);
 
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
-
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
   cptr_context->Draw(num_particle, 0);
+
+  this->set_boundary_graphics_pipeline(cptr_context);
+  const auto num_boundary_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
+  cptr_context->Draw(num_boundary_particle, 0);
 
   this->reset_graphics_pipeline(cptr_context);
 }
 
 void SPH::init_VS(const ComPtr<ID3D11Device> cptr_device)
 {
-  //  constexpr auto* file_name                   = L"SPH_VS.hlsl";
-  //  constexpr auto* entry_point_name            = "main";
-  //  constexpr auto* sharder_target_profile_name = "vs_5_0";
-  //
-  //  D3D11_INPUT_ELEMENT_DESC pos_desc = {};
-  //  pos_desc.SemanticName             = "POSITION";
-  //  pos_desc.SemanticIndex            = 0;
-  //  pos_desc.Format                   = DXGI_FORMAT_R32G32B32_FLOAT;
-  //  pos_desc.InputSlot                = 0;
-  //  pos_desc.AlignedByteOffset        = 0;
-  //  pos_desc.InputSlotClass           = D3D11_INPUT_PER_VERTEX_DATA;
-  //  pos_desc.InstanceDataStepRate     = 0;
-  //
-  //  constexpr UINT           num_input                      = 1;
-  //  D3D11_INPUT_ELEMENT_DESC input_element_descs[num_input] = {pos_desc};
-  //
-  //#if defined(_DEBUG)
-  //  constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-  //#else
-  //  constexpr UINT compile_flags = NULL;
-  //#endif
-  //
-  //  ComPtr<ID3DBlob> shader_blob;
-  //  ComPtr<ID3DBlob> error_blob;
-  //
-  //  {
-  //    const auto result = D3DCompileFromFile(
-  //      file_name,
-  //      nullptr,
-  //      nullptr,
-  //      entry_point_name,
-  //      sharder_target_profile_name,
-  //      compile_flags,
-  //      NULL,
-  //      &shader_blob,
-  //      &error_blob);
-  //
-  //    REQUIRE(!FAILED(result), "SPH vertex shader compiling should succeed");
-  //  }
-  //
-  //  {
-  //    const auto result = cptr_device->CreateInputLayout(
-  //      input_element_descs,
-  //      num_input,
-  //      shader_blob->GetBufferPointer(),
-  //      shader_blob->GetBufferSize(),
-  //      _cptr_input_layout.GetAddressOf());
-  //
-  //    REQUIRE(!FAILED(result), "SPH input layout creation should succeed");
-  //  }
-  //
-  //  {
-  //    const auto result = cptr_device->CreateVertexShader(
-  //      shader_blob->GetBufferPointer(),
-  //      shader_blob->GetBufferSize(),
-  //      NULL,
-  //      _cptr_VS.GetAddressOf());
-  //
-  //    REQUIRE(!FAILED(result), "SPH vertex shader creation should succeed");
-  //  }
-
   constexpr auto* file_name                   = L"SPH_VS.hlsl";
   constexpr auto* entry_point_name            = "main";
   constexpr auto* sharder_target_profile_name = "vs_5_0";
@@ -341,21 +307,21 @@ void SPH::init_PS(const ComPtr<ID3D11Device> cptr_device)
 void SPH::update_Vbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   const auto  data_size    = sizeof(Vector3);
-  const auto  num_particle = _uptr_particles->num_particle();
-  const auto* data_ptr     = _uptr_particles->position_data();
+  const auto  num_particle = _uptr_particles->num_fluid_particle();
+  const auto* data_ptr     = _uptr_particles->fluid_particle_position_data();
   const auto  copy_size    = data_size * num_particle;
 
   D3D11_MAPPED_SUBRESOURCE ms;
-  cptr_context->Map(_cptr_Vbuffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+  cptr_context->Map(_cptr_boundary_Vbuffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
   memcpy(ms.pData, data_ptr, copy_size);
-  cptr_context->Unmap(_cptr_Vbuffer.Get(), NULL);
+  cptr_context->Unmap(_cptr_boundary_Vbuffer.Get(), NULL);
 }
 
 void SPH::update_VS_SRview(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   const UINT     data_size    = sizeof(Vector3);
-  const UINT     num_particle = static_cast<UINT>(_uptr_particles->num_particle());
-  const Vector3* data_ptr     = _uptr_particles->position_data();
+  const UINT     num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+  const Vector3* data_ptr     = _uptr_particles->fluid_particle_position_data();
 
   //Copy CPU to Staging Buffer
   const size_t copy_size = data_size * num_particle;
@@ -379,61 +345,46 @@ void SPH::update_GS_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
   cptr_context->Unmap(_cptr_GS_Cbuffer.Get(), NULL);
 }
 
-void SPH::set_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
+void SPH::set_fluid_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  //UINT stride = sizeof(Vector3);
-  //UINT offset = 0;
-  //cptr_context->IASetVertexBuffers(0, 1, _cptr_Vbuffer.GetAddressOf(), &stride, &offset);
-  //cptr_context->IASetInputLayout(_cptr_input_layout.Get());
-  //cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-
-  //cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, 0);
-
-  //cptr_context->GSSetConstantBuffers(0, 1, _cptr_GS_Cbuffer.GetAddressOf());
-  //cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, 0);
-
-  //cptr_context->PSSetShader(_cptr_PS.Get(), nullptr, 0);
-
   cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-
   cptr_context->VSSetShaderResources(0, 1, _cptr_VS_SRview.GetAddressOf());
   cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, 0);
-
   cptr_context->GSSetConstantBuffers(0, 1, _cptr_GS_Cbuffer.GetAddressOf());
   cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, 0);
-
   cptr_context->PSSetShader(_cptr_PS.Get(), nullptr, 0);
+}
+
+void SPH::set_boundary_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
+{
+  UINT stride = sizeof(Vector3);
+  UINT offset = 0;
+  cptr_context->IASetVertexBuffers(0, 1, _cptr_boundary_Vbuffer.GetAddressOf(), &stride, &offset);
+  cptr_context->IASetInputLayout(_cptr_boundary_input_layout.Get());
+  cptr_context->VSSetShader(_cptr_boundary_VS.Get(), nullptr, 0);
+  cptr_context->PSSetShader(_cptr_boundary_PS.Get(), nullptr, 0);
+  cptr_context->OMSetBlendState(_cptr_boundary_blend_state.Get(), nullptr, 0XFFFFFFFF);
 }
 
 void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  //UINT stride = 0;
-  //UINT offset = 0;
-  //cptr_context->IASetVertexBuffers(0, 0, nullptr, &stride, &offset);
-  //cptr_context->IASetInputLayout(nullptr);
-  //cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
-
-  //cptr_context->VSSetShaderResources(0, 0, nullptr);
-  //cptr_context->VSSetShader(nullptr, nullptr, 0);
-
-  //cptr_context->GSSetConstantBuffers(0, 0, nullptr);
-  //cptr_context->GSSetShader(nullptr, nullptr, 0);
-
-  //cptr_context->PSSetShader(nullptr, nullptr, 0);
-
+  UINT stride = 0;
+  UINT offset = 0;
+  cptr_context->IASetVertexBuffers(0, 0, nullptr, &stride, &offset);
+  cptr_context->IASetInputLayout(nullptr);
+  cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
   cptr_context->VSSetShaderResources(0, 0, nullptr);
   cptr_context->VSSetShader(nullptr, nullptr, 0);
-
   cptr_context->GSSetConstantBuffers(0, 0, nullptr);
   cptr_context->GSSetShader(nullptr, nullptr, 0);
-
   cptr_context->PSSetShader(nullptr, nullptr, 0);
+  //cptr_context->OMSetBlendState(nullptr, nullptr, NULL);
 }
 
 void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT data_size    = sizeof(Vector3);
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
 
   D3D11_BUFFER_DESC buffer_desc   = {};
   buffer_desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
@@ -444,7 +395,7 @@ void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
   buffer_desc.StructureByteStride = NULL;
 
   D3D11_SUBRESOURCE_DATA buffer_data = {};
-  buffer_data.pSysMem                = _uptr_particles->position_data();
+  buffer_data.pSysMem                = _uptr_particles->fluid_particle_position_data();
   buffer_data.SysMemPitch            = 0;
   buffer_data.SysMemSlicePitch       = 0;
 
@@ -455,7 +406,7 @@ void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
 void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT data_size    = sizeof(Vector3);
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
 
   D3D11_BUFFER_DESC buffer_desc   = {};
   buffer_desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
@@ -466,7 +417,7 @@ void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
   buffer_desc.StructureByteStride = NULL;
 
   D3D11_SUBRESOURCE_DATA buffer_data = {};
-  buffer_data.pSysMem                = _uptr_particles->position_data();
+  buffer_data.pSysMem                = _uptr_particles->fluid_particle_position_data();
   buffer_data.SysMemPitch            = 0;
   buffer_data.SysMemSlicePitch       = 0;
 
@@ -476,7 +427,7 @@ void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
 
 void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
 {
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
 
   D3D11_SHADER_RESOURCE_VIEW_DESC SRV_desc = {};
   SRV_desc.Format                          = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -487,26 +438,147 @@ void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
   REQUIRE(!FAILED(result), "SPH vertex shader resource buffer creation should succeed");
 }
 
-void SPH::init_Vbuffer(const ComPtr<ID3D11Device> cptr_device)
+void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT data_size    = sizeof(Vector3);
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_particle());
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
 
   D3D11_BUFFER_DESC desc   = {};
   desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
-  desc.Usage               = D3D11_USAGE_DYNAMIC;
+  desc.Usage               = D3D11_USAGE_IMMUTABLE;
   desc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
-  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+  desc.CPUAccessFlags      = NULL;
   desc.MiscFlags           = NULL;
   desc.StructureByteStride = NULL;
 
   D3D11_SUBRESOURCE_DATA initial_data = {};
-  initial_data.pSysMem                = _uptr_particles->position_data();
+  initial_data.pSysMem                = _uptr_particles->boundary_particle_position_data();
   initial_data.SysMemPitch            = 0;
   initial_data.SysMemSlicePitch       = 0;
 
-  const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_Vbuffer.GetAddressOf());
+  const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_boundary_Vbuffer.GetAddressOf());
   REQUIRE(!FAILED(result), "SPH vertex buffer creation should succeed");
+}
+
+void SPH::init_boundary_VS(const ComPtr<ID3D11Device> cptr_device)
+{
+  constexpr auto* file_name                   = L"SPH_boundary_VS.hlsl";
+  constexpr auto* entry_point_name            = "main";
+  constexpr auto* sharder_target_profile_name = "vs_5_0";
+
+  D3D11_INPUT_ELEMENT_DESC pos_desc = {};
+  pos_desc.SemanticName             = "POSITION";
+  pos_desc.SemanticIndex            = 0;
+  pos_desc.Format                   = DXGI_FORMAT_R32G32B32_FLOAT;
+  pos_desc.InputSlot                = 0;
+  pos_desc.AlignedByteOffset        = 0;
+  pos_desc.InputSlotClass           = D3D11_INPUT_PER_VERTEX_DATA;
+  pos_desc.InstanceDataStepRate     = 0;
+
+  constexpr UINT           num_input                      = 1;
+  D3D11_INPUT_ELEMENT_DESC input_element_descs[num_input] = {pos_desc};
+
+#if defined(_DEBUG)
+  constexpr UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+  constexpr UINT compile_flags = NULL;
+#endif
+
+  ComPtr<ID3DBlob> shader_blob;
+  ComPtr<ID3DBlob> error_blob;
+
+  {
+    const auto result = D3DCompileFromFile(
+      file_name,
+      nullptr,
+      nullptr,
+      entry_point_name,
+      sharder_target_profile_name,
+      compile_flags,
+      NULL,
+      &shader_blob,
+      &error_blob);
+
+    REQUIRE(!FAILED(result), "SPH boundary vertex shader compiling should succeed");
+  }
+
+  {
+    const auto result = cptr_device->CreateInputLayout(
+      input_element_descs,
+      num_input,
+      shader_blob->GetBufferPointer(),
+      shader_blob->GetBufferSize(),
+      _cptr_boundary_input_layout.GetAddressOf());
+
+    REQUIRE(!FAILED(result), "SPH boundary input layout creation should succeed");
+  }
+
+  {
+    const auto result = cptr_device->CreateVertexShader(
+      shader_blob->GetBufferPointer(),
+      shader_blob->GetBufferSize(),
+      NULL,
+      _cptr_boundary_VS.GetAddressOf());
+
+    REQUIRE(!FAILED(result), "SPH boundary vertex shader creation should succeed");
+  }
+}
+
+void SPH::init_boundary_PS(const ComPtr<ID3D11Device> cptr_device)
+{
+  constexpr auto* file_name                  = L"SPH_boundary_PS.hlsl";
+  constexpr auto* entry_point_name           = "main";
+  constexpr auto* shader_target_profile_name = "ps_5_0";
+
+#if defined(_DEBUG)
+  constexpr UINT compile_flag = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+  constexpr UINT compile_flag  = NULL;
+#endif
+
+  ComPtr<ID3DBlob> shader_blob;
+  ComPtr<ID3DBlob> error_blob;
+
+  {
+    const auto result = D3DCompileFromFile(
+      file_name,
+      nullptr,
+      nullptr,
+      entry_point_name,
+      shader_target_profile_name,
+      compile_flag,
+      NULL,
+      &shader_blob,
+      &error_blob);
+
+    REQUIRE(!FAILED(result), "SPH boundary pixel shader compiling should succeed");
+  }
+  {
+    const auto result = cptr_device->CreatePixelShader(
+      shader_blob->GetBufferPointer(),
+      shader_blob->GetBufferSize(),
+      NULL,
+      _cptr_boundary_PS.GetAddressOf());
+
+    REQUIRE(!FAILED(result), "SPH boundary pixel shader creation should succeed");
+  }
+}
+
+void SPH::init_boundary_blender_state(const ComPtr<ID3D11Device> cptr_device)
+{
+  D3D11_BLEND_DESC desc;
+  desc.AlphaToCoverageEnable                 = FALSE;
+  desc.IndependentBlendEnable                = FALSE;
+  desc.RenderTarget[0].BlendEnable           = true;
+  desc.RenderTarget[0].SrcBlend              = D3D11_BLEND_SRC_ALPHA;
+  desc.RenderTarget[0].DestBlend             = D3D11_BLEND_INV_SRC_ALPHA;
+  desc.RenderTarget[0].BlendOp               = D3D11_BLEND_OP_ADD;
+  desc.RenderTarget[0].BlendOpAlpha          = D3D11_BLEND_OP_ADD;
+  desc.RenderTarget[0].SrcBlendAlpha         = D3D11_BLEND_ZERO;
+  desc.RenderTarget[0].DestBlendAlpha        = D3D11_BLEND_ONE;
+  desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+  cptr_device->CreateBlendState(&desc, _cptr_boundary_blend_state.GetAddressOf());
 }
 
 } // namespace ms

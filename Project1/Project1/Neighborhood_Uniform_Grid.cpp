@@ -1,14 +1,18 @@
 #include "Neighborhood_Uniform_Grid.h"
 
 #include <algorithm>
-#include <iostream>
 #include <cmath>
+#include <iostream>
 #include <omp.h>
 
 namespace ms
 {
 
-Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(const Domain& domain, const float divide_length, const std::vector<Vector3>& pos_vectors)
+Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(
+  const Domain&               domain,
+  const float                 divide_length,
+  const std::vector<Vector3>& fluid_particle_pos_vectors,
+  const std::vector<Vector3>& boundary_particle_pos_vectors)
     : _domain(domain), _divide_length(divide_length)
 {
   const float dx = _domain.x_end - _domain.x_start;
@@ -19,33 +23,45 @@ Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(const Domain& domain, const
   _num_y_cell = static_cast<size_t>(std::ceil(dy / divide_length));
   _num_z_cell = static_cast<size_t>(std::ceil(dz / divide_length));
 
+  this->init_gcid_to_neighbor_gcids();
+
   const size_t num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
-  _gcid_to_pids.resize(num_cells);
+  _gcid_to_fpids.resize(num_cells);
 
-  const size_t num_particles = pos_vectors.size();
-  _pid_to_gcid.resize(num_particles);
+  const size_t num_fluid_particle = fluid_particle_pos_vectors.size();
+  _fpid_to_gcid.resize(num_fluid_particle);
+  _fpid_to_neighbor_fpids.resize(num_fluid_particle);
 
-  for (size_t pid = 0; pid < num_particles; ++pid)
+  for (size_t fpid = 0; fpid < num_fluid_particle; ++fpid)
   {
-    const auto& v_pos = pos_vectors[pid];
+    auto&       neighbor_fpids = _fpid_to_neighbor_fpids[fpid];
+    const auto& v_pos          = fluid_particle_pos_vectors[fpid];
+    const auto  gcid           = this->grid_cell_index(v_pos);
 
-    const auto gcid = this->grid_cell_index(v_pos);
+    _gcid_to_fpids[gcid].push_back(fpid);
 
-    _pid_to_gcid[pid] = gcid;
-    _gcid_to_pids[gcid].push_back(pid);
+    _fpid_to_gcid[fpid] = gcid;
+
+    neighbor_fpids.reserve(100);
   }
 
-  //
-  _pid_to_neighbor_pids.resize(num_particles);
-  for (auto& neighbor_pids : _pid_to_neighbor_pids)
-    neighbor_pids.reserve(100);
+  const auto num_boundary_particle = boundary_particle_pos_vectors.size();
+  _bpid_to_gcid.resize(num_boundary_particle);
+  _bpid_to_neighbor_fpids.resize(num_boundary_particle);
 
-  const auto num_max_threads = omp_get_max_threads();
-  _thread_neighbor_candidates.resize(num_max_threads);
-  for (auto& candidates : _thread_neighbor_candidates)
-    candidates.resize(10000);
+  for (size_t bpid = 0; bpid < num_boundary_particle; ++bpid)
+  {
+    auto&       neighbor_fpids = _bpid_to_neighbor_fpids[bpid];
+    const auto& v_pos          = boundary_particle_pos_vectors[bpid];
+    const auto  gcid           = this->grid_cell_index(v_pos);
 
-  this->update_pid_to_neighbor_pids(pos_vectors);
+    _bpid_to_gcid[bpid] = gcid;
+
+    neighbor_fpids.reserve(100);
+  }
+
+  this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
+  this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
 }
 
 size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
@@ -74,7 +90,7 @@ size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
 
         const auto neighbor_gcid = grid_cell_index(neighbor_gcid_vector);
 
-        const auto&  neighbor_pids    = _gcid_to_pids[neighbor_gcid];
+        const auto&  neighbor_pids    = _gcid_to_fpids[neighbor_gcid];
         const size_t num_neighbor_pid = neighbor_pids.size();
 
         for (size_t i = 0; i < num_neighbor_pid; ++i)
@@ -88,41 +104,47 @@ size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
   return index;
 }
 
-const std::vector<size_t>& Neighborhood_Uniform_Grid::search(const size_t pid) const
+const std::vector<size_t>& Neighborhood_Uniform_Grid::search_for_fluid(const size_t pid) const
 {
-  return _pid_to_neighbor_pids[pid];
+  return _fpid_to_neighbor_fpids[pid];
 }
 
-
-void Neighborhood_Uniform_Grid::update(const std::vector<Vector3>& pos_vectors)
+const std::vector<size_t>& Neighborhood_Uniform_Grid::search_for_boundary(const size_t bpid) const
 {
-  const size_t num_particles = pos_vectors.size();
+  return _bpid_to_neighbor_fpids[bpid];
+}
 
-  // update gcid_to_pids
-  for (size_t pid = 0; pid < num_particles; ++pid)
+void Neighborhood_Uniform_Grid::update(
+  const std::vector<Vector3>& fluid_particle_pos_vectors,
+  const std::vector<Vector3>& boundary_particle_pos_vectors)
+{
+  const size_t num_fluid_particles = fluid_particle_pos_vectors.size();
+
+  // update fpid_to_gcid and gcid_to_fpids
+  for (size_t fpid = 0; fpid < num_fluid_particles; ++fpid)
   {
-    const auto& v_xi = pos_vectors[pid];
+    const auto& v_xi = fluid_particle_pos_vectors[fpid];
 
-    const auto prev_gcid = _pid_to_gcid[pid];
+    const auto prev_gcid = _fpid_to_gcid[fpid];
 
     const auto cur_gcid = this->grid_cell_index(v_xi);
 
     if (prev_gcid != cur_gcid)
     {
-      //erase data in previous
-      auto& prev_pids = _gcid_to_pids[prev_gcid];
-      prev_pids.erase(std::find(prev_pids.begin(), prev_pids.end(), pid));
+      // update gcid_to_fpids
+      auto& prev_pids = _gcid_to_fpids[prev_gcid];
+      prev_pids.erase(std::find(prev_pids.begin(), prev_pids.end(), fpid));
 
-      //insert data in new
-      auto& new_pids = _gcid_to_pids[cur_gcid];
-      new_pids.push_back(pid);
+      auto& new_pids = _gcid_to_fpids[cur_gcid];
+      new_pids.push_back(fpid);
 
-      //update gcid
-      _pid_to_gcid[pid] = cur_gcid;
+      //update fpid_to_gcid
+      _fpid_to_gcid[fpid] = cur_gcid;
     }
   }
 
-  this->update_pid_to_neighbor_pids(pos_vectors);
+  this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
+  this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
 }
 
 Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
@@ -170,31 +192,106 @@ bool Neighborhood_Uniform_Grid::is_valid_index(const Index_Vector& index_vector)
   return true;
 }
 
-void Neighborhood_Uniform_Grid::update_pid_to_neighbor_pids(const std::vector<Vector3>& pos_vectors)
+void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<Vector3>& fluid_particle_pos_vectors)
 {
-  const size_t num_particles = pos_vectors.size();
+  const size_t num_particles = fluid_particle_pos_vectors.size();
 
 #pragma omp parallel for
-  for (int pid = 0; pid < num_particles; ++pid)
+  for (int fpid = 0; fpid < num_particles; ++fpid)
   {
-    auto& neighbor_pids = _pid_to_neighbor_pids[pid];
-    neighbor_pids.clear();
+    auto& neighbor_fpids = _fpid_to_neighbor_fpids[fpid];
+    neighbor_fpids.clear();
 
-    const auto& v_xi = pos_vectors[pid];
+    const auto& v_xi = fluid_particle_pos_vectors[fpid];
 
-    const auto thread_num       = omp_get_thread_num();
-    auto&      neighbor_candidates = _thread_neighbor_candidates[thread_num];
-    const auto num_candidates     = this->search(v_xi, neighbor_candidates.data());
+    const auto  gcid           = this->grid_cell_index(v_xi);
+    const auto& neighbor_gcids = _gcid_to_neighbor_gcids[gcid];
 
-    for (size_t i = 0; i < num_candidates; ++i)
+    for (auto gcid : neighbor_gcids)
     {
-      const auto  candidate_pid = neighbor_candidates[i];
-      const auto& v_xj          = pos_vectors[candidate_pid];
+      const auto& fpids = _gcid_to_fpids[gcid];
+      for (auto fpid : fpids)
+      {
+        const auto& v_xj = fluid_particle_pos_vectors[fpid];
+        if (_divide_length < (v_xi - v_xj).Length())
+          continue;
 
-      if (_divide_length < (v_xi - v_xj).Length())
-        continue;
+        neighbor_fpids.push_back(fpid);
+      }
+    }
+  }
+}
 
-      neighbor_pids.push_back(candidate_pid);
+void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(
+  const std::vector<Vector3>& fluid_particle_pos_vectors,
+  const std::vector<Vector3>& boundary_particle_pos_vectors)
+{
+  const size_t num_particles = boundary_particle_pos_vectors.size();
+
+#pragma omp parallel for
+  for (int bpid = 0; bpid < num_particles; ++bpid)
+  {
+    auto& neighbor_fpids = _bpid_to_neighbor_fpids[bpid];
+    neighbor_fpids.clear();
+
+    const auto& v_xi = boundary_particle_pos_vectors[bpid];
+
+    const auto  gcid           = _bpid_to_gcid[bpid];
+    const auto& neighbor_gcids = _gcid_to_neighbor_gcids[gcid];
+
+    for (auto gcid : neighbor_gcids)
+    {
+      const auto& fpids = _gcid_to_fpids[gcid];
+      for (auto fpid : fpids)
+      {
+        const auto& v_xj = fluid_particle_pos_vectors[fpid];
+        if (_divide_length < (v_xi - v_xj).Length())
+          continue;
+
+        neighbor_fpids.push_back(fpid);
+      }
+    }
+  }
+}
+
+void Neighborhood_Uniform_Grid::init_gcid_to_neighbor_gcids(void)
+{
+  constexpr long long delta[3] = {-1, 0, 1};
+
+  const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
+  _gcid_to_neighbor_gcids.resize(num_cells);
+
+  for (size_t i = 0; i < _num_x_cell; ++i)
+  {
+    for (size_t j = 0; j < _num_y_cell; ++j)
+    {
+      for (size_t k = 0; k < _num_z_cell; ++k)
+      {
+        const auto gcid_vector = Index_Vector{i, j, k};
+        const auto gcid        = this->grid_cell_index(gcid_vector);
+
+        auto& neighbor_gcids = _gcid_to_neighbor_gcids[gcid];
+
+        for (size_t p = 0; p < 3; ++p)
+        {
+          for (size_t q = 0; q < 3; ++q)
+          {
+            for (size_t r = 0; r < 3; ++r)
+            {
+              Index_Vector neighbor_gcid_vector;
+              neighbor_gcid_vector.x = gcid_vector.x + delta[p];
+              neighbor_gcid_vector.y = gcid_vector.y + delta[q];
+              neighbor_gcid_vector.z = gcid_vector.z + delta[r];
+
+              if (!this->is_valid_index(neighbor_gcid_vector))
+                continue;
+
+              const auto neighbor_gcid = this->grid_cell_index(neighbor_gcid_vector);
+              neighbor_gcids.push_back(neighbor_gcid);
+            }
+          }
+        }
+      }
     }
   }
 }

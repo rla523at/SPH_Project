@@ -15,12 +15,18 @@ public:
   };
 
 public:
-  void update(const std::vector<Vector3>& pos_vectors) override{};
+  void update(
+    const std::vector<Vector3>& fluid_particle_pos_vectors,
+    const std::vector<Vector3>& boundary_particle_pos_vectors) override{};
 
-  const std::vector<size_t>& search(const size_t pid) const override
+  const std::vector<size_t>& search_for_fluid(const size_t pid) const override
   {
     return _pids;
   }
+  const std::vector<size_t>& search_for_boundary(const size_t bpid) const override
+  {
+    return _pids;
+  };
 
 private:
   size_t              _num_particles = 0;
