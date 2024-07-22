@@ -3,6 +3,7 @@
 
 #include <directxtk/SimpleMath.h>
 #include <vector>
+#include <memory>
 
 //abbreviation
 using DirectX::SimpleMath::Vector3;
@@ -81,7 +82,7 @@ private:
 
   std::vector<Vector3> _fluid_position_vectors;
   std::vector<Vector3> _fluid_velocity_vectors;
-  std::vector<Vector3> _fluid_accelaration_vectors;
+  std::vector<Vector3> _fluid_acceleration_vectors;
   std::vector<float>   _fluid_densities;
   std::vector<float>   _fluid_pressures;
 

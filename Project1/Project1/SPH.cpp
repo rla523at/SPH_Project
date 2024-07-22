@@ -46,12 +46,12 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   // Solo Particle
   Domain init_cond_domain;
-  init_cond_domain.x_start = -2.4f;
-  init_cond_domain.x_end   = -2.3f;
+  init_cond_domain.x_start = 0.0f;
+  init_cond_domain.x_end   = 0.0f;
   init_cond_domain.y_start = 0.2f;
-  init_cond_domain.y_end   = 0.3f;
-  init_cond_domain.z_start = -0.4f;
-  init_cond_domain.z_end   = 0.4f;
+  init_cond_domain.y_end   = 0.2f;
+  init_cond_domain.z_start = 0.0f;
+  init_cond_domain.z_end   = 0.0f;
 
   init_cond_domains.push_back(init_cond_domain);
 

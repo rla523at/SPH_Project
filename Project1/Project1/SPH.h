@@ -6,6 +6,7 @@
 #include <numbers>
 #include <vector>
 #include <wrl.h> // ComPtr
+#include <memory>
 
 //Forward Declaration
 namespace ms
