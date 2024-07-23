@@ -54,7 +54,7 @@ public:
 private:
   void update_density_and_pressure(void);
   void update_acceleration(void);
-  //void apply_boundary_condition(void);
+  void apply_boundary_condition(void);
 
   void time_integration(void);
   void semi_implicit_euler(const float dt);

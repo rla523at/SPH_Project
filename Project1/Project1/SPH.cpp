@@ -16,7 +16,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   solution_domain.x_start = -2.5f;
   solution_domain.x_end   = 2.5f;
   solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 4.0f;
+  solution_domain.y_end   = 10.0f;
   solution_domain.z_start = -1.0f;
   solution_domain.z_end   = 1.0f;
 
@@ -31,41 +31,41 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   // IC Start
 
-  ////zero gravity domain
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = 1.0f;
-  //init_cond_domain.x_end   = 1.2f;
-  //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.2f;
-  //init_cond_domain.z_start = 1.0f;
-  //init_cond_domain.z_end   = 1.2f;
-  //
-  //init_cond_domains.push_back(init_cond_domain);
-
-  //constexpr float square_cvel = 1000;
-
-  // Solo Particle
+  //zero gravity domain
   Domain init_cond_domain;
-  init_cond_domain.x_start = 0.0f;
-  init_cond_domain.x_end   = 0.0f;
-  init_cond_domain.y_start = 0.2f;
-  init_cond_domain.y_end   = 0.2f;
-  init_cond_domain.z_start = 0.0f;
-  init_cond_domain.z_end   = 0.0f;
-
+  init_cond_domain.x_start = -0.5f;
+  init_cond_domain.x_end   = 0.5f;
+  init_cond_domain.y_start = 1.0f;
+  init_cond_domain.y_end   = 2.0f;
+  init_cond_domain.z_start = -0.5f;
+  init_cond_domain.z_end   = 0.5f;
+  
   init_cond_domains.push_back(init_cond_domain);
 
-  constexpr float eta         = 0.01f; // Tait's equation parameter
-  const float     square_cvel = 100.0f;
+  constexpr float square_cvel = 1000;
+
+  //// Solo Particle
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = 0.0f;
+  //init_cond_domain.x_end   = 0.0f;
+  //init_cond_domain.y_start = 0.2f;
+  //init_cond_domain.y_end   = 0.2f;
+  //init_cond_domain.z_start = 0.0f;
+  //init_cond_domain.z_end   = 0.0f;
+
+  //init_cond_domains.push_back(init_cond_domain);
+
+  //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 100.0f;
 
   //// Dam breaking
   //Domain init_cond_domain;
   //init_cond_domain.x_start = -2.4f;
-  //init_cond_domain.x_end   = -2.4f;
-  //init_cond_domain.y_start = 0.4f;
-  //init_cond_domain.y_end   = 0.4f;
-  //init_cond_domain.z_start = -0.4f;
-  //init_cond_domain.z_end   = 0.4f;
+  //init_cond_domain.x_end   = -1.4f;
+  //init_cond_domain.y_start = 0.2f;
+  //init_cond_domain.y_end   = 2.2f;
+  //init_cond_domain.z_start = -0.9f;
+  //init_cond_domain.z_end   = 0.9f;
 
   //init_cond_domains.push_back(init_cond_domain);
 
@@ -440,24 +440,24 @@ void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
 
 void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)
 {
-  const UINT data_size    = sizeof(Vector3);
-  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
+  //const UINT data_size    = sizeof(Vector3);
+  //const UINT num_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
 
-  D3D11_BUFFER_DESC desc   = {};
-  desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
-  desc.Usage               = D3D11_USAGE_IMMUTABLE;
-  desc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
-  desc.CPUAccessFlags      = NULL;
-  desc.MiscFlags           = NULL;
-  desc.StructureByteStride = NULL;
+  //D3D11_BUFFER_DESC desc   = {};
+  //desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
+  //desc.Usage               = D3D11_USAGE_IMMUTABLE;
+  //desc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+  //desc.CPUAccessFlags      = NULL;
+  //desc.MiscFlags           = NULL;
+  //desc.StructureByteStride = NULL;
 
-  D3D11_SUBRESOURCE_DATA initial_data = {};
-  initial_data.pSysMem                = _uptr_particles->boundary_particle_position_data();
-  initial_data.SysMemPitch            = 0;
-  initial_data.SysMemSlicePitch       = 0;
+  //D3D11_SUBRESOURCE_DATA initial_data = {};
+  //initial_data.pSysMem                = _uptr_particles->boundary_particle_position_data();
+  //initial_data.SysMemPitch            = 0;
+  //initial_data.SysMemSlicePitch       = 0;
 
-  const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_boundary_Vbuffer.GetAddressOf());
-  REQUIRE(!FAILED(result), "SPH vertex buffer creation should succeed");
+  //const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_boundary_Vbuffer.GetAddressOf());
+  //REQUIRE(!FAILED(result), "SPH vertex buffer creation should succeed");
 }
 
 void SPH::init_boundary_VS(const ComPtr<ID3D11Device> cptr_device)
