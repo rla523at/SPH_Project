@@ -1,3 +1,58 @@
+# 2024.07.20
+**[Surface Tension 구현]**
+
+Surface Tension을 추가로 구현하여, Zero gravity droplet 테스트를 진행
+
+![droplet](https://github.com/user-attachments/assets/916e7bde-b7af-44fa-a85b-14ad4638114c)
+
+구형을 유지해야 하지만 계속해서 팽창해 나가는 문제가 발생
+
+![2024-07-23 11 02 12 Surface Tension (2)](https://github.com/user-attachments/assets/47a707ef-1d7c-4196-af91-d6efab1e3532)
+
+
+**[Boundary Particle 구현]**
+
+현재는, boundary처리를 다음과 같은 간단한 수식으로 처리 중.
+
+```cpp
+     auto& v_pos = _fluid_position_vectors[i];
+     auto& v_vel = _fluid_velocity_vectors[i];
+
+     //left wall
+     if (v_pos.x < wall_x_start && v_vel.x < 0.0f)
+     {
+       v_vel.x *= -cor2;
+       v_pos.x = wall_x_start;
+     }
+     //...
+```
+
+이런 boundary condition 때문에, 점성이 강해보일 수 있다고 판단해 boundary particle 도입 시도.
+
+boundary particle $k$가 fluid particle $a$에게 주는 영향은 다음과 같이 계산 됨.
+
+$$ f_{ak} = \frac{m_k}{m_a+m_k} B(x,y) n_k $$
+
+$$ B(x,y) = \Gamma(y) = 0.02 \frac{(v_s)^2}{y}  \begin{cases} \frac{2}{3} \\ 2q - 1.5q^2 \\ 0.5(2-q)^2 \end{cases} $$
+
+$x$는 boundary tangential 거리 $y$는 boundary normal 거리이며, $q=y/h$, $v_s$는 가상의 음속이다.
+
+이를 구현하였지만, 진동 문제가 발생함
+
+![2024-07-23 09 57 13 boundary particle problem](https://github.com/user-attachments/assets/34fded04-116b-4549-87ad-8f05d9beb68d)
+
+시간에 따른 거리 속도 가속도 그래프를 그려보니, 수렴하지 않고 일정한 진폭을 갖는 모습을 보임.
+
+![boundary particel SVA](https://github.com/user-attachments/assets/b473b8ad-8c68-49aa-9d23-af2f6fd3e2a9)
+
+주황색 - 거리, 회색 - 속도, 노란색 - 가속도
+
+액체가 탄성을 갖는 공도 아닌데, 진동하면서 수렴해가는 거동을 하는 것도 이상하고,
+
+velocity ~ 0과 acceleartion ~ 0 을 동시에 맞추는게 상당히 어려울 것 같음.
+
+</br></br></br>
+
 # 2024.07.19
 ## Solver
 Surface Tension Force와 Boundary Particle 관련 내용 학습
