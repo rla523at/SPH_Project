@@ -29,48 +29,48 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   std::vector<Domain> init_cond_domains;
 
-  // IC Start
+   //IC Start
 
-  //zero gravity domain
-  Domain init_cond_domain;
-  init_cond_domain.x_start = -0.5f;
-  init_cond_domain.x_end   = 0.5f;
-  init_cond_domain.y_start = 1.0f;
-  init_cond_domain.y_end   = 2.0f;
-  init_cond_domain.z_start = -0.5f;
-  init_cond_domain.z_end   = 0.5f;
-  
-  init_cond_domains.push_back(init_cond_domain);
+  ////zero gravity domain
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = -0.1f;
+  //init_cond_domain.x_end   = 0.1f;
+  //init_cond_domain.y_start = 1.0f;
+  //init_cond_domain.y_end   = 1.2f;
+  //init_cond_domain.z_start = -0.1f;
+  //init_cond_domain.z_end   = 0.1f;
+  //
+  //init_cond_domains.push_back(init_cond_domain);
 
-  constexpr float square_cvel = 1000;
+  //constexpr float square_cvel = 1000;
 
   //// Solo Particle
   //Domain init_cond_domain;
-  //init_cond_domain.x_start = 0.0f;
-  //init_cond_domain.x_end   = 0.0f;
+  //init_cond_domain.x_start = -2.4f;
+  //init_cond_domain.x_end   = -2.2f;
   //init_cond_domain.y_start = 0.2f;
   //init_cond_domain.y_end   = 0.2f;
-  //init_cond_domain.z_start = 0.0f;
-  //init_cond_domain.z_end   = 0.0f;
-
-  //init_cond_domains.push_back(init_cond_domain);
-
-  //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 100.0f;
-
-  //// Dam breaking
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = -2.4f;
-  //init_cond_domain.x_end   = -1.4f;
-  //init_cond_domain.y_start = 0.2f;
-  //init_cond_domain.y_end   = 2.2f;
   //init_cond_domain.z_start = -0.9f;
   //init_cond_domain.z_end   = 0.9f;
 
   //init_cond_domains.push_back(init_cond_domain);
 
   //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
+  //const float     square_cvel = 100.0f;
+
+   //Dam breaking
+  Domain init_cond_domain;
+  init_cond_domain.x_start = -2.4f;
+  init_cond_domain.x_end   = -1.4f;
+  init_cond_domain.y_start = 0.2f;
+  init_cond_domain.y_end   = 4.2f;
+  init_cond_domain.z_start = -0.9f;
+  init_cond_domain.z_end   = 0.9f;
+
+  init_cond_domains.push_back(init_cond_domain);
+
+  constexpr float eta         = 0.01f; // Tait's equation parameter
+  const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
 
   //// Double Dam breaking
   //Domain dam1;
@@ -102,18 +102,18 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   init_cond.division_length = 0.1f;
 
   constexpr float rest_density = 1.0e3f;
-  constexpr float gamma        = 7.0f; // Tait's equation parameter
+  constexpr float gamma        = 1.0f; // Tait's equation parameter
 
   Material_Property mat_prop;
   mat_prop.sqaure_sound_speed   = square_cvel;
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 0.0e-6f;
+  mat_prop.viscosity            = 1.0e-6f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
-  _GS_Cbuffer_data.radius = _uptr_particles->support_length() / 2;
+  _GS_Cbuffer_data.radius = _uptr_particles->particle_radius();
 
   this->init_VS_SRbuffer(cptr_device);
   this->init_VS_SRview(cptr_device);

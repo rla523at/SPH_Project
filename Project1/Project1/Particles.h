@@ -2,8 +2,8 @@
 #include "SPH_Common_Data.h"
 
 #include <directxtk/SimpleMath.h>
-#include <vector>
 #include <memory>
+#include <vector>
 
 //abbreviation
 using DirectX::SimpleMath::Vector3;
@@ -50,6 +50,7 @@ public:
   size_t         num_fluid_particle(void) const;
   size_t         num_boundary_particle(void) const;
   float          support_length(void) const;
+  float          particle_radius(void) const;
 
 private:
   void update_density_and_pressure(void);
@@ -61,8 +62,8 @@ private:
   void leap_frog_DKD(const float dt);
   void leap_frog_KDK(const float dt);
 
-  float W(const float q) const; //kernel function
-  float dW_dq(const float q) const;
+  float W(const float dist) const; //kernel function
+  float dW_dq(const float dist) const;
   float B(const float dist) const; //boundary function
 
   void  init_mass(void);
@@ -77,6 +78,9 @@ private:
   size_t _num_fluid_particle = 0;
   float  _support_length     = 0.0f;
   float  _mass_per_particle  = 0.0f;
+  float  _particle_radius    = 0.0f;
+
+  float _volume_per_particle = 0.0f;
 
   std::vector<float> _mass;
 
