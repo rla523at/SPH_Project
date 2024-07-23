@@ -1,4 +1,4 @@
-# 2024.07.20
+# 2024.07.22
 **[Surface Tension 구현]**
 
 Surface Tension을 추가로 구현하여, Zero gravity droplet 테스트를 진행
