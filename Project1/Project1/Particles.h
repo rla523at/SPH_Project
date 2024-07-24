@@ -28,7 +28,7 @@ struct Material_Property
 struct Initial_Condition_Cubes
 {
   std::vector<Domain> domains;
-  float               division_length = 0.0f;
+  float               particle_spacing = 0.0f;
 };
 
 class Fluid_Particles
@@ -47,6 +47,7 @@ public:
 public:
   const Vector3* fluid_particle_position_data(void) const;
   const Vector3* boundary_particle_position_data(void) const;
+  const float*   fluid_particle_density_data(void) const;
   size_t         num_fluid_particle(void) const;
   size_t         num_boundary_particle(void) const;
   float          support_length(void) const;
@@ -66,7 +67,7 @@ private:
   float dW_dq(const float dist) const;
   float B(const float dist) const; //boundary function
 
-  void  init_mass(void);
+  void  update_mass(void);
   float cal_mass_per_particle_number_density_mean(void) const;
   float cal_mass_per_particle_number_density_max(void) const;
   float cal_mass_per_particle_number_density_min(void) const;
@@ -76,13 +77,13 @@ private:
 
 private:
   size_t _num_fluid_particle = 0;
-  float  _support_length     = 0.0f;
-  float  _mass_per_particle  = 0.0f;
-  float  _particle_radius    = 0.0f;
+
+  float _support_radius   = 0.0f;
+  float _smoothing_length = 0.0f;
+  float _particle_radius  = 0.0f;
 
   float _volume_per_particle = 0.0f;
-
-  std::vector<float> _mass;
+  float _mass_per_particle   = 0.0f;
 
   std::vector<Vector3> _fluid_position_vectors;
   std::vector<Vector3> _fluid_velocity_vectors;

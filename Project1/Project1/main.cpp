@@ -43,7 +43,6 @@ int main()
   //std::vector<std::unique_ptr<ms::Mesh>> meshes(1);
   //meshes[0] = std::make_unique<ms::SPH>(cptr_device, cptr_context);
 
-
   MSG msg = {0};
   while (WM_QUIT != msg.message)
   {
@@ -52,22 +51,20 @@ int main()
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
-    else
+
+    device_manager.prepare_render();
+
+    camera.update(GUI_manager.delta_time());
+
+    for (const auto& mesh : meshes)
     {
-      device_manager.prepare_render();
-
-      camera.update(GUI_manager.delta_time());
-
-      for (const auto& mesh : meshes)
-      {
-        mesh->update(camera, cptr_context);
-        mesh->render(cptr_context);
-      }
-
-      GUI_manager.render();
-
-      device_manager.switch_buffer();
+      mesh->update(camera, cptr_context);
+      mesh->render(cptr_context);
     }
+
+    GUI_manager.render();
+
+    device_manager.switch_buffer();
   }
 
   return 0;

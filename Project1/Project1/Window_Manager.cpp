@@ -3,6 +3,7 @@
 #include "../_lib/_header/msexception/Exception.h"
 #include "windowsx.h"
 #include <imgui.h>
+#include <iostream>
 
 // imgui_impl_win32.cpp에 정의된 메시지 처리 함수에 대한 전방 선언
 // VCPKG를 통해 IMGUI를 사용할 경우 빨간줄로 경고가 뜰 수 있음
@@ -42,9 +43,13 @@ LRESULT __stdcall Window_Manager::window_procedure(HWND hWnd, UINT msg, WPARAM w
     break;
   case WM_KEYDOWN:
     _is_key_pressed[wParam] = true;
+
+    //std::cout << std::boolalpha << wParam << "key pressed? " << _is_key_pressed[wParam] << "\n";
     break;
   case WM_KEYUP:
     _is_key_pressed[wParam] = false;
+    //std::cout << wParam << "key pressed? " << _is_key_pressed[wParam] << "\n";
+
     break;
   case WM_DESTROY:
     ::PostQuitMessage(0);
@@ -75,6 +80,16 @@ bool Window_Manager::is_Dkey_pressed(void)
   return _is_key_pressed[0x44];
 }
 
+bool Window_Manager::is_z_key_pressed(void)
+{
+  return _is_key_pressed[0x5A];
+}
+
+bool Window_Manager::is_x_key_pressed(void)
+{
+  return _is_key_pressed[0x58];
+}
+
 bool Window_Manager::is_Up_key_pressed(void)
 {
   return _is_key_pressed[0x26];
@@ -90,6 +105,10 @@ bool Window_Manager::is_Right_key_pressed(void)
 bool Window_Manager::is_Left_key_pressed(void)
 {
   return _is_key_pressed[0x25];
+}
+bool Window_Manager::is_space_key_pressed(void)
+{
+  return _is_key_pressed[0x20];
 };
 
 float Window_Manager::mouse_x_pos_NDC(void)

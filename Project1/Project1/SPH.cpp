@@ -2,6 +2,7 @@
 
 #include "Camera.h"
 #include "Particles.h"
+#include "Window_Manager.h"
 
 #include "../_lib/_header/msexception/Exception.h"
 #include <d3dcompiler.h>
@@ -13,12 +14,12 @@ namespace ms
 SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   Domain solution_domain;
-  solution_domain.x_start = -2.5f;
-  solution_domain.x_end   = 2.5f;
+  solution_domain.x_start = -1.5f;
+  solution_domain.x_end   = 1.5f;
   solution_domain.y_start = 0.0f;
   solution_domain.y_end   = 10.0f;
-  solution_domain.z_start = -1.0f;
-  solution_domain.z_end   = 1.0f;
+  solution_domain.z_start = -1.5f;
+  solution_domain.z_end   = 1.5f;
 
   //solution_domain.x_start = 2.4f;
   //solution_domain.x_end   = 2.5f;
@@ -29,7 +30,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   std::vector<Domain> init_cond_domains;
 
-   //IC Start
+  //IC Start
 
   ////zero gravity domain
   //Domain init_cond_domain;
@@ -46,22 +47,22 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   //// Solo Particle
   //Domain init_cond_domain;
-  //init_cond_domain.x_start = -2.4f;
-  //init_cond_domain.x_end   = -2.2f;
-  //init_cond_domain.y_start = 0.2f;
-  //init_cond_domain.y_end   = 0.2f;
-  //init_cond_domain.z_start = -0.9f;
-  //init_cond_domain.z_end   = 0.9f;
+  //init_cond_domain.x_start = -0.0f;
+  //init_cond_domain.x_end   = 0.0f;
+  //init_cond_domain.y_start = 1.0f;
+  //init_cond_domain.y_end   = 1.1f;
+  //init_cond_domain.z_start = -0.0f;
+  //init_cond_domain.z_end   = 0.0f;
 
   //init_cond_domains.push_back(init_cond_domain);
 
   //constexpr float eta         = 0.01f; // Tait's equation parameter
   //const float     square_cvel = 100.0f;
 
-   //Dam breaking
+  //Dam breaking
   Domain init_cond_domain;
-  init_cond_domain.x_start = -2.4f;
-  init_cond_domain.x_end   = -1.4f;
+  init_cond_domain.x_start = -1.4f;
+  init_cond_domain.x_end   = -0.4f;
   init_cond_domain.y_start = 0.2f;
   init_cond_domain.y_end   = 4.2f;
   init_cond_domain.z_start = -0.9f;
@@ -74,20 +75,20 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   //// Double Dam breaking
   //Domain dam1;
-  //dam1.x_start = -2.4f;
-  //dam1.x_end   = -1.4f;
-  //dam1.y_start = 0.1f;
+  //dam1.x_start = -1.4f;
+  //dam1.x_end   = -0.4f;
+  //dam1.y_start = 1.1f;
   //dam1.y_end   = 5.1f;
-  //dam1.z_start = -2.4f;
-  //dam1.z_end   = -1.4f;
+  //dam1.z_start = -1.4f;
+  //dam1.z_end   = -0.4f;
 
   //Domain dam2;
-  //dam2.x_start = 1.4f;
-  //dam2.x_end   = 2.4f;
-  //dam2.y_start = 0.1f;
+  //dam2.x_start = 0.4f;
+  //dam2.x_end   = 1.4f;
+  //dam2.y_start = 1.1f;
   //dam2.y_end   = 5.1f;
-  //dam2.z_start = 1.4f;
-  //dam2.z_end   = 2.4f;
+  //dam2.z_start = 0.4f;
+  //dam2.z_end   = 1.4f;
 
   //init_cond_domains.push_back(dam1);
   //init_cond_domains.push_back(dam2);
@@ -98,8 +99,8 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   // IC END
 
   Initial_Condition_Cubes init_cond;
-  init_cond.domains         = init_cond_domains;
-  init_cond.division_length = 0.1f;
+  init_cond.domains          = init_cond_domains;
+  init_cond.particle_spacing = 0.1f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 1.0f; // Tait's equation parameter
@@ -109,15 +110,18 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 1.0e-6f;
+  mat_prop.viscosity            = 1.0e-2f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
-  _GS_Cbuffer_data.radius = _uptr_particles->particle_radius();
+  _GS_Cbuffer_data.radius = _uptr_particles->particle_radius()*0.25;
 
-  this->init_VS_SRbuffer(cptr_device);
-  this->init_VS_SRview(cptr_device);
-  this->init_VS_Sbuffer(cptr_device);
+  this->init_VS_SRbuffer_pos(cptr_device);
+  this->init_VS_SRview_pos(cptr_device);
+  this->init_VS_Sbuffer_pos(cptr_device);
+  this->init_VS_SRbuffer_density(cptr_device);
+  this->init_VS_SRview_density(cptr_device);
+  this->init_VS_Sbuffer_density(cptr_device);
   this->init_VS(cptr_device);
   this->init_GS_Cbuffer(cptr_device);
   this->init_GS(cptr_device);
@@ -133,7 +137,16 @@ SPH::~SPH(void) = default;
 
 void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  _uptr_particles->update();
+  static bool stop_update = false;
+
+  if (Window_Manager::is_space_key_pressed())
+    stop_update = true;
+
+  if (Window_Manager::is_x_key_pressed())
+    stop_update = false;
+
+  if (!stop_update)
+    _uptr_particles->update();  
 
   this->update_VS_SRview(cptr_context);
   //this->update_Vbuffer(cptr_context);
@@ -153,9 +166,9 @@ void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
   const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
   cptr_context->Draw(num_particle, 0);
 
-  this->set_boundary_graphics_pipeline(cptr_context);
-  const auto num_boundary_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
-  cptr_context->Draw(num_boundary_particle, 0);
+  //this->set_boundary_graphics_pipeline(cptr_context);
+  //const auto num_boundary_particle = static_cast<UINT>(_uptr_particles->num_boundary_particle());
+  //cptr_context->Draw(num_boundary_particle, 0);
 
   this->reset_graphics_pipeline(cptr_context);
 }
@@ -306,33 +319,53 @@ void SPH::init_PS(const ComPtr<ID3D11Device> cptr_device)
 
 void SPH::update_Vbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  const auto  data_size    = sizeof(Vector3);
-  const auto  num_particle = _uptr_particles->num_fluid_particle();
-  const auto* data_ptr     = _uptr_particles->fluid_particle_position_data();
-  const auto  copy_size    = data_size * num_particle;
+  {
+    const auto  data_size    = sizeof(Vector3);
+    const auto  num_particle = _uptr_particles->num_fluid_particle();
+    const auto* data_ptr     = _uptr_particles->fluid_particle_position_data();
+    const auto  copy_size    = data_size * num_particle;
 
-  D3D11_MAPPED_SUBRESOURCE ms;
-  cptr_context->Map(_cptr_boundary_Vbuffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-  memcpy(ms.pData, data_ptr, copy_size);
-  cptr_context->Unmap(_cptr_boundary_Vbuffer.Get(), NULL);
+    D3D11_MAPPED_SUBRESOURCE ms;
+    cptr_context->Map(_cptr_boundary_Vbuffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+    memcpy(ms.pData, data_ptr, copy_size);
+    cptr_context->Unmap(_cptr_boundary_Vbuffer.Get(), NULL);
+  }
 }
 
 void SPH::update_VS_SRview(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  const UINT     data_size    = sizeof(Vector3);
-  const UINT     num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
-  const Vector3* data_ptr     = _uptr_particles->fluid_particle_position_data();
+  {
+    const UINT  data_size    = sizeof(Vector3);
+    const UINT  num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+    const auto* data_ptr     = _uptr_particles->fluid_particle_position_data();
 
-  //Copy CPU to Staging Buffer
-  const size_t copy_size = data_size * num_particle;
+    //Copy CPU to Staging Buffer
+    const size_t copy_size = data_size * num_particle;
 
-  D3D11_MAPPED_SUBRESOURCE ms;
-  cptr_context->Map(_cptr_VS_Sbuffer.Get(), NULL, D3D11_MAP_WRITE, NULL, &ms);
-  memcpy(ms.pData, data_ptr, copy_size);
-  cptr_context->Unmap(_cptr_VS_Sbuffer.Get(), NULL);
+    D3D11_MAPPED_SUBRESOURCE ms;
+    cptr_context->Map(_cptr_VS_Sbuffer_pos.Get(), NULL, D3D11_MAP_WRITE, NULL, &ms);
+    memcpy(ms.pData, data_ptr, copy_size);
+    cptr_context->Unmap(_cptr_VS_Sbuffer_pos.Get(), NULL);
 
-  // Copy Staging Buffer to Vertex Shader Resource Buffer
-  cptr_context->CopyResource(_cptr_VS_SRbuffer.Get(), _cptr_VS_Sbuffer.Get());
+    // Copy Staging Buffer to Vertex Shader Resource Buffer
+    cptr_context->CopyResource(_cptr_VS_SRbuffer_pos.Get(), _cptr_VS_Sbuffer_pos.Get());
+  }
+  {
+    const UINT  data_size    = sizeof(float);
+    const UINT  num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+    const auto* data_ptr     = _uptr_particles->fluid_particle_density_data();
+
+    //CPU >> Staging Buffer
+    const size_t copy_size = data_size * num_particle;
+
+    D3D11_MAPPED_SUBRESOURCE ms;
+    cptr_context->Map(_cptr_VS_Sbuffer_density.Get(), NULL, D3D11_MAP_WRITE, NULL, &ms);
+    memcpy(ms.pData, data_ptr, copy_size);
+    cptr_context->Unmap(_cptr_VS_Sbuffer_density.Get(), NULL);
+
+    // Staging Buffer >> Vertex Shader Resource Buffer
+    cptr_context->CopyResource(_cptr_VS_SRbuffer_density.Get(), _cptr_VS_Sbuffer_density.Get());
+  }
 }
 
 void SPH::update_GS_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
@@ -348,7 +381,11 @@ void SPH::update_GS_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
 void SPH::set_fluid_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-  cptr_context->VSSetShaderResources(0, 1, _cptr_VS_SRview.GetAddressOf());
+
+  constexpr size_t          num_srviews          = 2;
+  ID3D11ShaderResourceView* SRviews[num_srviews] = {_cptr_VS_SRview_pos.Get(), _cptr_VS_SRview_density.Get()};
+  cptr_context->VSSetShaderResources(0, num_srviews, SRviews);
+
   cptr_context->VSSetShader(_cptr_VS.Get(), nullptr, 0);
   cptr_context->GSSetConstantBuffers(0, 1, _cptr_GS_Cbuffer.GetAddressOf());
   cptr_context->GSSetShader(_cptr_GS.Get(), nullptr, 0);
@@ -381,7 +418,7 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
   //cptr_context->OMSetBlendState(nullptr, nullptr, NULL);
 }
 
-void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
+void SPH::init_VS_SRbuffer_pos(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT data_size    = sizeof(Vector3);
   const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
@@ -394,16 +431,16 @@ void SPH::init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device)
   buffer_desc.MiscFlags           = NULL;
   buffer_desc.StructureByteStride = NULL;
 
-  D3D11_SUBRESOURCE_DATA buffer_data = {};
-  buffer_data.pSysMem                = _uptr_particles->fluid_particle_position_data();
-  buffer_data.SysMemPitch            = 0;
-  buffer_data.SysMemSlicePitch       = 0;
+  D3D11_SUBRESOURCE_DATA initial_data = {};
+  initial_data.pSysMem                = _uptr_particles->fluid_particle_position_data();
+  initial_data.SysMemPitch            = 0;
+  initial_data.SysMemSlicePitch       = 0;
 
-  const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_SRbuffer.GetAddressOf());
+  const auto result = cptr_device->CreateBuffer(&buffer_desc, &initial_data, _cptr_VS_SRbuffer_pos.GetAddressOf());
   REQUIRE(!FAILED(result), "SPH vertex shader resource buffer creation should succeed");
 }
 
-void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
+void SPH::init_VS_Sbuffer_pos(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT data_size    = sizeof(Vector3);
   const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
@@ -412,7 +449,7 @@ void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
   buffer_desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
   buffer_desc.Usage               = D3D11_USAGE_STAGING;
   buffer_desc.BindFlags           = NULL;
-  buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;
+  buffer_desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
   buffer_desc.MiscFlags           = NULL;
   buffer_desc.StructureByteStride = NULL;
 
@@ -421,11 +458,11 @@ void SPH::init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device)
   buffer_data.SysMemPitch            = 0;
   buffer_data.SysMemSlicePitch       = 0;
 
-  const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_Sbuffer.GetAddressOf());
+  const auto result = cptr_device->CreateBuffer(&buffer_desc, &buffer_data, _cptr_VS_Sbuffer_pos.GetAddressOf());
   REQUIRE(!FAILED(result), "SPH vertex shader staging buffer creation should succeed");
 }
 
-void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
+void SPH::init_VS_SRview_pos(const ComPtr<ID3D11Device> cptr_device)
 {
   const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
 
@@ -434,8 +471,65 @@ void SPH::init_VS_SRview(const ComPtr<ID3D11Device> cptr_device)
   SRV_desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
   SRV_desc.BufferEx.NumElements            = num_particle;
 
-  const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRbuffer.Get(), &SRV_desc, _cptr_VS_SRview.GetAddressOf());
+  const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRbuffer_pos.Get(), &SRV_desc, _cptr_VS_SRview_pos.GetAddressOf());
   REQUIRE(!FAILED(result), "SPH vertex shader resource buffer creation should succeed");
+}
+
+void SPH::init_VS_SRbuffer_density(const ComPtr<ID3D11Device> cptr_device)
+{
+  const UINT data_size    = sizeof(float);
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
+  desc.Usage               = D3D11_USAGE_DEFAULT;
+  desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+  desc.CPUAccessFlags      = NULL;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = NULL;
+
+  D3D11_SUBRESOURCE_DATA initial_data = {};
+  initial_data.pSysMem                = _uptr_particles->fluid_particle_density_data();
+  initial_data.SysMemPitch            = 0;
+  initial_data.SysMemSlicePitch       = 0;
+
+  const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_VS_SRbuffer_density.GetAddressOf());
+  REQUIRE(!FAILED(result), "SPH vertex shader resource buffer density creation should succeed");
+}
+
+void SPH::init_VS_Sbuffer_density(const ComPtr<ID3D11Device> cptr_device)
+{
+  const UINT data_size    = sizeof(float);
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = static_cast<UINT>(data_size * num_particle);
+  desc.Usage               = D3D11_USAGE_STAGING;
+  desc.BindFlags           = NULL;
+  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = NULL;
+
+  D3D11_SUBRESOURCE_DATA initial_data = {};
+  initial_data.pSysMem                = _uptr_particles->fluid_particle_density_data();
+  initial_data.SysMemPitch            = 0;
+  initial_data.SysMemSlicePitch       = 0;
+
+  const auto result = cptr_device->CreateBuffer(&desc, &initial_data, _cptr_VS_Sbuffer_density.GetAddressOf());
+  REQUIRE(!FAILED(result), "SPH vertex shader staging buffer density creation should succeed");
+}
+
+void SPH::init_VS_SRview_density(const ComPtr<ID3D11Device> cptr_device)
+{
+  const UINT num_particle = static_cast<UINT>(_uptr_particles->num_fluid_particle());
+
+  D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
+  desc.Format                          = DXGI_FORMAT_R32_FLOAT;
+  desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
+  desc.BufferEx.NumElements            = num_particle;
+
+  const auto result = cptr_device->CreateShaderResourceView(_cptr_VS_SRbuffer_density.Get(), &desc, _cptr_VS_SRview_density.GetAddressOf());
+  REQUIRE(!FAILED(result), "SPH vertex shader resource buffer density creation should succeed");
 }
 
 void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)

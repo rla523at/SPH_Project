@@ -54,9 +54,12 @@ private:
   void init_boundary_PS(const ComPtr<ID3D11Device> cptr_device);
   void init_boundary_blender_state(const ComPtr<ID3D11Device> cptr_device);
 
-  void init_VS_SRbuffer(const ComPtr<ID3D11Device> cptr_device);
-  void init_VS_Sbuffer(const ComPtr<ID3D11Device> cptr_device);
-  void init_VS_SRview(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_SRbuffer_pos(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_Sbuffer_pos(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_SRview_pos(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_SRbuffer_density(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_Sbuffer_density(const ComPtr<ID3D11Device> cptr_device);
+  void init_VS_SRview_density(const ComPtr<ID3D11Device> cptr_device);
   void init_VS(const ComPtr<ID3D11Device> cptr_device);
   void init_GS_Cbuffer(const ComPtr<ID3D11Device> cptr_device);
   void init_GS(const ComPtr<ID3D11Device> cptr_device);
@@ -78,9 +81,14 @@ private:
   ComPtr<ID3D11GeometryShader>     _cptr_GS;
 
   //fluid element
-  ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview;   //shader resource view for vertex shader
-  ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer; //shader resource buffer for vertex shader
-  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer;  //staging buffer for vertex shader
+  ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview_pos;   
+  ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer_pos; 
+  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_pos;  
+
+  ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview_density;
+  ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer_density;
+  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_density;  
+
   ComPtr<ID3D11VertexShader>       _cptr_VS;
   ComPtr<ID3D11PixelShader>        _cptr_PS;
 

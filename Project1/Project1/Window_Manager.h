@@ -25,10 +25,13 @@ public:
   static bool           is_Akey_pressed(void);
   static bool           is_Skey_pressed(void);
   static bool           is_Dkey_pressed(void);
+  static bool           is_z_key_pressed(void);
+  static bool           is_x_key_pressed(void);
   static bool           is_Up_key_pressed(void);
   static bool           is_Down_key_pressed(void);
   static bool           is_Right_key_pressed(void);
   static bool           is_Left_key_pressed(void);
+  static bool           is_space_key_pressed(void);
   static float          mouse_x_pos_NDC(void); // normalize device coordinate로 변환한 마우스 커서의 x 위치
   static float          mouse_y_pos_NDC(void); // normalize device coordinate로 변환한 마우스 커서의 y 위치
 

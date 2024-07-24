@@ -107,7 +107,7 @@
     <ClInclude Include="SPH_Common_Data.h">
       <Filter>소스 파일\SPH</Filter>
     </ClInclude>
-    <ClInclude Include="Print_Manager.h">
+    <ClInclude Include="Debugger.h">
       <Filter>소스 파일\Manager</Filter>
     </ClInclude>
   </ItemGroup>

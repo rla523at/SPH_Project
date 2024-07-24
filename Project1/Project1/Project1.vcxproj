@@ -40,7 +40,7 @@
     <ClInclude Include="Neighborhood.h" />
     <ClInclude Include="Neighborhood_Brute_Force.h" />
     <ClInclude Include="Particles.h" />
-    <ClInclude Include="Print_Manager.h" />
+    <ClInclude Include="Debugger.h" />
     <ClInclude Include="SPH.h" />
     <ClInclude Include="Neighborhood_Uniform_Grid.h" />
     <ClInclude Include="SPH_Common_Data.h" />

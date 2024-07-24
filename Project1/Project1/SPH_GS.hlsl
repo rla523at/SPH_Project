@@ -1,12 +1,14 @@
 struct GS_Input
 {
     float4 pos : SV_POSITION;
+    float density : DENSITY;
 };
 
 struct GS_Output
 {
     float4 pos : SV_POSITION;
     float2 tex : TEXCOORD;
+    float density : DENSITY;
 };
 
 cbuffer GS_Cbuffer : register(b0)
@@ -21,6 +23,7 @@ cbuffer GS_Cbuffer : register(b0)
 [maxvertexcount(4)]
 void main(point GS_Input input[1], uint primID : SV_PrimitiveID, inout TriangleStream<GS_Output> outputStream)
 {
+    const float density = input[0].density;
     const float3 v_point_pos = input[0].pos.xyz;
     const float3 v_dir = normalize(v_point_pos - v_cam_pos);
     const float3 v_right = cross(v_cam_up, v_dir);
@@ -55,6 +58,7 @@ void main(point GS_Input input[1], uint primID : SV_PrimitiveID, inout TriangleS
 
         output.pos = v_arg_vpos;
         output.tex = texs[i];
+        output.density = density;
         outputStream.Append(output);
     }
 }
