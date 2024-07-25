@@ -1,3 +1,45 @@
+# 2024.07.24
+
+## Solver 개선
+
+### smoothing length 증가
+
+**[장점]**
+
+기존 smoothing length$(h)$ 보다 $h$를 늘리면 simulation 결과가 개선됨.
+
+$h = 0.6 \Delta x$ (기존)
+
+[그림]
+
+$h = 1.1 \Delta x$
+
+[그림]
+
+$h = 1.6 \Delta x$
+
+[그림]
+
+또한, $h$가 늘어나면 $\Delta t$를 증가 시킬 수 있음. 
+
+$$ \Delta t = 5.0e^{-4} \rightarrow 1.0e^{-3} \rightarrow 2.5e^{-3}$$
+
+**[단점]**
+
+꼭, $h$에 비례해서 simulation 결과가 개선되는 것은 아님.
+
+$h$가 증가하면 neighborhood가 증가로 인해 FPS가 감소함.
+
+$$\text{FPS} = 1200 \rightarrow 500 \rightarrow 200$$
+
+$h$가 증가함에 따라서, particle의 density 변화량이 매우 커져서 기존 방식으로는 해결이 불가능해 이에 대한 처리가 필요함. ($\rho \sim n$이기 때문, $n$은 particle number density)
+
+$$ \frac{\rho_{min}}{\rho_{max}} = 0.97 \rightarrow 0.54 \rightarrow 0.37 $$
+
+ 
+
+</br></br></br>
+
 # 2024.07.23
 Solver 개선을 위해 WCSPH를 이용한 Free Surface Flow 참고자료 학습
 *  1996 (Koshizuka & Oka) Moving-Particle Semi-Implicit Method for Fragmentation of Incompressible Fluid

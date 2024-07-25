@@ -14,12 +14,12 @@ namespace ms
 SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
   Domain solution_domain;
-  solution_domain.x_start = -1.5f;
-  solution_domain.x_end   = 1.5f;
+  solution_domain.x_start = -2.0f;
+  solution_domain.x_end   = 2.0f;
   solution_domain.y_start = 0.0f;
   solution_domain.y_end   = 10.0f;
-  solution_domain.z_start = -1.5f;
-  solution_domain.z_end   = 1.5f;
+  solution_domain.z_start = -0.3f;
+  solution_domain.z_end   = 0.3f;
 
   //solution_domain.x_start = 2.4f;
   //solution_domain.x_end   = 2.5f;
@@ -61,12 +61,12 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   //Dam breaking
   Domain init_cond_domain;
-  init_cond_domain.x_start = -1.4f;
-  init_cond_domain.x_end   = -0.4f;
+  init_cond_domain.x_start = -1.9f;
+  init_cond_domain.x_end   = -0.9f;
   init_cond_domain.y_start = 0.2f;
-  init_cond_domain.y_end   = 4.2f;
-  init_cond_domain.z_start = -0.9f;
-  init_cond_domain.z_end   = 0.9f;
+  init_cond_domain.y_end   = 2.2f;
+  init_cond_domain.z_start = -0.2f;
+  init_cond_domain.z_end   = 0.2f;
 
   init_cond_domains.push_back(init_cond_domain);
 
@@ -100,7 +100,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains          = init_cond_domains;
-  init_cond.particle_spacing = 0.1f;
+  init_cond.particle_spacing = 0.05f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 1.0f; // Tait's equation parameter
@@ -110,11 +110,11 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 1.0e-2f;
+  mat_prop.viscosity            = 5.0e-3f;
 
   _uptr_particles = std::make_unique<Fluid_Particles>(mat_prop, init_cond, solution_domain);
 
-  _GS_Cbuffer_data.radius = _uptr_particles->particle_radius()*0.25;
+  _GS_Cbuffer_data.radius = _uptr_particles->particle_radius();
 
   this->init_VS_SRbuffer_pos(cptr_device);
   this->init_VS_SRview_pos(cptr_device);

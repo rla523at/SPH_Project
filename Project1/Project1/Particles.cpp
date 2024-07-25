@@ -42,7 +42,7 @@ Fluid_Particles::Fluid_Particles(
   }
 
   _particle_radius  = ic.particle_spacing;
-  _smoothing_length = 1.4f * ic.particle_spacing;
+  _smoothing_length = 1.6f * ic.particle_spacing;
   _support_radius   = 2.0f * _smoothing_length; // cubic spline
 
   const float L        = ic.particle_spacing;
@@ -155,6 +155,8 @@ void Fluid_Particles::update_density_and_pressure(void)
   const float k     = _material_proeprty.pressure_coefficient;
   const float m0    = _mass_per_particle;
 
+  std::vector<size_t> debug(_num_fluid_particle);
+
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
@@ -165,6 +167,8 @@ void Fluid_Particles::update_density_and_pressure(void)
 
     const auto& neighbor_indexes = _uptr_neighborhood->search_for_fluid(i);
     const auto  num_neighbor     = neighbor_indexes.size();
+
+    debug[i] = num_neighbor;
 
     for (int j = 0; j < num_neighbor; j++)
     {
@@ -179,18 +183,18 @@ void Fluid_Particles::update_density_and_pressure(void)
 
     cur_rho *= m0;
 
-    if (cur_rho < 0.99f * rho0)
-      cur_rho = rho0;
-
-    //cur_rho = (std::max)(rho0, cur_rho);
+    //if (cur_rho < 0.99f * rho0)
+    //  cur_rho = rho0;
 
     _fluid_pressures[i] = k * (pow(cur_rho / rho0, gamma) - 1.0f);
   }
 
-  //print_sort_and_count(debug);
-  //print_min_max(_fluid_densities);
+  print_sort_and_count(debug);
+  print_min_max(debug);
+  print_sort_and_count(_fluid_densities, 1.0e-1f);
+  print_min_max(_fluid_densities);
   //std::cout << "\n\n";
-  //exit(523);
+  exit(523);
 }
 
 void Fluid_Particles::update_acceleration(void)
@@ -317,7 +321,9 @@ void Fluid_Particles::update_acceleration(void)
 
 void Fluid_Particles::time_integration(void)
 {
-  constexpr float dt = 1.0e-3f;
+  //constexpr float dt = 5.0e-4f;
+  constexpr float dt = 2.5e-3f;
+
 
   static float time = 0.0f;
   //static float target = 0.01f;
