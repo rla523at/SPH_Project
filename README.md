@@ -6,19 +6,21 @@
 
 **[장점]**
 
-기존 smoothing length$(h)$ 보다 $h$를 늘리면 simulation 결과가 개선됨.
+기존 smoothing length $(h)$ 보다 $h$를 늘리면 simulation 결과에서 물의 출렁거림이 더 잘 표현됨.
 
 $h = 0.6 \Delta x$ (기존)
 
-[그림]
+![2024-07-25 10 24 25 h = 0 6dx](https://github.com/user-attachments/assets/5889c001-046b-4d3e-b2f6-08187a51577e)
+
 
 $h = 1.1 \Delta x$
 
-[그림]
+![2024-07-25 10 25 13 h = 1 1dx](https://github.com/user-attachments/assets/cc9b8d92-63d6-41ca-8e91-c826281950bb)
+
 
 $h = 1.6 \Delta x$
 
-[그림]
+![2024-07-25 10 27 06 h = 1 6dx](https://github.com/user-attachments/assets/018aabf2-cf99-48fc-af4b-e70d1c7adce8)
 
 또한, $h$가 늘어나면 $\Delta t$를 증가 시킬 수 있음. 
 
