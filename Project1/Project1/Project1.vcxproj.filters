@@ -30,12 +30,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Neighborhood_Uniform_Grid.cpp">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClCompile>
     <ClCompile Include="Device_Manager.cpp">
       <Filter>소스 파일\Manager</Filter>
     </ClCompile>
@@ -54,26 +48,23 @@
     <ClCompile Include="Square.cpp">
       <Filter>소스 파일\Mesh</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClCompile>
-    <ClCompile Include="Particles.cpp">
+    <ClCompile Include="src\Particles.cpp">
       <Filter>소스 파일\SPH</Filter>
     </ClCompile>
-    <ClCompile Include="SPH.cpp">
+    <ClCompile Include="src\SPH.cpp">
+      <Filter>소스 파일\SPH</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Kernel.cpp">
+      <Filter>소스 파일\SPH</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PCISPH.cpp">
       <Filter>소스 파일\SPH</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Neighborhood.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="Neighborhood_Uniform_Grid.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="Neighborhood_Brute_Force.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
     <ClInclude Include="Device_Manager.h">
       <Filter>소스 파일\Manager</Filter>
     </ClInclude>
@@ -95,20 +86,35 @@
     <ClInclude Include="Square.h">
       <Filter>소스 파일\Mesh</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Particles.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="SPH.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="SPH_Common_Data.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
     <ClInclude Include="Debugger.h">
       <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood.h">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Brute_Force.h">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Uniform_Grid.h">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Particles.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PCISPH.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SPH.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SPH_Common_Data.h">
+      <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Abbreviation.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Kernel.h">
+      <Filter>소스 파일\SPH</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

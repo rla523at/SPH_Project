@@ -20,31 +20,33 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Billboard_Sphere.cpp" />
-    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Device_Manager.cpp" />
     <ClCompile Include="GUI_Manager.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Particles.cpp" />
-    <ClCompile Include="SPH.cpp" />
-    <ClCompile Include="Neighborhood_Uniform_Grid.cpp" />
     <ClCompile Include="Square.cpp" />
+    <ClCompile Include="src\Kernel.cpp" />
+    <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp" />
+    <ClCompile Include="src\Particles.cpp" />
+    <ClCompile Include="src\PCISPH.cpp" />
+    <ClCompile Include="src\SPH.cpp" />
     <ClCompile Include="Texture_Manager.cpp" />
     <ClCompile Include="Window_Manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Billboard_Sphere.h" />
-    <ClInclude Include="Camera.h" />
     <ClInclude Include="Device_Manager.h" />
     <ClInclude Include="GUI_Manager.h" />
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="Neighborhood.h" />
-    <ClInclude Include="Neighborhood_Brute_Force.h" />
-    <ClInclude Include="Particles.h" />
     <ClInclude Include="Debugger.h" />
-    <ClInclude Include="SPH.h" />
-    <ClInclude Include="Neighborhood_Uniform_Grid.h" />
-    <ClInclude Include="SPH_Common_Data.h" />
     <ClInclude Include="Square.h" />
+    <ClInclude Include="src\Abbreviation.h" />
+    <ClInclude Include="src\Kernel.h" />
+    <ClInclude Include="src\Neighborhood.h" />
+    <ClInclude Include="src\Neighborhood_Brute_Force.h" />
+    <ClInclude Include="src\Neighborhood_Uniform_Grid.h" />
+    <ClInclude Include="src\Particles.h" />
+    <ClInclude Include="src\PCISPH.h" />
+    <ClInclude Include="src\SPH.h" />
+    <ClInclude Include="src\SPH_Common_Data.h" />
     <ClInclude Include="Texture_Manager.h" />
     <ClInclude Include="Window_Manager.h" />
   </ItemGroup>
