@@ -19,93 +19,76 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Billboard_Sphere.cpp" />
-    <ClCompile Include="Device_Manager.cpp" />
-    <ClCompile Include="GUI_Manager.cpp" />
-    <ClCompile Include="Square.cpp" />
+    <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\Device_Manager.cpp" />
+    <ClCompile Include="src\GUI_Manager.cpp" />
     <ClCompile Include="src\Kernel.cpp" />
+    <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp" />
-    <ClCompile Include="src\Particles.cpp" />
+    <ClCompile Include="src\Square.cpp" />
+    <ClCompile Include="src\Texture_Manager.cpp" />
+    <ClCompile Include="src\WCSPH.cpp" />
     <ClCompile Include="src\PCISPH.cpp" />
     <ClCompile Include="src\SPH.cpp" />
-    <ClCompile Include="Texture_Manager.cpp" />
-    <ClCompile Include="Window_Manager.cpp" />
+    <ClCompile Include="src\Window_Manager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Billboard_Sphere.h" />
-    <ClInclude Include="Device_Manager.h" />
-    <ClInclude Include="GUI_Manager.h" />
-    <ClInclude Include="Mesh.h" />
     <ClInclude Include="Debugger.h" />
-    <ClInclude Include="Square.h" />
     <ClInclude Include="src\Abbreviation.h" />
+    <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\Device_Manager.h" />
+    <ClInclude Include="src\GUI_Manager.h" />
     <ClInclude Include="src\Kernel.h" />
+    <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\Neighborhood.h" />
     <ClInclude Include="src\Neighborhood_Brute_Force.h" />
     <ClInclude Include="src\Neighborhood_Uniform_Grid.h" />
-    <ClInclude Include="src\Particles.h" />
+    <ClInclude Include="src\Square.h" />
+    <ClInclude Include="src\Texture_Manager.h" />
+    <ClInclude Include="src\WCSPH.h" />
     <ClInclude Include="src\PCISPH.h" />
     <ClInclude Include="src\SPH.h" />
     <ClInclude Include="src\SPH_Common_Data.h" />
-    <ClInclude Include="Texture_Manager.h" />
-    <ClInclude Include="Window_Manager.h" />
+    <ClInclude Include="src\Window_Manager.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Billboard_Sphere_GS.hlsl">
+    <FxCompile Include="hlsl\SPH_boundary_PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="hlsl\SPH_boundary_VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="hlsl\SPH_GS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Billboard_Sphere_PS.hlsl">
+    <FxCompile Include="hlsl\SPH_PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Billboard_Sphere_VS.hlsl">
+    <FxCompile Include="hlsl\SPH_VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="SPH_boundary_PS.hlsl">
+    <FxCompile Include="hlsl\Square_PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="SPH_boundary_VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="SPH_GS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="SPH_PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="SPH_VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="Square_PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="Square_VS.hlsl">
+    <FxCompile Include="hlsl\Square_VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>

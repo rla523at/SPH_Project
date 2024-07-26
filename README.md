@@ -1,3 +1,9 @@
+# 2024.07.25
+## Solver 개선
+dt를 증가시키기 위해, PCISPH 학습 및 구현 중
+
+* 2009 (solenthaler and Pajarola) Predictive-Corrective Incompressible SPH
+
 # 2024.07.24
 
 ## Solver 개선

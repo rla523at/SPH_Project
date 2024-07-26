@@ -48,9 +48,9 @@ struct Initial_Condition_Cubes
     {
       const auto& cube = domains[i];
 
-      const auto num_x = static_cast<size_t>(cube.dx() / ic.particle_spacing) + 1;
-      const auto num_y = static_cast<size_t>(cube.dy() / ic.particle_spacing) + 1;
-      const auto num_z = static_cast<size_t>(cube.dz() / ic.particle_spacing) + 1;
+      const auto num_x = static_cast<size_t>(cube.dx() / particle_spacing) + 1;
+      const auto num_y = static_cast<size_t>(cube.dy() / particle_spacing) + 1;
+      const auto num_z = static_cast<size_t>(cube.dz() / particle_spacing) + 1;
 
       num_particle_in_xs[i] = num_x;
       num_particle_in_ys[i] = num_y;

@@ -1,11 +1,9 @@
 #pragma once
+#include "Abbreviation.h"
 #include "Mesh.h"
 
 #include <d3d11.h>
-#include <directxtk/SimpleMath.h>
-#include <numbers>
 #include <vector>
-#include <wrl.h> // ComPtr
 #include <memory>
 
 //Forward Declaration
@@ -14,10 +12,6 @@ namespace ms
 class Camera;
 class WCSPH;
 } // namespace ms
-
-// Abbreviation
-using DirectX::SimpleMath::Vector3;
-using Microsoft::WRL::ComPtr;
 
 // Data Struct
 namespace ms
@@ -75,7 +69,8 @@ private:
 
 private:
   //common
-  std::unique_ptr<WCSPH> _uptr_particles;
+  std::unique_ptr<WCSPH> _uptr_SPH_Scheme;
+
   SPH_GS_Cbuffer_Data              _GS_Cbuffer_data;
   ComPtr<ID3D11Buffer>             _cptr_GS_Cbuffer;
   ComPtr<ID3D11GeometryShader>     _cptr_GS;

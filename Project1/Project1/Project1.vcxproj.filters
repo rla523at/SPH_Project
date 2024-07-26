@@ -30,28 +30,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Device_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="GUI_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Window_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Billboard_Sphere.cpp">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClCompile>
-    <ClCompile Include="Square.cpp">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClCompile>
     <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp">
       <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClCompile>
-    <ClCompile Include="src\Particles.cpp">
+    <ClCompile Include="src\WCSPH.cpp">
       <Filter>소스 파일\SPH</Filter>
     </ClCompile>
     <ClCompile Include="src\SPH.cpp">
@@ -63,29 +45,29 @@
     <ClCompile Include="src\PCISPH.cpp">
       <Filter>소스 파일\SPH</Filter>
     </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Device_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GUI_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Square.cpp">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Texture_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Window_Manager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Device_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="GUI_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Window_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Billboard_Sphere.h">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="Square.h">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClInclude>
     <ClInclude Include="Debugger.h">
       <Filter>소스 파일\Manager</Filter>
     </ClInclude>
@@ -98,7 +80,7 @@
     <ClInclude Include="src\Neighborhood_Uniform_Grid.h">
       <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClInclude>
-    <ClInclude Include="src\Particles.h">
+    <ClInclude Include="src\WCSPH.h">
       <Filter>소스 파일\SPH</Filter>
     </ClInclude>
     <ClInclude Include="src\PCISPH.h">
@@ -116,36 +98,48 @@
     <ClInclude Include="src\Kernel.h">
       <Filter>소스 파일\SPH</Filter>
     </ClInclude>
+    <ClInclude Include="src\Device_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\GUI_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mesh.h">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Square.h">
+      <Filter>소스 파일\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Texture_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Window_Manager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="SPH_PS.hlsl">
+    <FxCompile Include="hlsl\SPH_boundary_PS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="SPH_VS.hlsl">
+    <FxCompile Include="hlsl\SPH_boundary_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="SPH_GS.hlsl">
+    <FxCompile Include="hlsl\SPH_GS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="Billboard_Sphere_GS.hlsl">
+    <FxCompile Include="hlsl\SPH_PS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="Billboard_Sphere_PS.hlsl">
+    <FxCompile Include="hlsl\SPH_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="Billboard_Sphere_VS.hlsl">
+    <FxCompile Include="hlsl\Square_PS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="Square_PS.hlsl">
-      <Filter>HLSL</Filter>
-    </FxCompile>
-    <FxCompile Include="Square_VS.hlsl">
-      <Filter>HLSL</Filter>
-    </FxCompile>
-    <FxCompile Include="SPH_boundary_VS.hlsl">
-      <Filter>HLSL</Filter>
-    </FxCompile>
-    <FxCompile Include="SPH_boundary_PS.hlsl">
+    <FxCompile Include="hlsl\Square_VS.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
   </ItemGroup>

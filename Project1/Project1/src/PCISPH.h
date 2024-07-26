@@ -8,7 +8,7 @@ namespace ms
 {
 class Neighborhood;
 class Cubic_Spline_Kernel;
-}
+} // namespace ms
 
 //PCISPH declration
 namespace ms
@@ -32,7 +32,7 @@ private:
   float predict_density_and_variation_and_update_pressure(void);
   void  cal_pressure_acceleration(void);
   void  apply_boundary_condition(void);
-  float init_mass_and_scailing_factor(void);
+  void  init_mass_and_scailing_factor(void);
 
 private:
   float _scailing_factor   = 0.0f;

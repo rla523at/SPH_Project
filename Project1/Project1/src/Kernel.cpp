@@ -18,7 +18,7 @@ float Cubic_Spline_Kernel::W(const float distance) const
   constexpr float c1 = 2.0f / 3.0f;
   constexpr float c2 = 1.0f / 6.0f;
 
-  REQUIRE(dist >= 0.0f, "dist should be positive");
+  REQUIRE(distance >= 0.0f, "dist should be positive");
 
   const float q = distance / _h;
 
@@ -37,7 +37,7 @@ float Cubic_Spline_Kernel::W(const float distance) const
 
 float Cubic_Spline_Kernel::dWdq(const float distance) const
 {
-  REQUIRE(dist >= 0.0f, "dist should be positive");
+  REQUIRE(distance >= 0.0f, "dist should be positive");
 
   const float q = distance / _h;
 

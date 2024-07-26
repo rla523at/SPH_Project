@@ -1,6 +1,6 @@
 #include "Texture_Manager.h"
 
-#include "../_lib/_header/msexception/Exception.h"
+#include "../../_lib/_header/msexception/Exception.h"
 #include <DirectXTex.h>
 
 namespace ms

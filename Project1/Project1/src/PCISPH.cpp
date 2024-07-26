@@ -33,7 +33,7 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
   const float divide_length = _uptr_kernel->supprot_length();
   _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
 
-  _mass_per_particle = this->init_mass_and_scailing_factor();
+  this->init_mass_and_scailing_factor();
 }
 
 void PCISPH::update(void)
@@ -340,7 +340,7 @@ void PCISPH::apply_boundary_condition(void)
   }
 }
 
-float PCISPH::init_mass_and_scailing_factor(void)
+void PCISPH::init_mass_and_scailing_factor(void)
 {
   size_t max_index = 0;
 
@@ -355,8 +355,7 @@ float PCISPH::init_mass_and_scailing_factor(void)
 
       const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(i);
       const auto& neighbor_distances    = neighbor_informations.distances;
-
-      const auto num_neighbor = neighbor_distances.size();
+      const auto  num_neighbor          = neighbor_distances.size();
 
       for (size_t j = 0; j < num_neighbor; j++)
       {
@@ -402,7 +401,7 @@ float PCISPH::init_mass_and_scailing_factor(void)
 
     const float sum_dot_sum = v_sum_grad_kernel.Dot(v_sum_grad_kernel);
 
-    _scailing_factor = 1.0 / beta * (sum_dot_sum + size_sum);
+    _scailing_factor = 1.0f / beta * (sum_dot_sum + size_sum);
   }
 }
 

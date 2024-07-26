@@ -1,11 +1,5 @@
 #pragma once
-#include <directxtk/SimpleMath.h>
-
-namespace ms
-{
-using DirectX::SimpleMath::Matrix;
-using DirectX::SimpleMath::Vector3;
-} // namespace ms
+#include "Abbreviation.h"
 
 namespace ms
 {

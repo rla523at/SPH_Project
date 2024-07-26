@@ -16,13 +16,6 @@ struct Index_Vector
   size_t z = 0;
 };
 
-struct Neighbor_Informations
-{
-  std::vector<size_t>  indexes;
-  std::vector<Vector3> translate_vectors; // neighbor point to current point vector
-  std::vector<float>   distances;
-};
-
 } // namespace ms
 
 namespace ms

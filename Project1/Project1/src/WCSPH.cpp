@@ -1,4 +1,4 @@
-#include "Particles.h"
+#include "WCSPH.h"
 
 #include "Debugger.h"
 #include "Kernel.h"
@@ -19,10 +19,12 @@ WCSPH::WCSPH(
     : _material_proeprty(property), _domain(solution_domain)
 
 {
+  _dt = 1.0e-03f;
+
   const auto& ic = initial_condition;
 
   _particle_radius                  = ic.particle_spacing;
-  _smoothing_length                 = 1.6f * ic.particle_spacing;
+  _smoothing_length                 = 1.1f * ic.particle_spacing;
   _fluid_particles.position_vectors = ic.cal_initial_position();
   _num_fluid_particle               = _fluid_particles.position_vectors.size();
 
@@ -34,6 +36,8 @@ WCSPH::WCSPH(
   _fluid_particles.acceleration_vectors.resize(_num_fluid_particle);
 
   //this->init_boundary_position_and_normal(solution_domain, ic.particle_spacing * 0.5f);
+
+  _uptr_kernel = std::make_unique<Cubic_Spline_Kernel>(_smoothing_length);
 
   const float divide_length = _uptr_kernel->supprot_length();
   _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
@@ -123,19 +127,23 @@ void WCSPH::update_density_and_pressure(void)
 
 void WCSPH::update_acceleration(void)
 {
+  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
+  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
+
   this->update_density_and_pressure();
 
-  const float sigma = 0.0e0f;
+  //common constnat
+  const float m0 = _mass_per_particle;
 
   //viscosity constant
-  const float m0                  = _mass_per_particle;
   const float h                   = _smoothing_length;
   const float viscousity_constant = 10.0f * m0 * _material_proeprty.viscosity;
   const float regularization_term = 0.01f * h * h;
 
-  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
+  //surface tension constant
+  const float sigma = 0.0e0f;
 
+  //references
   auto& densities     = _fluid_particles.densities;
   auto& pressures     = _fluid_particles.pressures;
   auto& velocities    = _fluid_particles.velocity_vectors;
@@ -146,7 +154,7 @@ void WCSPH::update_acceleration(void)
   {
     Vector3 v_a_pressure(0.0f);
     Vector3 v_a_viscosity(0.0f);
-    Vector3 v_a_surface_tension(0.0f);
+    //Vector3 v_a_surface_tension(0.0f);
 
     const float rhoi = densities[i];
     const float pi   = pressures[i];
@@ -177,15 +185,15 @@ void WCSPH::update_acceleration(void)
       if (distance == 0.0f)
         continue;
 
-      const Vector3 v_xij_normal = v_xij / distance;
-      v_a_surface_tension -= sigma * m0 * W(distance) * v_xij_normal;
+      //const Vector3 v_xij_normal = v_xij / distance;
+      //v_a_surface_tension -= sigma * m0 * W(distance) * v_xij_normal;
 
       // cal v_grad_kernel
       const auto v_grad_q      = 1.0f / (h * distance) * v_xij;
-      const auto v_grad_kernel = dW_dq(distance) * v_grad_q;
+      const auto v_grad_kernel = _uptr_kernel->dWdq(distance) * v_grad_q;
 
       // cal v_grad_pressure
-      const auto coeff           = m0 * (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
+      const auto coeff           = (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
       const auto v_grad_pressure = coeff * v_grad_kernel;
 
       // cal v_laplacian_velocity
@@ -201,7 +209,9 @@ void WCSPH::update_acceleration(void)
 
     auto& v_a = accelerations[i];
 
-    v_a = v_a_pressure + viscousity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
+    //v_a = m0 * v_a_pressure + viscousity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
+    
+    v_a = m0 * v_a_pressure + viscousity_constant * v_a_viscosity + v_a_gravity;
   }
 
   //// consider boundary
@@ -230,9 +240,6 @@ void WCSPH::update_acceleration(void)
 
 void WCSPH::time_integration(void)
 {
-  //constexpr float dt = 5.0e-4f;
-  constexpr float dt = 2.5e-3f;
-
   static float time = 0.0f;
   //static float target = 0.01f;
   //time += dt;
@@ -246,23 +253,23 @@ void WCSPH::time_integration(void)
   //  Debugger::record() << time << " ";
   //}
 
-  this->semi_implicit_euler(dt);
+  this->semi_implicit_euler(_dt);
   // this->leap_frog_DKD(dt);
   // this->leap_frog_KDK(dt);
 }
 
 void WCSPH::semi_implicit_euler(const float dt)
 {
-  _uptr_neighborhood->update(_fluid_position_vectors, _boundary_position_vectors);
+  _uptr_neighborhood->update(_fluid_particles.position_vectors, _boundary_position_vectors);
   this->update_acceleration();
 
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
-    const auto& v_a = _fluid_acceleration_vectors[i];
+    const auto& v_a = _fluid_particles.acceleration_vectors[i];
 
-    _fluid_velocity_vectors[i] += v_a * dt;
-    _fluid_position_vectors[i] += _fluid_velocity_vectors[i] * dt;
+    _fluid_particles.velocity_vectors[i] += v_a * dt;
+    _fluid_particles.position_vectors[i] += _fluid_particles.velocity_vectors[i] * dt;
   }
   this->apply_boundary_condition();
 }
@@ -272,22 +279,22 @@ void WCSPH::leap_frog_DKD(const float dt)
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
-    const auto& v_v = _fluid_velocity_vectors[i];
-    auto&       v_p = _fluid_position_vectors[i];
+    const auto& v_v = _fluid_particles.velocity_vectors[i];
+    auto&       v_p = _fluid_particles.position_vectors[i];
 
     v_p += v_v * 0.5f * dt;
   }
   // this->apply_boundary_condition();
-  _uptr_neighborhood->update(_fluid_position_vectors, _boundary_position_vectors);
+  _uptr_neighborhood->update(_fluid_particles.position_vectors, _boundary_position_vectors);
 
   this->update_acceleration();
 
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
-    const auto& v_a = _fluid_acceleration_vectors[i];
-    auto&       v_v = _fluid_velocity_vectors[i];
-    auto&       v_p = _fluid_position_vectors[i];
+    const auto& v_a = _fluid_particles.acceleration_vectors[i];
+    auto&       v_v = _fluid_particles.velocity_vectors[i];
+    auto&       v_p = _fluid_particles.position_vectors[i];
 
     v_v += dt * v_a;
     v_p += v_v * 0.5f * dt;
@@ -301,24 +308,24 @@ void WCSPH::leap_frog_KDK(const float dt)
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
-    auto& v_p = _fluid_position_vectors[i];
-    auto& v_v = _fluid_velocity_vectors[i];
+    auto& v_p = _fluid_particles.position_vectors[i];
+    auto& v_v = _fluid_particles.velocity_vectors[i];
 
-    const auto& v_a = _fluid_acceleration_vectors[i];
+    const auto& v_a = _fluid_particles.acceleration_vectors[i];
 
     v_v += 0.5f * dt * v_a;
     v_p += dt * v_v;
   }
   // this->apply_boundary_condition();
-  _uptr_neighborhood->update(_fluid_position_vectors, _boundary_position_vectors);
+  _uptr_neighborhood->update(_fluid_particles.position_vectors, _boundary_position_vectors);
   this->update_acceleration();
 
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
-    auto& v_v = _fluid_velocity_vectors[i];
+    auto& v_v = _fluid_particles.velocity_vectors[i];
 
-    const auto& v_a = _fluid_acceleration_vectors[i];
+    const auto& v_a = _fluid_particles.acceleration_vectors[i];
 
     v_v += 0.5f * dt * v_a;
   }
@@ -340,8 +347,8 @@ void WCSPH::apply_boundary_condition(void)
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; ++i)
   {
-    auto& v_pos = _fluid_position_vectors[i];
-    auto& v_vel = _fluid_velocity_vectors[i];
+    auto& v_pos = _fluid_particles.position_vectors[i];
+    auto& v_vel = _fluid_particles.velocity_vectors[i];
 
     if (v_pos.x < wall_x_start && v_vel.x < 0.0f)
     {
@@ -381,42 +388,6 @@ void WCSPH::apply_boundary_condition(void)
   }
 }
 
-float WCSPH::W(const float dist) const
-{
-  //REQUIRE(distance >= 0.0f, "distance should be positive");
-
-  //constexpr float pi    = std::numbers::pi_v<float>;
-  //const float     h     = _support_radius;
-  //const float     coeff = 3.0f / (2.0f * pi * h * h * h);
-
-  //const float q = distance / h;
-
-  //if (q < 0.5f)
-  //  return coeff * (2.0f / 3.0f - q * q + 0.5f * q * q * q);
-  //else if (q < 1.0f)
-  //  return coeff * pow(2.0f - q, 3.0f) / 6.0f;
-  //else // q >= 2.0f
-  //  return 0.0f;
-}
-
-float WCSPH::dW_dq(const float dist) const
-{
-  //REQUIRE(distance >= 0.0f, "distance should be positive");
-
-  //constexpr float pi    = std::numbers::pi_v<float>;
-  //const float     h     = _support_radius;
-  //const float     coeff = 3.0f / (2.0f * pi * h * h * h);
-
-  //const float q = distance / h;
-
-  //if (q < 0.5f)
-  //  return coeff * (-2.0f * q + 1.5f * q * q);
-  //else if (q < 1.0f)
-  //  return coeff * -0.5f * (2.0f - q) * (2.0f - q);
-  //else // q >= 2.0f
-  //  return 0.0f;
-}
-
 float WCSPH::B(const float dist) const
 {
   // const float h = 2*_support_radius;
@@ -443,6 +414,23 @@ float WCSPH::cal_mass_per_particle_1994_monaghan(const float total_volume) const
 {
   const float volume_per_particle = total_volume / _num_fluid_particle;
   return _material_proeprty.rest_density * volume_per_particle;
+}
+
+float WCSPH::cal_number_density(const size_t fluid_particle_id) const
+{
+  float number_density = 0.0;
+
+  const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(fluid_particle_id);
+  const auto& neighbor_distances    = neighbor_informations.distances;
+  const auto  num_neighbor          = neighbor_distances.size();
+
+  for (size_t j = 0; j < num_neighbor; j++)
+  {
+    const float dist = neighbor_distances[j];
+    number_density += _uptr_kernel->W(dist);
+  }
+
+  return number_density;
 }
 
 void WCSPH::init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length)
@@ -571,126 +559,48 @@ void WCSPH::init_boundary_position_and_normal(const Domain& solution_domain, con
 
 float WCSPH::cal_mass_per_particle_number_density_max(void) const
 {
+  const float m0 = _material_proeprty.rest_density;
+
   float max_number_density = 0.0f;
 
-  for (int i = 0; i < _num_fluid_particle; i++)
+  for (size_t i = 0; i < _num_fluid_particle; i++)
   {
-    float number_density = 0.0;
-
-    const auto& v_xi = _fluid_position_vectors[i];
-
-    const auto& neighbor_indexes = _uptr_neighborhood->search_for_fluid(i);
-    const auto  num_neighbor     = neighbor_indexes.size();
-
-    for (int j = 0; j < num_neighbor; j++)
-    {
-      const auto neighbor_index = neighbor_indexes[j];
-
-      const auto& v_xj = _fluid_position_vectors[neighbor_index];
-
-      const float dist = (v_xi - v_xj).Length();
-
-      number_density += W(dist);
-    }
+    const float number_density = this->cal_number_density(i);
 
     max_number_density = (std::max)(max_number_density, number_density);
   }
 
-  return _material_proeprty.rest_density / max_number_density;
+  return m0 / max_number_density;
 }
 
 float WCSPH::cal_mass_per_particle_number_density_min(void) const
 {
+  const float m0 = _material_proeprty.rest_density;
+
   float min_number_density = (std::numeric_limits<float>::max)();
 
-  for (int i = 0; i < _num_fluid_particle; i++)
+  for (size_t i = 0; i < _num_fluid_particle; i++)
   {
-    float number_density = 0.0;
-
-    const auto& v_xi = _fluid_position_vectors[i];
-
-    const auto& neighbor_indexes = _uptr_neighborhood->search_for_fluid(i);
-    const auto  num_neighbor     = neighbor_indexes.size();
-
-    for (int j = 0; j < num_neighbor; j++)
-    {
-      const auto neighbor_index = neighbor_indexes[j];
-
-      const auto& v_xj = _fluid_position_vectors[neighbor_index];
-
-      const float dist = (v_xi - v_xj).Length();
-
-      number_density += W(dist);
-    }
+    const float number_density = this->cal_number_density(i);
 
     min_number_density = (std::min)(min_number_density, number_density);
   }
 
-  return _material_proeprty.rest_density / min_number_density;
-}
-
-void WCSPH::update_mass(void)
-{
-  //_mass_per_particle = _material_proeprty.rest_density * _volume_per_particle;
-  //_mass_per_particle = this->cal_mass_per_particle_number_density_mean();
-  //_mass_per_particle = this->init_mass_and_scailing_factor();
-  _mass_per_particle = this->cal_mass_per_particle_number_density_mean();
-
-  //_mass.resize(_num_particle);
-
-  // const float rho0 = _material_proeprty.rest_density;
-  // const float h    = _support_radius / 2;
-
-  // for (int i = 0; i < _num_particle; i++)
-  //{
-  //   float number_density = 0.0;
-
-  //  const auto& v_xi = _position_vectors[i];
-
-  //  const auto& neighbor_indexes = _uptr_neighborhood->search(i);
-  //  const auto  num_neighbor     = neighbor_indexes.size();
-
-  //  for (int j = 0; j < num_neighbor; j++)
-  //  {
-  //    const auto neighbor_index = neighbor_indexes[j];
-
-  //    const auto& v_xj = _position_vectors[neighbor_index];
-
-  //    const float distance = (v_xi - v_xj).Length();
-  //    const auto  q    = distance / h;
-
-  //    number_density += W(q);
-  //  }
-
-  //  _mass[i] = rho0 / number_density;
-  //}
+  return m0 / min_number_density;
 }
 
 float WCSPH::cal_mass_per_particle_number_density_mean(void) const
 {
+  const float m0 = _material_proeprty.rest_density;
+
   float avg_number_density = 0.0f;
 
   for (int i = 0; i < _num_fluid_particle; i++)
-  {
-    const auto& v_xi = _fluid_position_vectors[i];
-
-    const auto& neighbor_indexes = _uptr_neighborhood->search_for_fluid(i);
-    const auto  num_neighbor     = neighbor_indexes.size();
-
-    for (int j = 0; j < num_neighbor; j++)
-    {
-      const auto neighbor_index = neighbor_indexes[j];
-
-      const auto& v_xj = _fluid_position_vectors[neighbor_index];
-
-      const float dist = (v_xi - v_xj).Length();
-
-      avg_number_density += W(dist);
-    }
-  }
+    avg_number_density += this->cal_number_density(i);
 
   avg_number_density /= _num_fluid_particle;
-  return _material_proeprty.rest_density / avg_number_density;
+
+  return m0 / avg_number_density;
 }
 
 } // namespace ms

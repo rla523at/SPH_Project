@@ -2,7 +2,6 @@
 #include <memory>
 #include <windows.h>
 
-#include "Billboard_Sphere.h"
 #include "Camera.h"
 #include "Device_Manager.h"
 #include "GUI_Manager.h"
@@ -14,8 +13,6 @@
 
 int main()
 {
-  using DirectX::SimpleMath::Matrix;
-
   constexpr int   num_pixel_width  = 1280;
   constexpr int   num_pixel_height = 960;
   constexpr float pi               = std::numbers::pi_v<float>;

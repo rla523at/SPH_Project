@@ -1,6 +1,6 @@
 #include "Window_Manager.h"
 
-#include "../_lib/_header/msexception/Exception.h"
+#include "../../_lib/_header/msexception/Exception.h"
 #include "windowsx.h"
 #include <imgui.h>
 #include <iostream>

@@ -9,9 +9,11 @@ public:
   Neighborhood_Brute_Force(const size_t num_particles)
       : _num_particles(num_particles)
   {
-    _pids.resize(_num_particles);
+    auto& pids = _information.indexes;
+
+    pids.resize(_num_particles);
     for (int i = 0; i < _num_particles; ++i)
-      _pids[i] = i;
+      pids[i] = i;
   };
 
 public:
@@ -19,17 +21,17 @@ public:
     const std::vector<Vector3>& fluid_particle_pos_vectors,
     const std::vector<Vector3>& boundary_particle_pos_vectors) override{};
 
-  const std::vector<size_t>& search_for_fluid(const size_t pid) const override
+  const Neighbor_Informations& search_for_fluid(const size_t pid) const override
   {
-    return _pids;
+    return _information;
   }
   const std::vector<size_t>& search_for_boundary(const size_t bpid) const override
   {
-    return _pids;
+    return _information.indexes;//temporary code
   };
 
 private:
   size_t              _num_particles = 0;
-  std::vector<size_t> _pids;
+  Neighbor_Informations _information;
 };
 } // namespace ms

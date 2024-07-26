@@ -3,7 +3,7 @@
 #include "Device_Manager.h"
 #include "Window_Manager.h"
 
-#include "../_lib/_header/msexception/Exception.h"
+#include "../../_lib/_header/msexception/Exception.h"
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>

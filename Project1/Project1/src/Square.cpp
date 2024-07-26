@@ -4,7 +4,7 @@
 #include "GUI_Manager.h"
 #include "Texture_Manager.h"
 
-#include "../_lib/_header/msexception/Exception.h"
+#include "../../_lib/_header/msexception/Exception.h"
 #include <DirectXTex.h>
 #include <d3dcompiler.h>
 #include <tuple>
@@ -160,7 +160,7 @@ void Square::init_VS_and_input_layout(const ComPtr<ID3D11Device> cptr_device)
 
   std::vector<D3D11_INPUT_ELEMENT_DESC> input_element_descs = {pos_desc, tex_desc};
 
-  constexpr auto* file_name                   = L"Square_VS.hlsl";
+  constexpr auto* file_name                   = L"hlsl/Square_VS.hlsl";
   constexpr auto* entry_point_name            = "main";
   constexpr auto* sharder_target_profile_name = "vs_5_0";
 
@@ -212,7 +212,7 @@ void Square::init_VS_and_input_layout(const ComPtr<ID3D11Device> cptr_device)
 
 void Square::init_square_PS(const ComPtr<ID3D11Device> cptr_device)
 {
-  constexpr auto* file_name                   = L"Square_PS.hlsl";
+  constexpr auto* file_name                   = L"hlsl/Square_PS.hlsl";
   constexpr auto* entry_point_name            = "main";
   constexpr auto* sharder_target_profile_name = "ps_5_0";
 

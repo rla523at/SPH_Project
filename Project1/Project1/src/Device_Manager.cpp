@@ -1,6 +1,6 @@
 ﻿#include "Device_Manager.h"
 
-#include "../_lib/_header/msexception/Exception.h"
+#include "../../_lib/_header/msexception/Exception.h"
 #include <dxgi.h> // DXGIFactory
 
 namespace ms

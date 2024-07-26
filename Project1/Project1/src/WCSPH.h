@@ -55,15 +55,13 @@ private:
   void leap_frog_DKD(const float dt);
   void leap_frog_KDK(const float dt);
 
-  float W(const float dist) const; //kernel function
-  float dW_dq(const float dist) const;
   float B(const float dist) const; //boundary function
 
-  void  update_mass(void);
   float cal_mass_per_particle_number_density_mean(void) const;
   float cal_mass_per_particle_number_density_max(void) const;
   float cal_mass_per_particle_number_density_min(void) const;
   float cal_mass_per_particle_1994_monaghan(const float total_volume) const;
+  float cal_number_density(const size_t fluid_particle_id) const;
 
   void init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length);
 
@@ -73,6 +71,7 @@ private:
   float  _particle_radius     = 0.0f;
   float  _volume_per_particle = 0.0f;
   float  _mass_per_particle   = 0.0f;
+  float  _dt                  = 0.0f;
 
   Fluid_Particles                      _fluid_particles;
   std::unique_ptr<Neighborhood>        _uptr_neighborhood;
