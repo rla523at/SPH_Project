@@ -46,4 +46,34 @@ protected:
   ComPtr<ID3D11DepthStencilView>  _cptr_depth_stencil_view;
   ComPtr<ID3D11DepthStencilState> _cptr_depth_stencil_state;
 };
+
+class Device_Manager_Debug
+{
+public:
+  template <typename T>
+  static void copy(const T*             data_ptr,
+                   const size_t         num_data,
+                   ComPtr<ID3D11Buffer> cptr_Sbuffer,
+                   ComPtr<ID3D11Buffer> cptr_SRbuffer)
+  {
+    const auto data_size = sizeof(T);
+    const auto copy_size = data_size * num_data;
+
+    //CPU >> Staging Buffer
+    D3D11_MAPPED_SUBRESOURCE ms;
+    _cptr_context->Map(cptr_Sbuffer.Get(), NULL, D3D11_MAP_WRITE, NULL, &ms);
+    memcpy(ms.pData, data_ptr, copy_size);
+    _cptr_context->Unmap(cptr_Sbuffer.Get(), NULL);
+
+    // Staging Buffer >> Shader Resource Buffer
+    _cptr_context->CopyResource(cptr_SRbuffer.Get(), cptr_Sbuffer.Get());
+  }
+
+public:
+  static inline ComPtr<ID3D11Device>        _cptr_device;
+  static inline ComPtr<ID3D11DeviceContext> _cptr_context;
+  static inline ComPtr<IDXGISwapChain>      _cptr_swap_chain;
+  static inline ComPtr<ID3D11Buffer>        _cptr_buffers[10];
+};
+
 } // namespace ms

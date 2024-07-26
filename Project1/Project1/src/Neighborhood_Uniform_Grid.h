@@ -42,6 +42,7 @@ private:
   size_t       grid_cell_index(const Vector3& v_pos) const;
   size_t       grid_cell_index(const Index_Vector& index_vector) const;
   bool         is_valid_index(const Index_Vector& index_vector) const;
+  bool         is_valid_index(const size_t gcid) const;
 
   //fill neighbor particle ids into pids and return number of neighbor particles
   size_t search(const Vector3& pos, size_t* pids) const;

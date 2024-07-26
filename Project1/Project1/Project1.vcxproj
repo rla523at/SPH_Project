@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\Debugger.cpp" />
     <ClCompile Include="src\Device_Manager.cpp" />
     <ClCompile Include="src\GUI_Manager.cpp" />
     <ClCompile Include="src\Kernel.cpp" />
@@ -33,9 +34,9 @@
     <ClCompile Include="src\Window_Manager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Debugger.h" />
     <ClInclude Include="src\Abbreviation.h" />
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\Debugger.h" />
     <ClInclude Include="src\Device_Manager.h" />
     <ClInclude Include="src\GUI_Manager.h" />
     <ClInclude Include="src\Kernel.h" />
@@ -43,6 +44,7 @@
     <ClInclude Include="src\Neighborhood.h" />
     <ClInclude Include="src\Neighborhood_Brute_Force.h" />
     <ClInclude Include="src\Neighborhood_Uniform_Grid.h" />
+    <ClInclude Include="src\SPH_Scheme.h" />
     <ClInclude Include="src\Square.h" />
     <ClInclude Include="src\Texture_Manager.h" />
     <ClInclude Include="src\WCSPH.h" />

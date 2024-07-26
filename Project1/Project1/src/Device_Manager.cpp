@@ -19,6 +19,12 @@ Device_Manager::Device_Manager(const HWND main_window, const int num_row_pixel, 
   this->init_swap_chain_and_depth_stencil_buffer(main_window);
   this->init_render_target_view();
   this->init_depth_stencil_view();
+
+  //debug
+  Device_Manager_Debug::_cptr_device     = _cptr_device;
+  Device_Manager_Debug::_cptr_context    = _cptr_context;
+  Device_Manager_Debug::_cptr_swap_chain = _cptr_swap_chain;
+  //debug
 }
 
 ComPtr<ID3D11Device> Device_Manager::device_cptr(void) const

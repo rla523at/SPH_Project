@@ -3,14 +3,14 @@
 #include "Mesh.h"
 
 #include <d3d11.h>
-#include <vector>
 #include <memory>
+#include <vector>
 
 //Forward Declaration
 namespace ms
 {
 class Camera;
-class WCSPH;
+class SPH_Scheme;
 } // namespace ms
 
 // Data Struct
@@ -69,23 +69,23 @@ private:
 
 private:
   //common
-  std::unique_ptr<WCSPH> _uptr_SPH_Scheme;
+  std::unique_ptr<SPH_Scheme> _uptr_SPH_Scheme;
 
-  SPH_GS_Cbuffer_Data              _GS_Cbuffer_data;
-  ComPtr<ID3D11Buffer>             _cptr_GS_Cbuffer;
-  ComPtr<ID3D11GeometryShader>     _cptr_GS;
+  SPH_GS_Cbuffer_Data          _GS_Cbuffer_data;
+  ComPtr<ID3D11Buffer>         _cptr_GS_Cbuffer;
+  ComPtr<ID3D11GeometryShader> _cptr_GS;
 
   //fluid element
-  ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview_pos;   
-  ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer_pos; 
-  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_pos;  
+  ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview_pos;
+  ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer_pos;
+  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_pos;
 
   ComPtr<ID3D11ShaderResourceView> _cptr_VS_SRview_density;
   ComPtr<ID3D11Buffer>             _cptr_VS_SRbuffer_density;
-  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_density;  
+  ComPtr<ID3D11Buffer>             _cptr_VS_Sbuffer_density;
 
-  ComPtr<ID3D11VertexShader>       _cptr_VS;
-  ComPtr<ID3D11PixelShader>        _cptr_PS;
+  ComPtr<ID3D11VertexShader> _cptr_VS;
+  ComPtr<ID3D11PixelShader>  _cptr_PS;
 
   //boudary element
   ComPtr<ID3D11InputLayout>  _cptr_boundary_input_layout;

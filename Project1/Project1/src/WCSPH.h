@@ -1,5 +1,6 @@
 #pragma once
 #include "SPH_Common_Data.h"
+#include "SPH_Scheme.h"
 
 #include <memory>
 #include <vector>
@@ -24,7 +25,7 @@ struct Material_Property
   float viscosity            = 0.0f;
 };
 
-class WCSPH
+class WCSPH : public SPH_Scheme
 {
 public:
   WCSPH(
@@ -35,15 +36,16 @@ public:
   ~WCSPH(void);
 
 public:
-  void update(void);
+  void update(void) override;
 
 public:
-  const Vector3* fluid_particle_position_data(void) const;
-  const Vector3* boundary_particle_position_data(void) const;
-  const float*   fluid_particle_density_data(void) const;
-  size_t         num_fluid_particle(void) const;
-  size_t         num_boundary_particle(void) const;
-  float          particle_radius(void) const;
+  float          particle_radius(void) const override;
+  size_t         num_fluid_particle(void) const override;
+  const Vector3* fluid_particle_position_data(void) const override;
+  const float*   fluid_particle_density_data(void) const override;
+
+  //const Vector3* boundary_particle_position_data(void) const override;
+  //size_t         num_boundary_particle(void) const override;
 
 private:
   void update_density_and_pressure(void);

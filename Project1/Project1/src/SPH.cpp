@@ -1,6 +1,8 @@
 #include "SPH.h"
 
 #include "Camera.h"
+#include "Device_Manager.h"
+#include "PCISPH.h"
 #include "WCSPH.h"
 #include "Window_Manager.h"
 
@@ -47,12 +49,12 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   //// Solo Particle
   //Domain init_cond_domain;
-  //init_cond_domain.x_start = -0.0f;
-  //init_cond_domain.x_end   = 0.0f;
+  //init_cond_domain.x_start = -0.2f;
+  //init_cond_domain.x_end   = 0.2f;
   //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.1f;
-  //init_cond_domain.z_start = -0.0f;
-  //init_cond_domain.z_end   = 0.0f;
+  //init_cond_domain.y_end   = 1.4f;
+  //init_cond_domain.z_start = -0.2f;
+  //init_cond_domain.z_end   = 0.2f;
 
   //init_cond_domains.push_back(init_cond_domain);
 
@@ -100,7 +102,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains          = init_cond_domains;
-  init_cond.particle_spacing = 0.05f;
+  init_cond.particle_spacing = 0.04f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter
@@ -112,9 +114,10 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
   mat_prop.viscosity            = 1.0e-2f;
 
-  _uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
+  //_uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
+  _uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain);
 
-  _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius();
+  _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius()*0.5f;
 
   this->init_VS_SRbuffer_pos(cptr_device);
   this->init_VS_SRview_pos(cptr_device);
@@ -131,6 +134,13 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   this->init_boundary_VS(cptr_device);
   this->init_boundary_PS(cptr_device);
   this->init_boundary_blender_state(cptr_device);
+
+  //debug
+  Device_Manager_Debug::_cptr_buffers[0] = _cptr_VS_SRbuffer_pos;
+  Device_Manager_Debug::_cptr_buffers[1] = _cptr_VS_Sbuffer_pos;
+  Device_Manager_Debug::_cptr_buffers[2] = _cptr_VS_SRbuffer_density;
+  Device_Manager_Debug::_cptr_buffers[3] = _cptr_VS_Sbuffer_density;
+  //debug
 }
 
 SPH::~SPH(void) = default;
@@ -415,7 +425,8 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
   cptr_context->GSSetConstantBuffers(0, 0, nullptr);
   cptr_context->GSSetShader(nullptr, nullptr, 0);
   cptr_context->PSSetShader(nullptr, nullptr, 0);
-  //cptr_context->OMSetBlendState(nullptr, nullptr, NULL);
+
+  cptr_context->OMSetBlendState(nullptr, nullptr, 0XFFFFFFFF); //SAMPLE MASK에 NULL 넣으면 안된다.
 }
 
 void SPH::init_VS_SRbuffer_pos(const ComPtr<ID3D11Device> cptr_device)

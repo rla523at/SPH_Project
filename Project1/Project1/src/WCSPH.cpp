@@ -28,7 +28,7 @@ WCSPH::WCSPH(
   _fluid_particles.position_vectors = ic.cal_initial_position();
   _num_fluid_particle               = _fluid_particles.position_vectors.size();
 
-  const auto rho0 = _material_proeprty.rest_density;
+  const auto rho0 = _material_proeprty.rest_density; 
 
   _fluid_particles.pressures.resize(_num_fluid_particle);
   _fluid_particles.densities.resize(_num_fluid_particle, rho0);
@@ -39,7 +39,7 @@ WCSPH::WCSPH(
 
   _uptr_kernel = std::make_unique<Cubic_Spline_Kernel>(_smoothing_length);
 
-  const float divide_length = _uptr_kernel->supprot_length();
+  const float divide_length = _uptr_kernel->supprot_radius();
   _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
 
   _mass_per_particle = this->cal_mass_per_particle_number_density_max();
@@ -60,10 +60,10 @@ const Vector3* WCSPH::fluid_particle_position_data(void) const
   return _fluid_particles.position_vectors.data();
 }
 
-const Vector3* WCSPH::boundary_particle_position_data(void) const
-{
-  return _boundary_position_vectors.data();
-}
+//const Vector3* WCSPH::boundary_particle_position_data(void) const
+//{
+//  return _boundary_position_vectors.data();
+//}
 
 const float* WCSPH::fluid_particle_density_data(void) const
 {
@@ -75,10 +75,10 @@ size_t WCSPH::num_fluid_particle(void) const
   return _num_fluid_particle;
 }
 
-size_t WCSPH::num_boundary_particle(void) const
-{
-  return _boundary_position_vectors.size();
-}
+//size_t WCSPH::num_boundary_particle(void) const
+//{
+//  return _boundary_position_vectors.size();
+//}
 
 float WCSPH::particle_radius(void) const
 {
@@ -198,7 +198,7 @@ void WCSPH::update_acceleration(void)
 
       // cal v_laplacian_velocity
       const auto v_vij  = v_vi - v_vj;
-      const auto coeff2 = v_vij.Dot(v_xij) / rhoj * (distance2 + regularization_term);
+      const auto coeff2 = v_vij.Dot(v_xij) / (rhoj * (distance2 + regularization_term));
 
       const auto v_laplacian_velocity = coeff2 * v_grad_kernel;
 
@@ -240,19 +240,6 @@ void WCSPH::update_acceleration(void)
 
 void WCSPH::time_integration(void)
 {
-  static float time = 0.0f;
-  //static float target = 0.01f;
-  //time += dt;
-  //std::cout << time << "\n";
-
-  //if (time > target)
-  //{
-  //  target += 0.01f;
-
-  //  Debugger::start_record();
-  //  Debugger::record() << time << " ";
-  //}
-
   this->semi_implicit_euler(_dt);
   // this->leap_frog_DKD(dt);
   // this->leap_frog_KDK(dt);

@@ -52,7 +52,7 @@ float Cubic_Spline_Kernel::dWdq(const float distance) const
     return 0.0f;
 }
 
-float Cubic_Spline_Kernel::supprot_length(void) const
+float Cubic_Spline_Kernel::supprot_radius(void) const
 {
   return 2.0f * _h;
 }

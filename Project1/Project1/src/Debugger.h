@@ -1,7 +1,10 @@
 #pragma once
+#include "Abbreviation.h"
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 namespace ms
 {
@@ -109,15 +112,9 @@ void print(const T& v)
 }
 
 template <>
-void print(const Vector3& v)
-{
-  std::cout << v.x << " " << v.y << " " << v.z << "\n";
-}
+void print(const Vector3& v);
 
 
-bool is_nan(const Vector3& v)
-{
-  return v.x != v.x || v.y != v.y || v.z != v.z;
-}
+bool is_nan(const Vector3& v);
 
 } // namespace ms

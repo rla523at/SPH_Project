@@ -135,6 +135,11 @@ void Neighborhood_Uniform_Grid::update(
 
     const auto cur_gcid = this->grid_cell_index(v_xi);
 
+    //debug
+    if (!this->is_valid_index(cur_gcid))
+      continue;
+    //debug
+
     if (prev_gcid != cur_gcid)
     {
       // update gcid_to_fpids
@@ -198,6 +203,11 @@ bool Neighborhood_Uniform_Grid::is_valid_index(const Index_Vector& index_vector)
   return true;
 }
 
+bool Neighborhood_Uniform_Grid::is_valid_index(const size_t gcid) const
+{
+  return gcid < _gcid_to_neighbor_gcids.size();
+}
+
 void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<Vector3>& fluid_particle_pos_vectors)
 {
   const size_t num_particles = fluid_particle_pos_vectors.size();
@@ -216,7 +226,13 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
 
     const auto& v_xi = fluid_particle_pos_vectors[i];
 
-    const auto  gcid           = this->grid_cell_index(v_xi);
+    const auto gcid = this->grid_cell_index(v_xi);
+
+    //debug
+    if (!this->is_valid_index(gcid))
+      continue;
+    //debug
+
     const auto& neighbor_gcids = _gcid_to_neighbor_gcids[gcid];
 
     for (auto gcid : neighbor_gcids)

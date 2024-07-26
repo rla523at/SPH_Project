@@ -11,7 +11,7 @@ public:
 public:
   float W(const float distance) const;
   float dWdq(const float distance) const;
-  float supprot_length(void) const;
+  float supprot_radius(void) const;
 
 private:
   float _h           = 0.0f;

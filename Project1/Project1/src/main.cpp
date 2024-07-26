@@ -32,13 +32,13 @@ int main()
 
   const wchar_t* texture_file_name = L"rsc/wood_table.jpg";
 
-  std::vector<std::unique_ptr<ms::Mesh>> meshes(2);
-  meshes[0] = std::make_unique<ms::Square>(cptr_device, cptr_context, texture_file_name);
-  meshes[0]->set_model_matrix(Matrix::CreateScale(5.0) * Matrix::CreateRotationX(0.5 * pi));
-  meshes[1] = std::make_unique<ms::SPH>(cptr_device, cptr_context);
+  //std::vector<std::unique_ptr<ms::Mesh>> meshes(2);
+  //meshes[0] = std::make_unique<ms::Square>(cptr_device, cptr_context, texture_file_name);
+  //meshes[0]->set_model_matrix(Matrix::CreateScale(5.0) * Matrix::CreateRotationX(0.5 * pi));
+  //meshes[1] = std::make_unique<ms::SPH>(cptr_device, cptr_context);
 
-  //std::vector<std::unique_ptr<ms::Mesh>> meshes(1);
-  //meshes[0] = std::make_unique<ms::SPH>(cptr_device, cptr_context);
+  std::vector<std::unique_ptr<ms::Mesh>> meshes(1);
+  meshes[0] = std::make_unique<ms::SPH>(cptr_device, cptr_context);
 
   MSG msg = {0};
   while (WM_QUIT != msg.message)
