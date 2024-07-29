@@ -68,9 +68,6 @@ private:
   size_t _num_x_cell = 0;
   size_t _num_y_cell = 0;
   size_t _num_z_cell = 0;
-
-  //prevent heap allocation
-  //std::vector<std::vector<size_t>> _thread_neighbor_candidates;
 };
 
 } // namespace ms
