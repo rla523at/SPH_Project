@@ -19,9 +19,10 @@ WCSPH::WCSPH(
     : _material_proeprty(property), _domain(solution_domain)
 
 {
-  constexpr float smooth_length_param = 1.1f;
+  constexpr float smooth_length_param = 1.2f;
 
-  _dt = 1.0e-03f;
+  _dt                     = 1.0e-03f;
+  _free_surface_parameter = 1.00f;
 
   const auto& ic = initial_condition;
 
@@ -30,7 +31,7 @@ WCSPH::WCSPH(
   _fluid_particles.position_vectors = ic.cal_initial_position();
   _num_fluid_particle               = _fluid_particles.position_vectors.size();
 
-  const auto rho0 = _material_proeprty.rest_density; 
+  const auto rho0 = _material_proeprty.rest_density;
 
   _fluid_particles.pressures.resize(_num_fluid_particle);
   _fluid_particles.densities.resize(_num_fluid_particle, rho0);
@@ -89,6 +90,7 @@ float WCSPH::particle_radius(void) const
 
 void WCSPH::update_density_and_pressure(void)
 {
+
   const float h     = _smoothing_length;
   const float rho0  = _material_proeprty.rest_density;
   const float gamma = _material_proeprty.gamma;
@@ -97,9 +99,6 @@ void WCSPH::update_density_and_pressure(void)
 
   auto& densities = _fluid_particles.densities;
   auto& pressures = _fluid_particles.pressures;
-
-  std::vector<float> debug1(_num_fluid_particle);
-  std::vector<size_t> debug2(_num_fluid_particle);
 
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
@@ -122,20 +121,12 @@ void WCSPH::update_density_and_pressure(void)
 
     rho *= m0;
 
-    debug1[i] = rho;
-    debug2[i] = num_neighbor;
-
-
-    if (rho < 1.00f * rho0)
+    if (rho < _free_surface_parameter * rho0)
       rho = rho0;
 
     //update pressure
     p = k * (pow(rho / rho0, gamma) - 1.0f);
   }
-
-  print_sort_and_count(debug1, 1.0e-1f);
-  print_sort_and_count(debug2);
-  exit(523);
 }
 
 void WCSPH::update_acceleration(void)
@@ -223,7 +214,7 @@ void WCSPH::update_acceleration(void)
     auto& v_a = accelerations[i];
 
     //v_a = m0 * v_a_pressure + viscousity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
-    
+
     v_a = m0 * v_a_pressure + viscousity_constant * v_a_viscosity + v_a_gravity;
   }
 

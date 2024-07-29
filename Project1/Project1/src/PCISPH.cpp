@@ -21,7 +21,7 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
   _dt                  = 1.0e-2f;
   _rest_density        = 1000.0f;
   _viscosity           = 1.0e-2f;
-  _allow_density_error = _rest_density * 1.0e-2f;
+  _allow_density_error = _rest_density * 4.0e-2f;
   _min_iter            = 3;
   _max_iter            = 5;
 
@@ -68,11 +68,15 @@ void PCISPH::update(void)
   _current_position_vectors = _fluid_particles.position_vectors;
   _current_velocity_vectors = _fluid_particles.velocity_vectors;
 
+  //std::cout << _time << "\n"; //debug
+
   while (_allow_density_error < density_error || num_iter < _min_iter)
   {
     this->predict_velocity_and_position();
     density_error = this->predict_density_and_update_pressure_and_cal_error();
     this->cal_pressure_acceleration();
+
+    //std::cout << num_iter << " " << density_error << "\n"; //debug
 
     ++num_iter;
 
@@ -104,9 +108,19 @@ void PCISPH::update(void)
     }
   }
 
+  //std::cout << "\n\n";                      //debug
+  //if (_time > 0.2f && num_iter < _max_iter) //debug
+  //  exit(523);                              // debug
+
   //마지막으로 update된 pressure에 의한 accleration을 반영
   this->predict_velocity_and_position();
   this->apply_boundary_condition();
+
+  _time += _dt;
+
+  //std::cout << _time << " " << num_iter << "\n"; //debug
+  //if (_time > 8.0f)                              //debug
+  //  exit(523);                                   //debug
 }
 
 float PCISPH::particle_radius(void) const
@@ -137,7 +151,7 @@ void PCISPH::initialize_fluid_acceleration_vectors(void)
   //viscosity constant
   const float m0                  = _mass_per_particle;
   const float h                   = _smoothing_length;
-  const float viscousity_constant = 10.0f * m0 * _viscosity;
+  const float viscosity_constant  = 10.0f * m0 * _viscosity;
   const float regularization_term = 0.01f * h * h;
 
   //surface tension constant
@@ -206,7 +220,7 @@ void PCISPH::initialize_fluid_acceleration_vectors(void)
       v_a_viscosity += v_laplacian_velocity;
     }
 
-    v_a = viscousity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
+    v_a = viscosity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
   }
 }
 
@@ -287,10 +301,13 @@ float PCISPH::predict_density_and_update_pressure_and_cal_error(void)
 
     const float density_error = rho - rho0;
 
-    max_error = (std::max)(max_error, density_error);
-
     p += _scailing_factor * density_error;
     p = std::max(p, 0.0f);
+
+    //const float density_error = std::max(0.0f, rho - rho0);
+    //p += _scailing_factor * density_error;
+
+    max_error = (std::max)(max_error, density_error);
   }
 
   return *std::max_element(_max_density_errors.begin(), _max_density_errors.end());

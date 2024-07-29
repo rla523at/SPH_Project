@@ -68,12 +68,13 @@ private:
   void init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length);
 
 private:
-  size_t _num_fluid_particle  = 0;
-  float  _smoothing_length    = 0.0f;
-  float  _particle_radius     = 0.0f;
-  float  _volume_per_particle = 0.0f;
-  float  _mass_per_particle   = 0.0f;
-  float  _dt                  = 0.0f;
+  size_t _num_fluid_particle     = 0;
+  float  _smoothing_length       = 0.0f;
+  float  _particle_radius        = 0.0f;
+  float  _volume_per_particle    = 0.0f;
+  float  _mass_per_particle      = 0.0f;
+  float  _dt                     = 0.0f;
+  float  _free_surface_parameter = 0.0f;
 
   Fluid_Particles                      _fluid_particles;
   std::unique_ptr<Neighborhood>        _uptr_neighborhood;

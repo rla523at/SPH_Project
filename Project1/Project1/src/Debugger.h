@@ -111,10 +111,18 @@ void print(const T& v)
   std::cout << v << "\n";
 }
 
+template <typename T>
+bool is_nan(const T& value)
+{
+  return value != value;
+}
+
 template <>
 void print(const Vector3& v);
 
-
+template <>
 bool is_nan(const Vector3& v);
+
+
 
 } // namespace ms

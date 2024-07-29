@@ -47,18 +47,18 @@ private:
   float cal_number_density(const size_t fluid_particle_id) const;
 
 private:
-  float _scailing_factor   = 0.0f;
-  float _mass_per_particle = 0.0f;
-  float _smoothing_length  = 0.0f;
-  float _viscosity         = 0.0f;
-  float _rest_density      = 0.0f;
-  float _dt                = 0.0f;
-  float _particle_radius   = 0.0f;
-  float  _allow_density_error = 0.0f;
+  float  _time                 = 0.0f;
+  float  _scailing_factor      = 0.0f;
+  float  _mass_per_particle    = 0.0f;
+  float  _smoothing_length     = 0.0f;
+  float  _viscosity            = 0.0f;
+  float  _rest_density         = 0.0f;
+  float  _dt                   = 0.0f;
+  float  _particle_radius      = 0.0f;
+  float  _allow_density_error  = 0.0f;
   float  _max_density_variance = 0.0f;
-  size_t _max_iter          = 0;
-  size_t _min_iter          = 3;
-  
+  size_t _max_iter             = 0;
+  size_t _min_iter             = 3;
 
   Fluid_Particles                      _fluid_particles;
   std::unique_ptr<Neighborhood>        _uptr_neighborhood;
@@ -71,7 +71,6 @@ private:
 
   //
   std::vector<float> _max_density_errors;
-
 
   //Temp
   std::vector<Vector3> _boundary_position_vectors;
