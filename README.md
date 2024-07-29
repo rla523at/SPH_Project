@@ -1,9 +1,10 @@
 # 2025.07.26
-14528 Particle
+## Solver 개선
+dt를 증가시키기 위해, PCISPH 구현 및 디버깅 중
 
-조금더 역동적으로 움직임.
+* 2009 (solenthaler and Pajarola) Predictive-Corrective Incompressible SPH
 
-Dt 증가, 1 Frame : 0.01s * 45 = 0.45s
+</br></br></br>
 
 
 # 2024.07.25

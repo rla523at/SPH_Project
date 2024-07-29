@@ -112,10 +112,10 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.rest_density         = rest_density;
   mat_prop.gamma                = gamma;
   mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 1.0e-2f;
+  mat_prop.viscosity            = 1.0e-3f;
 
-  //_uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
-  _uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain);
+  _uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
+  //_uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain);
 
   _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius()*0.5f;
 

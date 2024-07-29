@@ -19,12 +19,14 @@ WCSPH::WCSPH(
     : _material_proeprty(property), _domain(solution_domain)
 
 {
+  constexpr float smooth_length_param = 1.1f;
+
   _dt = 1.0e-03f;
 
   const auto& ic = initial_condition;
 
   _particle_radius                  = ic.particle_spacing;
-  _smoothing_length                 = 1.1f * ic.particle_spacing;
+  _smoothing_length                 = smooth_length_param * ic.particle_spacing;
   _fluid_particles.position_vectors = ic.cal_initial_position();
   _num_fluid_particle               = _fluid_particles.position_vectors.size();
 
@@ -96,6 +98,9 @@ void WCSPH::update_density_and_pressure(void)
   auto& densities = _fluid_particles.densities;
   auto& pressures = _fluid_particles.pressures;
 
+  std::vector<float> debug1(_num_fluid_particle);
+  std::vector<size_t> debug2(_num_fluid_particle);
+
 #pragma omp parallel for
   for (int i = 0; i < _num_fluid_particle; i++)
   {
@@ -117,12 +122,20 @@ void WCSPH::update_density_and_pressure(void)
 
     rho *= m0;
 
-    if (rho < 0.99f * rho0)
+    debug1[i] = rho;
+    debug2[i] = num_neighbor;
+
+
+    if (rho < 1.00f * rho0)
       rho = rho0;
 
     //update pressure
     p = k * (pow(rho / rho0, gamma) - 1.0f);
   }
+
+  print_sort_and_count(debug1, 1.0e-1f);
+  print_sort_and_count(debug2);
+  exit(523);
 }
 
 void WCSPH::update_acceleration(void)
