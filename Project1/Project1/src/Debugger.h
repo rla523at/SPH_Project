@@ -106,6 +106,12 @@ void print_min_max(const std::vector<T>& values)
 }
 
 template <typename T>
+void print_max(const std::vector<T>& values)
+{
+  std::cout << "max_val : " << *std::max_element(values.begin(), values.end()) << "\n ";
+}
+
+template <typename T>
 void print(const std::vector<std::vector<T>>& v)
 {
   for (const auto& vec : v)

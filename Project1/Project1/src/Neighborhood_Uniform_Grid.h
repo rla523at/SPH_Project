@@ -46,8 +46,8 @@ private:
   std::vector<std::vector<size_t>>   _gcid_to_neighbor_gcids;
   std::vector<std::vector<size_t>>   _gcid_to_fpids;
   std::vector<size_t>                _fpid_to_gcid;
-  std::vector<size_t>                _bpid_to_gcid;
   std::vector<Neighbor_Informations> _fpid_to_neighbor_informations;
+  std::vector<size_t>                _bpid_to_gcid;
   std::vector<std::vector<size_t>>   _bpid_to_neighbor_fpids;
 
   Domain _domain;

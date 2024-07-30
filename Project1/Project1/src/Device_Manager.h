@@ -32,6 +32,7 @@ public:
   void create_UAV(ID3D11Resource* resource_ptr, ID3D11UnorderedAccessView** SRView_pptr) const;
 
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
+  void create_structured_buffer(ComPtr<ID3D11Buffer>& cptr_buffer, const size_t num_data, const size_t data_size) const;
 
   void copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const;
 

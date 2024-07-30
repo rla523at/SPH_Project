@@ -260,6 +260,20 @@ void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cp
   REQUIRE(!FAILED(result), "texture like back buffer creation should succeed");
 }
 
+void Device_Manager::create_structured_buffer(ComPtr<ID3D11Buffer>& cptr_buffer, const size_t num_data, const size_t data_size) const
+{
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = num_data * data_size;
+  desc.Usage               = D3D11_USAGE_DEFAULT;
+  desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+  desc.CPUAccessFlags      = NULL;
+  desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+  desc.StructureByteStride = data_size;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "structured buffer creation should succeed");
+}
+
 void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const
 {
   const auto cptr_back_buffer = this->back_buffer_cptr();
@@ -283,7 +297,7 @@ void Device_Manager::init_device_device_context(void)
 #if defined(_DEBUG)
   constexpr auto flags = D3D11_CREATE_DEVICE_DEBUG;
 #else
-  constexpr auto flags = NULL;
+  constexpr auto flags        = NULL;
 #endif
 
   constexpr D3D_FEATURE_LEVEL featureLevels[2] = {

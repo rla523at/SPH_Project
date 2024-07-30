@@ -24,6 +24,10 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
 
   this->init_gcid_to_ngcids(device_manager);
 
+  _num_particle = fluid_particle_pos_vectors.size();
+
+  this->init_fpid_to_ninfo(device_manager);
+
   //const size_t num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
   //_gcid_to_fpids.resize(num_cells);
 
@@ -160,13 +164,26 @@ void Neighborhood_Uniform_Grid_GPU::init_gcid_to_fpids(const Device_Manager& dev
   desc.Format               = DXGI_FORMAT_R8_SINT;
   desc.SampleDesc.Count     = 1;
   desc.Usage                = D3D11_USAGE_DEFAULT;
-  desc.BindFlags            = D3D11_BIND_UNORDERED_ACCESS;
+  desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
   desc.CPUAccessFlags       = NULL;
   desc.MiscFlags            = NULL;
 
   const auto cptr_device = device_manager.device_cptr();
   cptr_device->CreateTexture2D(&desc, nullptr, _cptr_gcid_to_fpids_texture.GetAddressOf());
+  cptr_device->CreateShaderResourceView(_cptr_gcid_to_fpids_texture.Get(), nullptr, _cptr_gcid_to_fpids_SRV.GetAddressOf());
   cptr_device->CreateUnorderedAccessView(_cptr_gcid_to_fpids_texture.Get(), nullptr, _cptr_gcid_to_fpids_UAV.GetAddressOf());
+}
+
+void Neighborhood_Uniform_Grid_GPU::init_fpid_to_ninfo(const Device_Manager& device_manager)
+{
+  constexpr auto data_size = sizeof(Neighbor_Informations_GPU);
+  const auto     num_data  = _num_particle;
+
+  device_manager.create_structured_buffer(_cptr_fpid_to_ninfo_buffer, num_data, data_size);
+
+  const auto cptr_device = device_manager.device_cptr();
+  cptr_device->CreateShaderResourceView(_cptr_fpid_to_ninfo_buffer.Get(), nullptr, _cptr_fpid_to_ninfo_SRV.GetAddressOf());
+  cptr_device->CreateUnorderedAccessView(_cptr_fpid_to_ninfo_buffer.Get(), nullptr, _cptr_fpid_to_ninfo_UAV.GetAddressOf());
 }
 
 size_t Neighborhood_Uniform_Grid_GPU::grid_cell_index(const Index_Vector& index_vector) const

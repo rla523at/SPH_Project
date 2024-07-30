@@ -158,10 +158,6 @@ void Neighborhood_Uniform_Grid::update(
 
   this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
   this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
-
-  //debug
-  print_max_size(_gcid_to_fpids);
-  //debug
 }
 
 Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
@@ -218,6 +214,9 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
 {
   const size_t num_particles = fluid_particle_pos_vectors.size();
 
+  static std::vector<size_t> total_debug; //debug
+  std::vector<size_t> debug(num_particles);//debug
+
 #pragma omp parallel for
   for (int i = 0; i < num_particles; ++i)
   {
@@ -259,7 +258,12 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
         distances.push_back(distance);
       }
     }
+
+    debug[i] = indexes.size();
   }
+  
+  total_debug.push_back(*std::max_element(debug.begin(), debug.end()));
+  print_max(total_debug);
 }
 
 void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(
