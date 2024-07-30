@@ -1,5 +1,7 @@
 #include "Neighborhood_Uniform_Grid.h"
 
+#include "Debugger.h"
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -156,6 +158,10 @@ void Neighborhood_Uniform_Grid::update(
 
   this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
   this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
+
+  //debug
+  print_max_size(_gcid_to_fpids);
+  //debug
 }
 
 Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const

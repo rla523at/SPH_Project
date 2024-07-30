@@ -100,9 +100,49 @@ void print_sort_and_count(const std::vector<T>& values, const T epsilon = 0)
 template <typename T>
 void print_min_max(const std::vector<T>& values)
 {
-  auto [min_val, max_val] = std::minmax_element(values.begin(),values.end());
+  auto [min_val, max_val] = std::minmax_element(values.begin(), values.end());
 
   std::cout << "min_val : " << *min_val << "\nmax_val : " << *max_val << "\n";
+}
+
+template <typename T>
+void print(const std::vector<std::vector<T>>& v)
+{
+  for (const auto& vec : v)
+  {
+    for (const auto& val : vec)
+      std::cout << val << " ";
+    std::cout << "\n";
+  }
+}
+
+template <typename T>
+void print_max_size(const std::vector<std::vector<T>>& v)
+{
+  size_t max_size = 0;
+  for (const auto& vec : v)
+  {
+    max_size = (std::max)(max_size, vec.size());
+  }
+
+  std::cout << max_size << "\n";
+}
+
+template <typename T>
+void print(const std::vector<T>& v, const size_t interval)
+{
+  size_t print_count = 0;
+  for (const auto& val : v)
+  {
+    std::cout << val << " ";
+    print_count++;
+
+    if (print_count == interval)
+    {
+      print_count = 0;
+      std::cout << "\n";
+    }
+  }
 }
 
 template <typename T>
@@ -122,7 +162,5 @@ void print(const Vector3& v);
 
 template <>
 bool is_nan(const Vector3& v);
-
-
 
 } // namespace ms

@@ -69,6 +69,9 @@
     <ClCompile Include="src\Debugger.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\Neighborhood_Uniform_Grid_GPU.cpp">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Neighborhood.h">
@@ -124,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="src\SPH_Scheme.h">
       <Filter>소스 파일\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Uniform_Grid_GPU.h">
+      <Filter>소스 파일\SPH\Neighborhood</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

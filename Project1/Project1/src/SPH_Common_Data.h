@@ -114,4 +114,11 @@ public:
   }
 };
 
+struct Index_Vector
+{
+  size_t x = 0;
+  size_t y = 0;
+  size_t z = 0;
+};
+
 } // namespace ms

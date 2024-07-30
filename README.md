@@ -1,11 +1,64 @@
-# 2025.07.26
+# 2024.07.29
+
+## PCISPH 구현
+14586 Particle, $h = 1.2 \Delta x$ 기준으로 PCISPH가 $\Delta t = 1.0e-2$, $FPS = 43$정도이다.
+
+Simulation Time 1초당 Physical Time 0.43초 임으로 WCSPH 기준 약 $43\%$의 성능 개선이 있었다.
+
+$$ \frac{0.43}{0.33} = 1.4333... $$
+
+![2024-07-29180807dx0 04dt0 01PCISPH43FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/da01abd4-33f9-44bf-9c2a-6374234c8684)
+
+### 수렴 문제
+논문에 나와 있는데로, 항상 error가 수렴하지는 않는다.
+
+![PCISPH 수렴](https://github.com/user-attachments/assets/0112ed0a-22f6-4543-8792-85bf37cc37c5)
+
+```
+0.18s (수렴하지 않는 예시)
+Iter / Error
+0 403.463
+1 207.675
+2 225.677
+3 227.161
+4 497.61
+5 614.645
+6 1016.82
+
+0.7s (수렴하는 예시)
+Iter / Error
+0 162.331
+1 63.2604
+2 50.6395
+3 43.057
+4 38.1294
+```
+
+따라서, 적절한 iteration 탈출 조건을 위해 max_iteration 변수를 추가하였다.
+
+그리고 항상 error가 수렴하지는 않기 때문에, max_iteration을 많이 준다고 더 나은 결과가 나오지는 않으며 오히려 unstable한 해를 얻게 되는 경우가 있다.
+
+[min3 max10]
+
+![2024-07-29180423min3max10-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/4b47264d-264d-4769-8c58-3e1169c19e15)
+
+[min0 max3]
+
+![2024-07-29180339min0max3-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/1df53159-fa02-4284-9eb3-10be9afbb125)
+
+따라서, problem dependent하게 min max value를 정해줘야 할 필요가 있다.
+
+<br><br>
+
+</br></br></br>
+
+# 2024.07.26
 ## Solver 개선
 dt를 증가시키기 위해, PCISPH 구현 및 디버깅 중
 
 * 2009 (solenthaler and Pajarola) Predictive-Corrective Incompressible SPH
 
 </br></br></br>
-
 
 # 2024.07.25
 ## Solver 개선

@@ -4,6 +4,7 @@
 #include "Device_Manager.h"
 #include "Kernel.h"
 #include "Neighborhood_Uniform_Grid.h"
+#include "Neighborhood_Uniform_Grid_GPU.h"
 
 #include <algorithm>
 #include <cmath>
@@ -45,6 +46,7 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
 
   const float divide_length = _uptr_kernel->supprot_radius();
   _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
+  //_uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid_GPU>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
 
   this->init_mass_and_scailing_factor();
 

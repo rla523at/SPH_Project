@@ -19,7 +19,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   solution_domain.x_start = -2.0f;
   solution_domain.x_end   = 2.0f;
   solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 10.0f;
+  solution_domain.y_end   = 6.0f;
   solution_domain.z_start = -0.3f;
   solution_domain.z_end   = 0.3f;
 
@@ -135,12 +135,12 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   this->init_boundary_PS(cptr_device);
   this->init_boundary_blender_state(cptr_device);
 
-  //debug
-  Device_Manager_Debug::_cptr_buffers[0] = _cptr_VS_SRbuffer_pos;
-  Device_Manager_Debug::_cptr_buffers[1] = _cptr_VS_Sbuffer_pos;
-  Device_Manager_Debug::_cptr_buffers[2] = _cptr_VS_SRbuffer_density;
-  Device_Manager_Debug::_cptr_buffers[3] = _cptr_VS_Sbuffer_density;
-  //debug
+  ////debug
+  //Device_Manager_Debug::_cptr_buffers[0] = _cptr_VS_SRbuffer_pos;
+  //Device_Manager_Debug::_cptr_buffers[1] = _cptr_VS_Sbuffer_pos;
+  //Device_Manager_Debug::_cptr_buffers[2] = _cptr_VS_SRbuffer_density;
+  //Device_Manager_Debug::_cptr_buffers[3] = _cptr_VS_Sbuffer_density;
+  ////debug
 }
 
 SPH::~SPH(void) = default;

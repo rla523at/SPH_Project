@@ -26,6 +26,7 @@
     <ClCompile Include="src\Kernel.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp" />
+    <ClCompile Include="src\Neighborhood_Uniform_Grid_GPU.cpp" />
     <ClCompile Include="src\Square.cpp" />
     <ClCompile Include="src\Texture_Manager.cpp" />
     <ClCompile Include="src\WCSPH.cpp" />
@@ -44,6 +45,7 @@
     <ClInclude Include="src\Neighborhood.h" />
     <ClInclude Include="src\Neighborhood_Brute_Force.h" />
     <ClInclude Include="src\Neighborhood_Uniform_Grid.h" />
+    <ClInclude Include="src\Neighborhood_Uniform_Grid_GPU.h" />
     <ClInclude Include="src\SPH_Scheme.h" />
     <ClInclude Include="src\Square.h" />
     <ClInclude Include="src\Texture_Manager.h" />

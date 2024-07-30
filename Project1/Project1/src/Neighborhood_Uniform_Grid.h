@@ -6,18 +6,6 @@
 //pid	: particle index
 //gcid	: geometry cell index
 
-//Data Structure
-namespace ms
-{
-struct Index_Vector
-{
-  size_t x = 0;
-  size_t y = 0;
-  size_t z = 0;
-};
-
-} // namespace ms
-
 namespace ms
 {
 class Neighborhood_Uniform_Grid : public Neighborhood
