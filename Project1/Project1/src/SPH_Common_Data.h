@@ -114,7 +114,7 @@ public:
   }
 };
 
-struct Index_Vector
+struct Grid_Cell_ID
 {
   size_t x = 0;
   size_t y = 0;

@@ -88,7 +88,7 @@ size_t Neighborhood_Uniform_Grid::search(const Vector3& pos, size_t* pids) const
     {
       for (int k = 0; k < 3; ++k)
       {
-        Index_Vector neighbor_gcid_vector;
+        Grid_Cell_ID neighbor_gcid_vector;
         neighbor_gcid_vector.x = gcid_vector.x + delta[i];
         neighbor_gcid_vector.y = gcid_vector.y + delta[j];
         neighbor_gcid_vector.z = gcid_vector.z + delta[k];
@@ -160,7 +160,7 @@ void Neighborhood_Uniform_Grid::update(
   this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
 }
 
-Index_Vector Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
+Grid_Cell_ID Neighborhood_Uniform_Grid::grid_cell_index_vector(const Vector3& v_pos) const
 {
   const float dx = v_pos.x - _domain.x_start;
   const float dy = v_pos.y - _domain.y_start;
@@ -186,12 +186,12 @@ size_t Neighborhood_Uniform_Grid::grid_cell_index(const Vector3& v_pos) const
   return i + j * _num_x_cell + k * _num_x_cell * _num_y_cell;
 }
 
-size_t Neighborhood_Uniform_Grid::grid_cell_index(const Index_Vector& index_vector) const
+size_t Neighborhood_Uniform_Grid::grid_cell_index(const Grid_Cell_ID& index_vector) const
 {
   return index_vector.x + index_vector.y * _num_x_cell + index_vector.z * _num_x_cell * _num_y_cell;
 }
 
-bool Neighborhood_Uniform_Grid::is_valid_index(const Index_Vector& index_vector) const
+bool Neighborhood_Uniform_Grid::is_valid_index(const Grid_Cell_ID& index_vector) const
 {
   if (_num_x_cell <= index_vector.x)
     return false;
@@ -311,7 +311,7 @@ void Neighborhood_Uniform_Grid::init_gcid_to_neighbor_gcids(void)
     {
       for (size_t k = 0; k < _num_z_cell; ++k)
       {
-        const auto gcid_vector = Index_Vector{i, j, k};
+        const auto gcid_vector = Grid_Cell_ID{i, j, k};
         const auto gcid        = this->grid_cell_index(gcid_vector);
 
         auto& neighbor_gcids = _gcid_to_neighbor_gcids[gcid];
@@ -322,7 +322,7 @@ void Neighborhood_Uniform_Grid::init_gcid_to_neighbor_gcids(void)
           {
             for (size_t r = 0; r < 3; ++r)
             {
-              Index_Vector neighbor_gcid_vector;
+              Grid_Cell_ID neighbor_gcid_vector;
               neighbor_gcid_vector.x = gcid_vector.x + delta[p];
               neighbor_gcid_vector.y = gcid_vector.y + delta[q];
               neighbor_gcid_vector.z = gcid_vector.z + delta[r];

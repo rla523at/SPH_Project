@@ -48,8 +48,6 @@ Iter / Error
 
 따라서, problem dependent하게 min max value를 정해줘야 할 필요가 있다.
 
-<br><br>
-
 </br></br></br>
 
 # 2024.07.26

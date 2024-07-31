@@ -26,10 +26,10 @@ public:
   const std::vector<size_t>& search_for_boundary(const size_t bpid) const override;
 
 private:
-  Index_Vector grid_cell_index_vector(const Vector3& v_pos) const;
+  Grid_Cell_ID grid_cell_index_vector(const Vector3& v_pos) const;
   size_t       grid_cell_index(const Vector3& v_pos) const;
-  size_t       grid_cell_index(const Index_Vector& index_vector) const;
-  bool         is_valid_index(const Index_Vector& index_vector) const;
+  size_t       grid_cell_index(const Grid_Cell_ID& index_vector) const;
+  bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
   bool         is_valid_index(const size_t gcid) const;
 
   //fill neighbor particle ids into pids and return number of neighbor particles

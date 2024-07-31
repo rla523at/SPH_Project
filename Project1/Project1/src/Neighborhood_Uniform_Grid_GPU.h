@@ -11,14 +11,21 @@ namespace ms
 class Device_Manager;
 }
 
-//abbreviation
-//pid	  : particle id
-//gcid	: geometry cell id
-//ngcid : neighbor geometry cell id
-//ninfo : neighbor informations
+/* abbreviation
+
+pid	  : particle id
+gc	  : geometry cell
+fp    : fluid particle
+ngc   : neighbor geometry cell
+ninfo : neighbor informations
+GCFPT : GCFP texture
+GCFP  : fluid particle in the geometry cell
+
+*/
 
 inline constexpr size_t estimated_neighbor = 200;
 
+//data structure
 namespace ms
 {
 struct Neighbor_Informations_GPU
@@ -27,6 +34,18 @@ struct Neighbor_Informations_GPU
   Vector3 translate_vectors[estimated_neighbor];
   float   distances[estimated_neighbor];
   size_t  num_neighbor = 0;
+};
+
+struct GCFPT_ID
+{
+  UINT gc_index   = 0;
+  UINT gcfp_index = 0;
+};
+
+struct Changed_GCFPT_ID_Data
+{
+  GCFPT_ID prev_id;
+  UINT     cur_gc_index;
 };
 
 struct Neighbor_Information
@@ -57,45 +76,61 @@ public:
 
   const Neighbor_Informations& search_for_fluid(const size_t fpid) const override;
   const std::vector<size_t>&   search_for_boundary(const size_t bpid) const override;
-  //
-  //private:
-  //  Index_Vector grid_cell_index_vector(const Vector3& v_pos) const;
-  //  size_t       grid_cell_index(const Vector3& v_pos) const;
-  size_t grid_cell_index(const Index_Vector& index_vector) const;
-  bool   is_valid_index(const Index_Vector& index_vector) const;
-  //  bool         is_valid_index(const size_t gcid) const;
-  //
-  //  //fill neighbor particle ids into pids and return number of neighbor particles
-  //  size_t search(const Vector3& pos, size_t* pids) const;
-  //
-  //  void update_fpid_to_neighbor_fpids(const std::vector<Vector3>& pos_vectors);
-  //  void update_bpid_to_neighbor_fpids(
-  //    const std::vector<Vector3>& fluid_particle_pos_vectors,
-  //    const std::vector<Vector3>& boundary_particle_pos_vectors);
-  //
+
+private:
+  Grid_Cell_ID grid_cell_id(const Vector3& v_pos) const;
+  size_t       grid_cell_index(const Grid_Cell_ID& index_vector) const;
+  bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
+
+  void find_changed_GCFPT_ID(void);
+  void update_GCFP_texture(void);
+
   std::vector<int> make_gcid_to_ngcids_initial_data(void);
   void             init_gcid_to_ngcids(const Device_Manager& device_manager);
 
-  void init_gcid_to_fpids(const Device_Manager& device_manager);
+  void init_GCFP_texture(const UINT* texture_data_ptr, const UINT* counter_data_ptr);
+  void init_GCFPT_ID_buffer(const GCFPT_ID* init_data_ptr);
   void init_fpid_to_ninfo(const Device_Manager& device_manager);
 
 private:
-  ComPtr<ID3D11Texture2D>          _cptr_gcid_to_ngcids_texture;
-  ComPtr<ID3D11ShaderResourceView> _cptr_gcid_to_ngcids_SRV;
+  //geometry cell마다 어떤 fluid particle이 있는지 저장한 texture
+  //geometry cell index마다 fluid particle indexes가 저장되어 있음
+  ComPtr<ID3D11Texture2D>           _cptr_GCFP_texture;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_texture_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_texture_UAV;
 
-  ComPtr<ID3D11Texture2D>           _cptr_gcid_to_fpids_texture;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_gcid_to_fpids_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_gcid_to_fpids_UAV;
+  //geometry cell마다 몇개의 fluid particle이 있는지 저장한 buffer
+  //geometry cell index마다 fluid particle의 개수가 저장되어 있음
+  ComPtr<ID3D11Buffer>              _cptr_GCFP_counter_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_counter_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_counter_buffer_UAV;
 
-  ComPtr<ID3D11Buffer>              _cptr_fpid_to_ninfo_buffer;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_fpid_to_ninfo_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_fpid_to_ninfo_UAV;
+  //fluid particle마다 GCFPT ID를 저장한 Buffer
+  //fluid particle index마다 GCFPT ID가 저장되어 있음
+  ComPtr<ID3D11Buffer>              _cptr_GCFPT_ID_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFPT_ID_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFPT_ID_buffer_UAV;
 
-  std::vector<size_t>                _fpid_to_gcid;
-  //std::vector<Neighbor_Informations> _fpid_to_neighbor_informations;
+  //이번 프레임에 바뀐 GCFPT ID를 저장한 Buffer
+  ComPtr<ID3D11Buffer>              _cptr_changed_GCFPT_ID_buffer;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
+  ComPtr<ID3D11Buffer>              _cptr_count_staging_buffer;
 
-  std::vector<size_t>              _bpid_to_gcid;
-  std::vector<std::vector<size_t>> _bpid_to_neighbor_fpids;
+
+  ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFPT_ID_CS;
+
+  ComPtr<ID3D11ComputeShader> _cptr_update_GCFPT_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_GCFPT_CS_cbuffer;
+
+  //////////////////////////////////////////////////////////////////////
+
+  ComPtr<ID3D11Buffer>              _cptr_fp_index_to_ninfo_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_fp_index_to_ninfo_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_fp_index_to_ninfo_UAV;
+  ComPtr<ID3D11Buffer>              _cptr_fp_index_to_ninfo_staging_buffer;
+
+  ComPtr<ID3D11Texture2D>          _cptr_gc_index_to_ngc_indexes_texture;
+  ComPtr<ID3D11ShaderResourceView> _cptr_gc_index_to_ngc_indexes_SRV;
 
   Domain _domain;
   float  _divide_length = 0.0f;
@@ -104,6 +139,13 @@ private:
   size_t _num_y_cell   = 0;
   size_t _num_z_cell   = 0;
   size_t _num_particle = 0;
+
+  const Device_Manager* _device_manager_ptr;
+
+  //temporary
+  ComPtr<ID3D11Buffer>             _cptr_fp_pos_buffer;
+  ComPtr<ID3D11ShaderResourceView> _cptr_fp_pos_buffer_SRV;
+  ComPtr<ID3D11Buffer>             _cptr_fp_pos_staging_buffer;
 };
 
 } // namespace ms

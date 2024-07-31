@@ -157,8 +157,10 @@ void Device_Manager::create_VS_and_IL(
   }
 }
 
-void Device_Manager::create_CS(const wchar_t* file_name, ComPtr<ID3D11ComputeShader>& cptr_CS) const
+ComPtr<ID3D11ComputeShader> Device_Manager::create_CS(const wchar_t* file_name) const
 {
+  ComPtr<ID3D11ComputeShader> cptr_CS;
+
   constexpr auto* entry_point_name           = "main";
   constexpr auto  shader_target_profile_name = "cs_5_0";
 
@@ -195,6 +197,8 @@ void Device_Manager::create_CS(const wchar_t* file_name, ComPtr<ID3D11ComputeSha
 
     REQUIRE(!FAILED(result), std::wstring(file_name) + L" creation failed. compute shader creation should succeed");
   }
+
+  return cptr_CS;
 }
 
 void Device_Manager::create_PS(const wchar_t* file_name, ComPtr<ID3D11PixelShader>& cptr_PS) const
@@ -237,16 +241,41 @@ void Device_Manager::create_PS(const wchar_t* file_name, ComPtr<ID3D11PixelShade
   }
 }
 
-void Device_Manager::create_SRV(ID3D11Resource* resource_ptr, ID3D11ShaderResourceView** SRView_pptr) const
+ComPtr<ID3D11ShaderResourceView> Device_Manager::create_SRV(ID3D11Resource* resource_ptr) const
 {
-  const auto result = _cptr_device->CreateShaderResourceView(resource_ptr, nullptr, SRView_pptr);
+  ComPtr<ID3D11ShaderResourceView> SRV;
+
+  const auto result = _cptr_device->CreateShaderResourceView(resource_ptr, nullptr, SRV.GetAddressOf());
   REQUIRE(!FAILED(result), "shader resource view creation should succeed");
+
+  return SRV;
 }
 
-void Device_Manager::create_UAV(ID3D11Resource* resource_ptr, ID3D11UnorderedAccessView** SRView_pptr) const
+ComPtr<ID3D11UnorderedAccessView> Device_Manager::create_UAV(ID3D11Resource* resource_ptr) const
 {
-  const auto result = _cptr_device->CreateUnorderedAccessView(resource_ptr, nullptr, SRView_pptr);
+  ComPtr<ID3D11UnorderedAccessView> UAV;
+
+  const auto result = _cptr_device->CreateUnorderedAccessView(resource_ptr, nullptr, UAV.GetAddressOf());
   REQUIRE(!FAILED(result), "unordered access view creation should succeed");
+
+  return UAV;
+}
+
+ComPtr<ID3D11UnorderedAccessView> Device_Manager::create_AC_UAV(ID3D11Resource* resource_ptr, const UINT num_data) const
+{
+  ComPtr<ID3D11UnorderedAccessView> AC_UAV;
+
+  D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+  desc.Format                           = DXGI_FORMAT_UNKNOWN;
+  desc.ViewDimension                    = D3D11_UAV_DIMENSION_BUFFER; // append consume은 buffer다
+  desc.Buffer.FirstElement              = 0;
+  desc.Buffer.NumElements               = num_data;
+  desc.Buffer.Flags                     = D3D11_BUFFER_UAV_FLAG_APPEND;
+
+  const auto result = _cptr_device->CreateUnorderedAccessView(resource_ptr, &desc, AC_UAV.GetAddressOf());
+  REQUIRE(!FAILED(result), "append consum unordered access view creation should succeed");
+
+  return AC_UAV;
 }
 
 void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const
@@ -260,18 +289,94 @@ void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cp
   REQUIRE(!FAILED(result), "texture like back buffer creation should succeed");
 }
 
-void Device_Manager::create_structured_buffer(ComPtr<ID3D11Buffer>& cptr_buffer, const size_t num_data, const size_t data_size) const
+ComPtr<ID3D11Buffer> Device_Manager::create_constant_buffer(const UINT data_size) const
 {
   D3D11_BUFFER_DESC desc   = {};
-  desc.ByteWidth           = num_data * data_size;
-  desc.Usage               = D3D11_USAGE_DEFAULT;
-  desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-  desc.CPUAccessFlags      = NULL;
-  desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-  desc.StructureByteStride = data_size;
+  desc.ByteWidth           = data_size;
+  desc.Usage               = D3D11_USAGE_DYNAMIC;
+  desc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
+  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = 0;
 
-  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_buffer.GetAddressOf());
-  REQUIRE(!FAILED(result), "structured buffer creation should succeed");
+  ComPtr<ID3D11Buffer> cptr_constant_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_constant_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "constant buffer creation should succeed");
+
+  return cptr_constant_buffer;
+}
+
+ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+{
+  D3D11_BUFFER_DESC target_desc;
+  cptr_target_buffer->GetDesc(&target_desc);
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = target_desc.ByteWidth;
+  desc.Usage               = D3D11_USAGE_STAGING;
+  desc.BindFlags           = NULL;
+  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_READ;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = 0;
+
+  ComPtr<ID3D11Buffer> cptr_staging_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_staging_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "staging buffer creation should succeed");
+
+  return cptr_staging_buffer;
+}
+
+ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+{
+  D3D11_BUFFER_DESC target_desc;
+  cptr_target_buffer->GetDesc(&target_desc);
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = target_desc.ByteWidth;
+  desc.Usage               = D3D11_USAGE_STAGING;
+  desc.BindFlags           = NULL;
+  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = 0;
+
+  ComPtr<ID3D11Buffer> cptr_staging_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_staging_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "staging buffer creation should succeed");
+
+  return cptr_staging_buffer;
+}
+
+ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_count(void) const
+{
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = sizeof(UINT);
+  desc.Usage               = D3D11_USAGE_STAGING;
+  desc.BindFlags           = NULL;
+  desc.CPUAccessFlags      = D3D11_CPU_ACCESS_READ;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = 0;
+
+  ComPtr<ID3D11Buffer> cptr_count_staging_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_count_staging_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "staging buffer creation should succeed");
+
+  return cptr_count_staging_buffer;
+}
+
+UINT Device_Manager::read_count(const ComPtr<ID3D11UnorderedAccessView> UAV, const ComPtr<ID3D11Buffer> cptr_count_staging_buffer) const
+{
+  _cptr_context->CopyStructureCount(cptr_count_staging_buffer.Get(), 0, UAV.Get());
+
+  D3D11_MAPPED_SUBRESOURCE ms;
+  _cptr_context->Map(cptr_count_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+  UINT count = *reinterpret_cast<UINT*>(ms.pData);
+  _cptr_context->Unmap(cptr_count_staging_buffer.Get(), 0);
+
+  return count;
 }
 
 void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const
