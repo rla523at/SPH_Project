@@ -262,8 +262,8 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
     debug[i] = indexes.size();
   }
   
-  total_debug.push_back(*std::max_element(debug.begin(), debug.end()));
-  print_max(total_debug);
+  total_debug.push_back(*std::max_element(debug.begin(), debug.end())); //debug
+  print_max(total_debug); //debug
 }
 
 void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(

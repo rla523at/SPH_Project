@@ -193,7 +193,7 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const UINT* texture_data_p
   _cptr_GCFP_counter_buffer_UAV = device_manager.create_UAV(_cptr_GCFP_counter_buffer.Get());
 
   _cptr_update_GCFPT_CS         = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
-  _cptr_update_GCFPT_CS_cbuffer = device_manager.create_constant_buffer(16);
+  _cptr_update_GCFPT_CS_constant_buffer = device_manager.create_constant_buffer(16);
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_GCFPT_ID_buffer(const GCFPT_ID* init_data_ptr)
@@ -221,10 +221,10 @@ void Neighborhood_Uniform_Grid_GPU::init_fpid_to_ninfo(const Device_Manager& dev
   constexpr auto data_size = sizeof(Neighbor_Informations_GPU);
   const auto     num_data  = _num_particle;
 
-  _cptr_fp_index_to_ninfo_buffer         = device_manager.create_structured_buffer<Neighbor_Informations_GPU>(num_data);
-  _cptr_fp_index_to_ninfo_SRV            = device_manager.create_SRV(_cptr_fp_index_to_ninfo_buffer.Get());
-  _cptr_fp_index_to_ninfo_UAV            = device_manager.create_UAV(_cptr_fp_index_to_ninfo_buffer.Get());
-  _cptr_fp_index_to_ninfo_staging_buffer = device_manager.create_staging_buffer_read(_cptr_fp_index_to_ninfo_buffer);
+  _cptr_ninfo_buffer         = device_manager.create_structured_buffer<Neighbor_Informations_GPU>(num_data);
+  _cptr_ninfo_buffer_SRV            = device_manager.create_SRV(_cptr_ninfo_buffer.Get());
+  _cptr_ninfo_buffer_UAV            = device_manager.create_UAV(_cptr_ninfo_buffer.Get());
+  _cptr_fp_index_to_ninfo_staging_buffer = device_manager.create_staging_buffer_read(_cptr_ninfo_buffer);
 }
 
 Grid_Cell_ID Neighborhood_Uniform_Grid_GPU::grid_cell_id(const Vector3& v_pos) const
@@ -286,35 +286,7 @@ void Neighborhood_Uniform_Grid_GPU::update(
 
   this->update_GCFP_texture();
 
-  //const size_t num_fluid_particles = fluid_particle_pos_vectors.size();
-
-  //// update fpid_to_gcid and gcid_to_fpids
-  //for (size_t fpid = 0; fpid < num_fluid_particles; ++fpid)
-  //{
-  //  const auto& v_xi = fluid_particle_pos_vectors[fpid];
-
-  //  const auto prev_gcid = _fpid_to_gcid[fpid];
-
-  //  const auto cur_gcid = this->grid_cell_index(v_xi);
-
-  //  //debug
-  //  if (!this->is_valid_index(cur_gcid))
-  //    continue;
-  //  //debug
-
-  //  if (prev_gcid != cur_gcid)
-  //  {
-  //    // update gcid_to_fpids
-  //    auto& prev_pids = _gcid_to_fpids[prev_gcid];
-  //    prev_pids.erase(std::find(prev_pids.begin(), prev_pids.end(), fpid));
-
-  //    auto& new_pids = _gcid_to_fpids[cur_gcid];
-  //    new_pids.push_back(fpid);
-
-  //    //update fpid_to_gcid
-  //    _fpid_to_gcid[fpid] = cur_gcid;
-  //  }
-  //}
+  _device_manager_ptr->CS_barrier();
 
   //this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
   //this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
@@ -347,7 +319,7 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_texture(void)
   const auto& device_manager = *_device_manager_ptr;
 
   const auto num_changed = device_manager.read_count(_cptr_changed_GCFPT_ID_AC_UAV, _cptr_count_staging_buffer);
-  device_manager.upload(&num_changed, _cptr_update_GCFPT_CS_cbuffer);
+  device_manager.upload(&num_changed, _cptr_update_GCFPT_CS_constant_buffer);
 
   constexpr size_t num_UAV      = 4;
   const auto       cptr_context = _device_manager_ptr->context_cptr();
@@ -358,7 +330,7 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_texture(void)
     _cptr_GCFPT_ID_buffer_UAV.Get(),
     _cptr_changed_GCFPT_ID_AC_UAV.Get()};
 
-  cptr_context->CSSetConstantBuffers(0, 1, _cptr_update_GCFPT_CS_cbuffer.GetAddressOf());
+  cptr_context->CSSetConstantBuffers(0, 1, _cptr_update_GCFPT_CS_constant_buffer.GetAddressOf());
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_update_GCFPT_CS.Get(), nullptr, NULL);
   cptr_context->Dispatch(1, 1, 1);

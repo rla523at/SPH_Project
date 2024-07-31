@@ -19,21 +19,21 @@ fp    : fluid particle
 ngc   : neighbor geometry cell
 ninfo : neighbor informations
 GCFPT : GCFP texture
-GCFP  : fluid particle in the geometry cell
+GCFP  : Geometry Cell Fluid Particle(fluid particle in the geometry cell)
 
 */
 
 inline constexpr size_t estimated_neighbor = 200;
 
-//data structure
+// data structure
 namespace ms
 {
 struct Neighbor_Informations_GPU
 {
-  size_t  indexes[estimated_neighbor];
+  UINT    indexes[estimated_neighbor];
   Vector3 translate_vectors[estimated_neighbor];
   float   distances[estimated_neighbor];
-  size_t  num_neighbor = 0;
+  UINT    num_neighbor = 0;
 };
 
 struct GCFPT_ID
@@ -93,41 +93,40 @@ private:
   void init_fpid_to_ninfo(const Device_Manager& device_manager);
 
 private:
-  //geometry cell마다 어떤 fluid particle이 있는지 저장한 texture
-  //geometry cell index마다 fluid particle indexes가 저장되어 있음
+  // geometry cell마다 속해있는 fluid particle의 index들을 저장한 texture
   ComPtr<ID3D11Texture2D>           _cptr_GCFP_texture;
   ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_texture_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_texture_UAV;
 
-  //geometry cell마다 몇개의 fluid particle이 있는지 저장한 buffer
-  //geometry cell index마다 fluid particle의 개수가 저장되어 있음
+  // geometry cell마다 속해있는 fluid particle의 개수를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_GCFP_counter_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_counter_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_counter_buffer_UAV;
 
-  //fluid particle마다 GCFPT ID를 저장한 Buffer
-  //fluid particle index마다 GCFPT ID가 저장되어 있음
+  // fluid particle마다 GCFPT ID를 저장한 Buffer
   ComPtr<ID3D11Buffer>              _cptr_GCFPT_ID_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_GCFPT_ID_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_GCFPT_ID_buffer_UAV;
 
-  //이번 프레임에 바뀐 GCFPT ID를 저장한 Buffer
+  // 이번 프레임에 바뀐 GCFPT ID를 저장한 Buffer
   ComPtr<ID3D11Buffer>              _cptr_changed_GCFPT_ID_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
-  ComPtr<ID3D11Buffer>              _cptr_count_staging_buffer;
 
+  ComPtr<ID3D11Buffer> _cptr_count_staging_buffer;
 
   ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFPT_ID_CS;
 
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFPT_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_GCFPT_CS_cbuffer;
+  ComPtr<ID3D11Buffer>        _cptr_update_GCFPT_CS_constant_buffer;
 
   //////////////////////////////////////////////////////////////////////
 
-  ComPtr<ID3D11Buffer>              _cptr_fp_index_to_ninfo_buffer;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_fp_index_to_ninfo_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_fp_index_to_ninfo_UAV;
-  ComPtr<ID3D11Buffer>              _cptr_fp_index_to_ninfo_staging_buffer;
+  // fluid particle마다 neighbor informations를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_ninfo_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_ninfo_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_ninfo_buffer_UAV;
+
+  ComPtr<ID3D11Buffer> _cptr_fp_index_to_ninfo_staging_buffer;
 
   ComPtr<ID3D11Texture2D>          _cptr_gc_index_to_ngc_indexes_texture;
   ComPtr<ID3D11ShaderResourceView> _cptr_gc_index_to_ngc_indexes_SRV;
@@ -142,7 +141,7 @@ private:
 
   const Device_Manager* _device_manager_ptr;
 
-  //temporary
+  // temporary
   ComPtr<ID3D11Buffer>             _cptr_fp_pos_buffer;
   ComPtr<ID3D11ShaderResourceView> _cptr_fp_pos_buffer_SRV;
   ComPtr<ID3D11Buffer>             _cptr_fp_pos_staging_buffer;
