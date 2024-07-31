@@ -26,6 +26,7 @@ StructuredBuffer<float3>    fp_pos_buffer       : register(t0);
 Texture2D<uint>             GCFP_texture        : register(t1);
 StructuredBuffer<uint>      GCFP_counter_buffer : register(t2);
 StructuredBuffer<GCFPT_ID>  GCFP_ID_buffer      : register(t3);
+Texture2D<uint>             ngc_texture         : register(t4);
 
 //unordered access
 RWStructuredBuffer<Neighbor_Informations> ninfos_buffer : register(u0);

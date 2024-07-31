@@ -12,9 +12,11 @@ struct Changed_GCFPT_ID_Data
   uint cur_gc_index;
 };
 
+//shader resource
 StructuredBuffer<float3>    fp_pos_buffer   : register(t0);
 StructuredBuffer<GCFPT_ID>  GCFPT_ID_buffer : register(t1);
 
+//unordered acess
 AppendStructuredBuffer<Changed_GCFPT_ID_Data> changed_GCFPT_ID_buffer : register(u0);
 
 [numthreads(1024, 1, 1)]

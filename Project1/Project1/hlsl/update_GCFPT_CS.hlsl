@@ -2,6 +2,11 @@ struct GCFPT_ID
 {
   uint gc_index;
   uint gcfp_index;
+  
+  uint2 to_uint2()
+  {
+    return uint2(gc_index, gcfp_index);
+  }
 };
 
 struct Changed_GCFPT_ID_Data
@@ -10,21 +15,23 @@ struct Changed_GCFPT_ID_Data
   uint cur_gc_index;
 };
 
+//constant buffer
 cbuffer Constant_Buffer : register(b0)
 {
   uint consume_buffer_count;
 }
 
-RWTexture2D<uint> GCFP_texture : register(u0);
-RWStructuredBuffer<uint> GCFP_counter_buffer : register(u1);
-RWStructuredBuffer<GCFPT_ID> GCFPT_ID_buffer : register(u2);
-ConsumeStructuredBuffer<Changed_GCFPT_ID_Data> changed_GCFPT_ID_buffer : register(u3);
+// UAVs
+RWTexture2D<uint>                               GCFP_texture            : register(u0);
+RWStructuredBuffer<uint>                        GCFP_counter_buffer     : register(u1);
+RWStructuredBuffer<GCFPT_ID>                    GCFPT_ID_buffer         : register(u2);
+ConsumeStructuredBuffer<Changed_GCFPT_ID_Data>  changed_GCFPT_ID_buffer : register(u3);
 
-// user define fuction
-uint2 to_uint2(const GCFPT_ID id)
-{
-  return uint2(id.gc_index, id.gcfp_index);
-}
+//// user define fuction
+//uint2 to_uint2(const GCFPT_ID id)
+//{
+//  return uint2(id.gc_index, id.gcfp_index);
+//}
 
 // entry function
 [numthreads(1, 1, 1)]
@@ -34,13 +41,13 @@ void main()
   {
     const Changed_GCFPT_ID_Data changed_data = changed_GCFPT_ID_buffer.Consume();
               
-    const GCFPT_ID prev_id = changed_data.prev_id;
-    const uint fp_index = GCFP_texture[to_uint2(prev_id)];
+    const GCFPT_ID  prev_id   = changed_data.prev_id;
+    const uint      fp_index  = GCFP_texture[prev_id.to_uint2()];
 
     //remove previous data    
-    const uint prev_gc_index = prev_id.gc_index;
-    const uint prev_gcfp_index = prev_id.gcfp_index;
-    const uint num_prev_gcfp = GCFP_counter_buffer[prev_gc_index];
+    const uint prev_gc_index    = prev_id.gc_index;
+    const uint prev_gcfp_index  = prev_id.gcfp_index;
+    const uint num_prev_gcfp    = GCFP_counter_buffer[prev_gc_index];
     
     for (uint j = prev_gcfp_index; j < num_prev_gcfp - 1; ++j)
     {

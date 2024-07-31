@@ -86,10 +86,9 @@ private:
   void update_GCFP_texture(void);
 
   std::vector<int> make_gcid_to_ngcids_initial_data(void);
-  void             init_gcid_to_ngcids(const Device_Manager& device_manager);
+  void             init_ngc_texture(const Device_Manager& device_manager);
 
-  void init_GCFP_texture(const UINT* texture_data_ptr, const UINT* counter_data_ptr);
-  void init_GCFPT_ID_buffer(const GCFPT_ID* init_data_ptr);
+  void init_GCFP_texture(const std::vector<Vector3>& fluid_particle_pos_vectors);
   void init_fpid_to_ninfo(const Device_Manager& device_manager);
 
 private:
@@ -126,11 +125,14 @@ private:
   ComPtr<ID3D11ShaderResourceView>  _cptr_ninfo_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_ninfo_buffer_UAV;
 
+  // grid cell마다 neighbor grid cell의 index들을 저장한 texture
+  ComPtr<ID3D11Texture2D>          _cptr_ngc_texture;
+  ComPtr<ID3D11ShaderResourceView> _cptr_ngc_texture_SRV;
+
   ComPtr<ID3D11Buffer> _cptr_fp_index_to_ninfo_staging_buffer;
 
-  ComPtr<ID3D11Texture2D>          _cptr_gc_index_to_ngc_indexes_texture;
-  ComPtr<ID3D11ShaderResourceView> _cptr_gc_index_to_ngc_indexes_SRV;
 
+  //Constant Buffer로 묶어버리자
   Domain _domain;
   float  _divide_length = 0.0f;
 
