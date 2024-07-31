@@ -1,3 +1,14 @@
+# 2024.07.30
+## CPU >> GPU
+* Compute Shader 관련 기본적인 내용 학습
+* Uniform Grid를 활용한 Neighbor search CPU 코드 >> GPU 코드 작업 중
+
+**향후 계획**
+* Uniform Grid를 활용한 Neighbor search GPU 코드 검증 및 성능 테스트
+* PCISPH CPU코드 >> GPU 코드
+
+</br></br></br>
+
 # 2024.07.29
 
 ## PCISPH 구현
