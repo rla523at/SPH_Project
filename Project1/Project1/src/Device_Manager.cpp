@@ -179,7 +179,7 @@ ComPtr<ID3D11ComputeShader> Device_Manager::create_CS(const wchar_t* file_name) 
     const auto result = D3DCompileFromFile(
       file_name,
       nullptr,
-      nullptr,
+      D3D_COMPILE_STANDARD_FILE_INCLUDE,
       entry_point_name,
       shader_target_profile_name,
       complie_flag,
@@ -187,7 +187,11 @@ ComPtr<ID3D11ComputeShader> Device_Manager::create_CS(const wchar_t* file_name) 
       shader_blob.GetAddressOf(),
       error_blob.GetAddressOf());
 
-    REQUIRE(!FAILED(result), std::wstring(file_name) + L" compile failed. compute shader compiling should succeed");
+    if (FAILED(result))
+    {
+      EXCEPTION(std::wstring(file_name) + L" compile failed. compute shader compiling should succeed");
+      std::cout << (char*)error_blob->GetBufferPointer() << "\n";
+    }
   }
 
   {
@@ -349,6 +353,31 @@ ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_write(const ComPtr<ID
   REQUIRE(!FAILED(result), "staging buffer creation should succeed");
 
   return cptr_staging_buffer;
+}
+
+ComPtr<ID3D11Texture2D> Device_Manager::create_staging_texture_read(const ComPtr<ID3D11Texture2D> cptr_target_buffer) const
+{
+  D3D11_TEXTURE2D_DESC target_desc;
+  cptr_target_buffer->GetDesc(&target_desc);
+
+  D3D11_TEXTURE2D_DESC desc = {};
+  desc.Width                = target_desc.Width;
+  desc.Height               = target_desc.Height;
+  desc.MipLevels            = 1;
+  desc.ArraySize            = 1;
+  desc.Format               = target_desc.Format;
+  desc.SampleDesc.Count     = 1;
+  desc.Usage                = D3D11_USAGE_STAGING;
+  desc.BindFlags            = NULL;
+  desc.CPUAccessFlags       = D3D11_CPU_ACCESS_READ;
+  desc.MiscFlags            = NULL;
+
+  ComPtr<ID3D11Texture2D> cptr_texutre_2D;
+
+  const auto result = _cptr_device->CreateTexture2D(&desc, nullptr, cptr_texutre_2D.GetAddressOf());
+  REQUIRE(!FAILED(result), "staging texture 2D for read creation should succeed");
+
+  return cptr_texutre_2D;
 }
 
 ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_count(void) const

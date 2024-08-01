@@ -2,6 +2,7 @@
 
 #include "Camera.h"
 #include "Device_Manager.h"
+#include "PCISPH_GPU.h"
 #include "PCISPH.h"
 #include "WCSPH.h"
 #include "Window_Manager.h"
@@ -13,7 +14,7 @@
 namespace ms
 {
 
-SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context)
+SPH::SPH(const Device_Manager& device_manager)
 {
   Domain solution_domain;
   solution_domain.x_start = -2.0f;
@@ -102,7 +103,7 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains          = init_cond_domains;
-  init_cond.particle_spacing = 0.01f;
+  init_cond.particle_spacing = 0.1f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter
@@ -115,9 +116,13 @@ SPH::SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContex
   mat_prop.viscosity            = 1.0e-2f;
 
   //_uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
-  _uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain);
+  //_uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain);
+  _uptr_SPH_Scheme = std::make_unique<PCISPH_GPU>(init_cond, solution_domain, device_manager);
+
 
   _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius()*0.5f;
+
+  const auto cptr_device = device_manager.device_cptr();
 
   this->init_VS_SRbuffer_pos(cptr_device);
   this->init_VS_SRview_pos(cptr_device);

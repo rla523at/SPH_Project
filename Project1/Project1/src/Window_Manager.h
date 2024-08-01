@@ -37,17 +37,20 @@ public:
 
 public:
   Window_Manager(const int num_row_pixel, const int num_col_pixel);
+  ~Window_Manager(void);
 
 public:
   HWND main_window(void) const;
 
 private:
-  static constexpr size_t   _num_key = 256;
-  static inline bool        _is_key_pressed[_num_key];
-  static inline Window_Size _size      = {0, 0};
-  static inline Mouse_Pos   _mouse_pos = {0, 0};
+  static constexpr size_t         _num_key = 256;
+  static inline bool              _is_key_pressed[_num_key];
+  static inline Window_Size       _size              = {0, 0};
+  static inline Mouse_Pos         _mouse_pos         = {0, 0};
+  static constexpr const wchar_t* _window_class_name = L"MSGraphics";
 
-  HWND _main_window;
+  HWND      _main_window;
+  HINSTANCE _window_class;
 };
 
 // Window_Manager class를 static method들을 전부 private으로 만들고,

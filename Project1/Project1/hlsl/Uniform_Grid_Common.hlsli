@@ -1,19 +1,39 @@
 cbuffer Uniform_Grid_Constants : register(b0)
 {
-    uint num_x_cell;
-    uint num_y_cell;
-    uint num_z_cell;
-    float domain_x_start;
-    float domain_y_start;
-    float domain_z_start;
-    float divide_length;
-}
+  uint g_num_x_cell;
+  uint g_num_y_cell;
+  uint g_num_z_cell;
+  uint g_num_cell;
+  uint g_num_particle;
+  float g_domain_x_start;
+  float g_domain_y_start;
+  float g_domain_z_start;
+  float g_divide_length;
+};
+
+struct GCFPT_ID
+{
+  uint gc_index;
+  uint gcfp_index;
+  
+  uint2 to_uint2()
+  {
+    return uint2(gc_index, gcfp_index);
+  }
+};
+
+struct Changed_GCFPT_ID_Data
+{
+  GCFPT_ID prev_id;
+  uint cur_gc_index;
+};
+
 
 uint grid_cell_index(float3 position)
 {
-    uint x_index = (uint) ((position.x - domain_x_start) / divide_length);
-    uint y_index = (uint) ((position.y - domain_y_start) / divide_length);
-    uint z_index = (uint) ((position.z - domain_z_start) / divide_length);
+  const uint x_index = (uint)((position.x - g_domain_x_start) / g_divide_length);
+  const uint y_index = (uint)((position.y - g_domain_y_start) / g_divide_length);
+  const uint z_index = (uint)((position.z - g_domain_z_start) / g_divide_length);
 
-    return x_index + y_index * num_x_cell + z_index * num_x_cell * num_y_cell;
+  return x_index + y_index * g_num_x_cell + z_index * g_num_x_cell * g_num_y_cell;
 }

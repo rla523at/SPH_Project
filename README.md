@@ -1,3 +1,22 @@
+## 문제1
+
+```cpp
+struct Neighbor_Informations_GPU
+{
+  UINT    indexes[estimated_neighbor];           //800
+  Vector3 translate_vectors[estimated_neighbor]; //2400
+  float   distances[estimated_neighbor];         //800
+  UINT    num_neighbor = 0;                      // 4
+};
+```
+
+## 문제2
+
+DXGI_FORMAT_R32G32B32_FLOAT format으로 Texutre2D를 만들고 UAV를 만들려고 했는데 안됨!
+
+오류	X4596	typed UAV stores must write all declared components.	
+
+
 # 2024.07.31
 ## Uniform Grid CPU >> GPU
 Uniform Grid는 다음 3단계의 작업을 한다.

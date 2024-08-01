@@ -9,7 +9,7 @@
 #define FILE_NAME ms::exception::extract_file_name(__FILE__)
 #define REQUIRE(requirement, message) ms::exception::require(requirement, message, FILE_NAME, __FUNCTION__, __LINE__)
 #define REQUIRE_EX(requirement, message) ms::exception::require_exception(requirement, message, FILE_NAME, __FUNCTION__, __LINE__)
-#define EXCEPTION(message) ms::exception::throw_exception(false, message, FILE_NAME, __FUNCTION__, __LINE__)
+#define EXCEPTION(message) ms::exception::require_exit(false, message, FILE_NAME, __FUNCTION__, __LINE__)
 #else
 #define LOCATION
 #define REQUIRE(requirement, message)
@@ -33,6 +33,21 @@ inline void require(const bool requirement, const std::string_view& message, con
   }
 }
 
+inline void require(const bool requirement, const std::wstring_view& message, const std::string_view& file_name, const std::string_view& function_name, const int num_line)
+{
+  if (!requirement)
+  {
+    std::wcout << "\n==============================EXCEPTION========================================\n";
+    std::wcout << "File\t\t: " << file_name.data() << "\n";
+    std::wcout << "Function\t: " << function_name.data() << "\n";
+    std::wcout << "Line\t\t: " << num_line << "\n";
+    std::wcout << "Message\t\t: " << message.data() << "\n";
+    std::wcout << "==============================EXCEPTION========================================\n\n";
+
+    assert(false);
+  }
+}
+
 inline void require_exception(const bool requirement, const std::string_view& message, const std::string_view& file_name, const std::string_view& function_name, const int num_line)
 {
   if (!requirement)
@@ -47,6 +62,21 @@ inline void require_exception(const bool requirement, const std::string_view& me
     os << "==============================EXCEPTION========================================\n\n";
 
     throw std::runtime_error(os.str());
+  }
+}
+
+inline void require_exit(const bool requirement, const std::wstring_view& message, const std::string_view& file_name, const std::string_view& function_name, const int num_line)
+{
+  if (!requirement)
+  {
+    std::wcout << "\n==============================EXCEPTION========================================\n";
+    std::wcout << "File\t\t: " << file_name.data() << "\n";
+    std::wcout << "Function\t: " << function_name.data() << "\n";
+    std::wcout << "Line\t\t: " << num_line << "\n";
+    std::wcout << "Message\t\t: " << message.data() << "\n";
+    std::wcout << "==============================EXCEPTION========================================\n\n";
+
+    exit(523);
   }
 }
 

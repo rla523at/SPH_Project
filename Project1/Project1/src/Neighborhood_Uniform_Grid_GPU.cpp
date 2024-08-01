@@ -14,55 +14,69 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   const std::vector<Vector3>& fluid_particle_pos_vectors,
   const std::vector<Vector3>& boundary_particle_pos_vectors,
   const Device_Manager&       device_manager)
-    : _domain(domain), _divide_length(divide_length)
+    : _device_manager_ptr(&device_manager)
 {
-  _device_manager_ptr = &device_manager;
+  const float dx = domain.x_end - domain.x_start;
+  const float dy = domain.y_end - domain.y_start;
+  const float dz = domain.z_end - domain.z_start;
 
-  const float dx = _domain.x_end - _domain.x_start;
-  const float dy = _domain.y_end - _domain.y_start;
-  const float dz = _domain.z_end - _domain.z_start;
+  _constant_data.num_x_cell     = static_cast<UINT>(std::ceil(dx / divide_length));
+  _constant_data.num_y_cell     = static_cast<UINT>(std::ceil(dy / divide_length));
+  _constant_data.num_z_cell     = static_cast<UINT>(std::ceil(dz / divide_length));
+  _constant_data.num_cell       = _constant_data.num_x_cell * _constant_data.num_y_cell * _constant_data.num_z_cell;
+  _constant_data.num_particle   = static_cast<UINT>(fluid_particle_pos_vectors.size());
+  _constant_data.domain_x_start = domain.x_start;
+  _constant_data.domain_y_start = domain.y_start;
+  _constant_data.domain_z_start = domain.z_start;
+  _constant_data.divide_length  = divide_length;
 
-  _num_x_cell   = static_cast<size_t>(std::ceil(dx / divide_length));
-  _num_y_cell   = static_cast<size_t>(std::ceil(dy / divide_length));
-  _num_z_cell   = static_cast<size_t>(std::ceil(dz / divide_length));
-  _num_particle = fluid_particle_pos_vectors.size();
+  _common_constnat_buffer = device_manager.create_constant_buffer_imuutable(&_constant_data);
 
-  const auto num_cell = _num_x_cell * _num_y_cell * _num_z_cell;
+  this->init_ngc_texture();
 
   this->init_GCFP_texture(fluid_particle_pos_vectors);
-  this->init_ngc_texture(device_manager);
-  this->init_fpid_to_ninfo(device_manager);
+  _cptr_find_changed_GCFPT_ID_CS        = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
+  _cptr_update_GCFPT_CS                 = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
+  _cptr_update_GCFPT_CS_constant_buffer = device_manager.create_constant_buffer(16);
 
-  // temporary
-  _cptr_fp_pos_buffer         = _device_manager_ptr->create_structured_buffer(_num_particle, fluid_particle_pos_vectors.data());
+  this->init_nfp();
+  device_manager.create_CS(L"hlsl/update_nfp_CS.hlsl");
+
+  // temporary code
+  _cptr_fp_pos_buffer         = _device_manager_ptr->create_structured_buffer(_constant_data.num_particle, fluid_particle_pos_vectors.data());
   _cptr_fp_pos_buffer_SRV     = _device_manager_ptr->create_SRV(_cptr_fp_pos_buffer.Get());
   _cptr_fp_pos_staging_buffer = _device_manager_ptr->create_staging_buffer_read(_cptr_fp_pos_buffer);
+  // temporary code
+
+  this->update_nfp();
 }
 
-void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& device_manager)
+void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(void)
 {
   // make inital data
-  constexpr long long delta[3]              = {-1, 0, 1};
-  constexpr size_t    num_max_data_per_cell = 27;
+  constexpr long long delta[3]          = {-1, 0, 1};
+  constexpr UINT      estimated_num_ngc = 27;
 
-  const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
-  const auto num_data  = num_cells * num_max_data_per_cell;
+  const auto num_cell   = _constant_data.num_cell;
+  const auto num_x_cell = _constant_data.num_x_cell;
+  const auto num_y_cell = _constant_data.num_y_cell;
+  const auto num_z_cell = _constant_data.num_z_cell;
 
-  std::vector<UINT> ngc_counts(num_cells);
-  std::vector<UINT> ngcs(num_data);
+  std::vector<std::array<UINT, estimated_num_ngc>> ngc_texture(num_cell);
+  std::vector<UINT>                                ngc_counts(num_cell);
 
-  for (size_t i = 0; i < _num_x_cell; ++i)
+  for (size_t i = 0; i < num_x_cell; ++i)
   {
-    for (size_t j = 0; j < _num_y_cell; ++j)
+    for (size_t j = 0; j < num_y_cell; ++j)
     {
-      for (size_t k = 0; k < _num_z_cell; ++k)
+      for (size_t k = 0; k < num_z_cell; ++k)
       {
         const auto gcid_vector = Grid_Cell_ID{i, j, k};
         const auto gc_index    = this->grid_cell_index(gcid_vector);
 
-        auto index = gc_index * num_max_data_per_cell;
+        auto& ngcs = ngc_texture[gc_index];
 
-        size_t ngc_count = 0;
+        UINT ngc_count = 0;
         for (size_t p = 0; p < 3; ++p)
         {
           for (size_t q = 0; q < 3; ++q)
@@ -78,8 +92,7 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& devic
                 continue;
 
               const auto neighbor_gcid = this->grid_cell_index(neighbor_gcid_vector);
-              ngcs[index++]            = static_cast<UINT>(neighbor_gcid);
-              ngc_count++;
+              ngcs[ngc_count++]        = static_cast<UINT>(neighbor_gcid);
             }
           }
         }
@@ -89,46 +102,28 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& devic
     }
   }
 
-  //
+  const auto& device_manager = *_device_manager_ptr;
 
-  constexpr size_t num_max_neighbor_cell = 27;
+  // create ngc texture
+  _cptr_ngc_texture     = device_manager.create_texutre_2D_immutable(estimated_num_ngc, num_cell, DXGI_FORMAT_R32_UINT, ngc_texture.data());
+  _cptr_ngc_texture_SRV = device_manager.create_SRV(_cptr_ngc_texture.Get());
 
-  const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
-
-  D3D11_TEXTURE2D_DESC desc = {};
-  desc.Width                = static_cast<UINT>(num_max_neighbor_cell);
-  desc.Height               = static_cast<UINT>(num_cells);
-  desc.MipLevels            = 1;
-  desc.ArraySize            = 1;
-  desc.Format               = DXGI_FORMAT_R32_UINT;
-  desc.SampleDesc.Count     = 1;
-  desc.Usage                = D3D11_USAGE_IMMUTABLE;
-  desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE;
-  desc.CPUAccessFlags       = NULL;
-  desc.MiscFlags            = NULL;
-
-  const auto gcid_to_neighbor_gcids = this->make_gcid_to_ngcids_initial_data();
-
-  D3D11_SUBRESOURCE_DATA init_data;
-  init_data.pSysMem          = gcid_to_neighbor_gcids.data();
-  init_data.SysMemPitch      = 0;
-  init_data.SysMemSlicePitch = 0;
-
-  const auto cptr_device = device_manager.device_cptr();
-  cptr_device->CreateTexture2D(&desc, &init_data, _cptr_ngc_texture.GetAddressOf());
-  cptr_device->CreateShaderResourceView(_cptr_ngc_texture.Get(), nullptr, _cptr_ngc_texture_SRV.GetAddressOf());
+  // create ngc count buffer
+  _cptr_ngc_count_buffer     = device_manager.create_structured_buffer(num_cell, ngc_counts.data());
+  _cptr_ngc_count_buffer_SRV = device_manager.create_SRV(_cptr_ngc_count_buffer.Get());
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const std::vector<Vector3>& fluid_particle_pos_vectors)
 {
   // make initial data
-  const auto num_cell = _num_x_cell * _num_y_cell * _num_z_cell;
+  const auto num_cell     = _constant_data.num_cell;
+  const auto num_particle = _constant_data.num_particle;
 
   std::vector<std::array<UINT, 40>> GCFP_texture(num_cell);
-  std::vector<UINT>                 GCFP_counter_buffer(num_cell);
-  std::vector<GCFPT_ID>             GCFPT_ID_buffer(_num_particle);
+  std::vector<UINT>                 GCFP_counts(num_cell);
+  std::vector<GCFPT_ID>             GCFPT_IDs(num_particle);
 
-  for (size_t i = 0; i < _num_particle; ++i)
+  for (UINT i = 0; i < num_particle; ++i)
   {
     const auto& v_pos    = fluid_particle_pos_vectors[i];
     const auto  gc_id    = this->grid_cell_id(v_pos);
@@ -136,102 +131,107 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const std::vector<Vector3>
 
     GCFPT_ID id;
     id.gc_index   = gc_index;
-    id.gcfp_index = GCFP_counter_buffer[gc_index];
+    id.gcfp_index = GCFP_counts[gc_index];
 
     GCFP_texture[gc_index][id.gcfp_index] = i;
-    GCFP_counter_buffer[gc_index]++;
-    GCFPT_ID_buffer[i] = id;
+    GCFP_counts[gc_index]++;
+    GCFPT_IDs[i] = id;
   }
 
   const auto& device_manager = *_device_manager_ptr;
 
-  // init GCFPT related
-  constexpr size_t estimated_num_fpids       = 40;
-  const auto       estimated_num_update_data = _num_particle / 10;
-
-  D3D11_TEXTURE2D_DESC desc = {};
-  desc.Width                = static_cast<UINT>(estimated_num_fpids);
-  desc.Height               = static_cast<UINT>(num_cell);
-  desc.MipLevels            = 1;
-  desc.ArraySize            = 1;
-  desc.Format               = DXGI_FORMAT_R32_UINT;
-  desc.SampleDesc.Count     = 1;
-  desc.Usage                = D3D11_USAGE_DEFAULT;
-  desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-  desc.CPUAccessFlags       = NULL;
-  desc.MiscFlags            = NULL;
-
-  D3D11_SUBRESOURCE_DATA init_data = {};
-  init_data.pSysMem                = GCFP_texture.data();
-  init_data.SysMemPitch            = static_cast<UINT>(estimated_num_fpids);
-  init_data.SysMemSlicePitch       = 0;
-
   // create GCFP texture
-  const auto cptr_device = device_manager.device_cptr();
-  cptr_device->CreateTexture2D(&desc, nullptr, _cptr_GCFP_texture.GetAddressOf());
+  constexpr UINT estimated_num_fpids       = 40;
+  const auto     estimated_num_update_data = _constant_data.num_particle / 10;
+
+  _cptr_GCFP_texture     = device_manager.create_texutre_2D(estimated_num_fpids, num_cell, DXGI_FORMAT_R32_UINT, GCFP_texture.data());
   _cptr_GCFP_texture_SRV = device_manager.create_SRV(_cptr_GCFP_texture.Get());
   _cptr_GCFP_texture_UAV = device_manager.create_UAV(_cptr_GCFP_texture.Get());
 
   // create GCFP counter buffer
-  _cptr_GCFP_counter_buffer     = device_manager.create_structured_buffer(num_cell, GCFP_counter_buffer.data());
-  _cptr_GCFP_counter_SRV        = device_manager.create_SRV(_cptr_GCFP_counter_buffer.Get());
-  _cptr_GCFP_counter_buffer_UAV = device_manager.create_UAV(_cptr_GCFP_counter_buffer.Get());
-
-  // create update GCFPT CS
-  _cptr_update_GCFPT_CS                 = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
-  _cptr_update_GCFPT_CS_constant_buffer = device_manager.create_constant_buffer(16);
+  _cptr_GCFP_count_buffer     = device_manager.create_structured_buffer(num_cell, GCFP_counts.data());
+  _cptr_GCFP_count_buffer_SRV = device_manager.create_SRV(_cptr_GCFP_count_buffer.Get());
+  _cptr_GCFP_count_buffer_UAV = device_manager.create_UAV(_cptr_GCFP_count_buffer.Get());
 
   // create GCFPT ID buffer
-  _cptr_GCFPT_ID_buffer     = device_manager.create_structured_buffer(_num_particle, GCFPT_ID_buffer.data());
+  _cptr_GCFPT_ID_buffer     = device_manager.create_structured_buffer(num_particle, GCFPT_IDs.data());
   _cptr_GCFPT_ID_buffer_SRV = device_manager.create_SRV(_cptr_GCFPT_ID_buffer.Get());
   _cptr_GCFPT_ID_buffer_UAV = device_manager.create_UAV(_cptr_GCFPT_ID_buffer.Get());
 
   // create changed GCFPT ID buffer
   _cptr_changed_GCFPT_ID_buffer = device_manager.create_structured_buffer<Changed_GCFPT_ID_Data>(estimated_num_update_data);
   _cptr_changed_GCFPT_ID_AC_UAV = device_manager.create_AC_UAV(_cptr_changed_GCFPT_ID_buffer.Get(), estimated_num_update_data);
-
-  // create find changed GCFPT ID CS
-  _cptr_find_changed_GCFPT_ID_CS = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
 }
 
-void Neighborhood_Uniform_Grid_GPU::init_fpid_to_ninfo(const Device_Manager& device_manager)
+void Neighborhood_Uniform_Grid_GPU::init_nfp(void)
 {
-  constexpr auto data_size = sizeof(Neighbor_Informations_GPU);
-  const auto     num_data  = _num_particle;
+  constexpr UINT estimated_neighbor = 200;
 
-  _cptr_ninfo_buffer                     = device_manager.create_structured_buffer<Neighbor_Informations_GPU>(num_data);
-  _cptr_ninfo_buffer_SRV                 = device_manager.create_SRV(_cptr_ninfo_buffer.Get());
-  _cptr_ninfo_buffer_UAV                 = device_manager.create_UAV(_cptr_ninfo_buffer.Get());
-  _cptr_fp_index_to_ninfo_staging_buffer = device_manager.create_staging_buffer_read(_cptr_ninfo_buffer);
+  const UINT width           = estimated_neighbor;
+  const UINT height          = _constant_data.num_particle;
+  const auto nfp_format      = DXGI_FORMAT_R32_UINT;
+  const auto nfp_tvec_format = DXGI_FORMAT_R32G32B32A32_FLOAT; //R32G32B32는 UAV가 지원이 안됨!
+  const auto nfp_dist_format = DXGI_FORMAT_R32_FLOAT;
+
+  const auto& device_manager = *_device_manager_ptr;
+  _cptr_nfp_texture          = device_manager.create_texutre_2D<UINT>(width, height, nfp_format);
+  _cptr_nfp_texture_SRV      = device_manager.create_SRV(_cptr_nfp_texture.Get());
+  _cptr_nfp_texture_UAV      = device_manager.create_UAV(_cptr_nfp_texture.Get());
+
+  _cptr_nfp_tvec_texture     = device_manager.create_texutre_2D<Vector4>(width, height, nfp_tvec_format);
+  _cptr_nfp_tvec_texture_SRV = device_manager.create_SRV(_cptr_nfp_tvec_texture.Get());
+  _cptr_nfp_tvec_texture_UAV = device_manager.create_UAV(_cptr_nfp_tvec_texture.Get());
+
+  _cptr_nfp_dist_texture     = device_manager.create_texutre_2D<float>(width, height, nfp_dist_format);
+  _cptr_nfp_dist_texture_SRV = device_manager.create_SRV(_cptr_nfp_dist_texture.Get());
+  _cptr_nfp_dist_texture_UAV = device_manager.create_UAV(_cptr_nfp_dist_texture.Get());
+
+  _cptr_nfp_count_buffer     = device_manager.create_structured_buffer<UINT>(_constant_data.num_particle);
+  _cptr_nfp_count_buffer_SRV = device_manager.create_SRV(_cptr_nfp_count_buffer.Get());
+  _cptr_nfp_count_buffer_UAV = device_manager.create_UAV(_cptr_nfp_count_buffer.Get());
+
+  // temporary code
+  _cptr_nfp_staging_texture      = device_manager.create_staging_texture_read(_cptr_nfp_texture);
+  _cptr_nfp_tvec_staging_texture = device_manager.create_staging_texture_read(_cptr_nfp_tvec_texture);
+  _cptr_nfp_dist_staging_texture = device_manager.create_staging_texture_read(_cptr_nfp_dist_texture);
+  _cptr_nfp_count_staging_buffer = device_manager.create_staging_buffer_read(_cptr_nfp_count_buffer);
+  //temporary code
 }
 
 Grid_Cell_ID Neighborhood_Uniform_Grid_GPU::grid_cell_id(const Vector3& v_pos) const
 {
-  const float dx = v_pos.x - _domain.x_start;
-  const float dy = v_pos.y - _domain.y_start;
-  const float dz = v_pos.z - _domain.z_start;
+  const float dx = v_pos.x - _constant_data.domain_x_start;
+  const float dy = v_pos.y - _constant_data.domain_y_start;
+  const float dz = v_pos.z - _constant_data.domain_z_start;
 
-  const size_t i = static_cast<size_t>(dx / _divide_length);
-  const size_t j = static_cast<size_t>(dy / _divide_length);
-  const size_t k = static_cast<size_t>(dz / _divide_length);
+  const size_t i = static_cast<size_t>(dx / _constant_data.divide_length);
+  const size_t j = static_cast<size_t>(dy / _constant_data.divide_length);
+  const size_t k = static_cast<size_t>(dz / _constant_data.divide_length);
 
   return {i, j, k};
 }
 
-size_t Neighborhood_Uniform_Grid_GPU::grid_cell_index(const Grid_Cell_ID& index_vector) const
+UINT Neighborhood_Uniform_Grid_GPU::grid_cell_index(const Grid_Cell_ID& index_vector) const
 {
-  return index_vector.x + index_vector.y * _num_x_cell + index_vector.z * _num_x_cell * _num_y_cell;
+  const auto num_x_cell = _constant_data.num_x_cell;
+  const auto num_y_cell = _constant_data.num_y_cell;
+
+  return static_cast<UINT>(index_vector.x + index_vector.y * num_x_cell + index_vector.z * num_x_cell * num_y_cell);
 }
 
 bool Neighborhood_Uniform_Grid_GPU::is_valid_index(const Grid_Cell_ID& index_vector) const
 {
-  if (_num_x_cell <= index_vector.x)
+  const auto num_x_cell = _constant_data.num_x_cell;
+  const auto num_y_cell = _constant_data.num_y_cell;
+  const auto num_z_cell = _constant_data.num_z_cell;
+
+  if (num_x_cell <= index_vector.x)
     return false;
 
-  if (_num_y_cell <= index_vector.y)
+  if (num_y_cell <= index_vector.y)
     return false;
 
-  if (_num_z_cell <= index_vector.z)
+  if (num_z_cell <= index_vector.z)
     return false;
 
   return true;
@@ -239,7 +239,7 @@ bool Neighborhood_Uniform_Grid_GPU::is_valid_index(const Grid_Cell_ID& index_vec
 
 const Neighbor_Informations& Neighborhood_Uniform_Grid_GPU::search_for_fluid(const size_t pid) const
 {
-  return _fpid_to_neighbor_informations[pid];
+  return _ninfos[pid];
 }
 
 const std::vector<size_t>& Neighborhood_Uniform_Grid_GPU::search_for_boundary(const size_t bpid) const
@@ -251,9 +251,9 @@ void Neighborhood_Uniform_Grid_GPU::update(
   const std::vector<Vector3>& fluid_particle_pos_vectors,
   const std::vector<Vector3>& boundary_particle_pos_vectors)
 {
+  // temporary code
   const auto cptr_context = _device_manager_ptr->context_cptr();
 
-  // temporary code
   _device_manager_ptr->upload(fluid_particle_pos_vectors.data(), _cptr_fp_pos_staging_buffer);
   cptr_context->CopyResource(_cptr_fp_pos_buffer.Get(), _cptr_fp_pos_staging_buffer.Get());
   // temporary code
@@ -266,16 +266,17 @@ void Neighborhood_Uniform_Grid_GPU::update(
 
   _device_manager_ptr->CS_barrier();
 
-  // this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors);
-  // this->update_bpid_to_neighbor_fpids(fluid_particle_pos_vectors, boundary_particle_pos_vectors);
+  this->update_nfp();
+
+  _device_manager_ptr->CS_barrier();
+
+  //temporary code
+
+  //temporary code
 }
 
 void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
 {
-  const auto cptr_context = _device_manager_ptr->context_cptr();
-
-  const UINT num_group_x = static_cast<UINT>(std::ceil(_num_particle / 1024));
-
   constexpr size_t num_SRV = 2;
   constexpr size_t num_UAV = 1;
 
@@ -286,9 +287,12 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
     _cptr_changed_GCFPT_ID_AC_UAV.Get()};
 
+  const auto cptr_context = _device_manager_ptr->context_cptr();
   cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_find_changed_GCFPT_ID_CS.Get(), nullptr, NULL);
+
+  const UINT num_group_x = static_cast<UINT>(std::ceil(_constant_data.num_particle / 1024));
   cptr_context->Dispatch(num_group_x, 1, 1);
 }
 
@@ -304,7 +308,7 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_texture(void)
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
     _cptr_GCFP_texture_UAV.Get(),
-    _cptr_GCFP_counter_buffer_UAV.Get(),
+    _cptr_GCFP_count_buffer_UAV.Get(),
     _cptr_GCFPT_ID_buffer_UAV.Get(),
     _cptr_changed_GCFPT_ID_AC_UAV.Get()};
 
@@ -312,6 +316,79 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_texture(void)
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_update_GCFPT_CS.Get(), nullptr, NULL);
   cptr_context->Dispatch(1, 1, 1);
+}
+
+void Neighborhood_Uniform_Grid_GPU::update_nfp(void)
+{
+  constexpr auto num_constant_buffer = 1;
+  constexpr auto num_SRV             = 6;
+  constexpr auto num_UAV             = 4;
+
+  ID3D11Buffer* constant_buffers[num_constant_buffer] = {
+    _common_constnat_buffer.Get()};
+
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    _cptr_fp_pos_buffer_SRV.Get(),
+    _cptr_GCFP_texture_SRV.Get(),
+    _cptr_GCFP_count_buffer_SRV.Get(),
+    _cptr_GCFPT_ID_buffer_SRV.Get(),
+    _cptr_ngc_texture_SRV.Get(),
+    _cptr_ngc_count_buffer_SRV.Get()};
+
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_nfp_texture_UAV.Get(),
+    _cptr_nfp_tvec_texture_UAV.Get(),
+    _cptr_nfp_dist_texture_UAV.Get(),
+    _cptr_nfp_count_buffer_UAV.Get()};
+
+  const auto cptr_context = _device_manager_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_update_nfp_CS.Get(), nullptr, NULL);
+
+  const auto num_group_x = static_cast<UINT>(std::ceil(_constant_data.num_particle / 1024));
+  cptr_context->Dispatch(num_group_x, 1, 1);
+}
+
+void Neighborhood_Uniform_Grid_GPU::copy_to_ninfos(void)
+{
+  const auto cptr_context = _device_manager_ptr->context_cptr();
+
+  cptr_context->CopyResource(_cptr_nfp_staging_texture.Get(), _cptr_nfp_texture.Get());
+  cptr_context->CopyResource(_cptr_nfp_tvec_staging_texture.Get(), _cptr_nfp_tvec_texture.Get());
+  cptr_context->CopyResource(_cptr_nfp_dist_staging_texture.Get(), _cptr_nfp_dist_texture.Get());
+  cptr_context->CopyResource(_cptr_nfp_count_staging_buffer.Get(), _cptr_nfp_count_buffer.Get());
+
+  auto nfp_index = _device_manager_ptr->download<UINT>(_cptr_nfp_staging_texture);
+  auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_texture);
+  auto nfp_dist  = _device_manager_ptr->download<float>(_cptr_nfp_dist_staging_texture);
+  auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_buffer);
+
+  for (UINT i = 0; i < _constant_data.num_particle; ++i)
+  {
+    auto& ninfo = _ninfos[i];
+
+    const UINT nn = nfp_count[i];
+
+    auto& indexes = nfp_index[i];
+    auto& tvecs   = nfp_tvec[i];
+    auto& dists   = nfp_dist[i];
+
+    ninfo.indexes.resize(nn);
+    std::copy(indexes.begin(), indexes.begin() + nn, ninfo.indexes.begin());
+
+    ninfo.translate_vectors.resize(nn);
+    for (UINT j=0; j< nn; ++j)
+    {
+      ninfo.translate_vectors[j].x = tvecs[j].x;
+      ninfo.translate_vectors[j].y = tvecs[j].y;
+      ninfo.translate_vectors[j].z = tvecs[j].z;
+    }
+
+    ninfo.distances.resize(nn);
+    std::copy(dists.begin(), dists.begin() + nn, ninfo.distances.begin());
+  }
 }
 
 } // namespace ms

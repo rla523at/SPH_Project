@@ -1,4 +1,4 @@
-#include "PCISPH.h"
+#include "PCISPH_GPU.h"
 
 #include "Debugger.h"
 #include "Device_Manager.h"
@@ -14,7 +14,10 @@
 
 namespace ms
 {
-PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& solution_domain)
+PCISPH_GPU::PCISPH_GPU(
+  const Initial_Condition_Cubes& initial_condition,
+  const Domain&                  solution_domain,
+  const Device_Manager&          device_manager)
     : _domain(solution_domain)
 {
   constexpr float smooth_length_param = 1.2f;
@@ -45,7 +48,12 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
   _uptr_kernel = std::make_unique<Cubic_Spline_Kernel>(_smoothing_length);
 
   const float divide_length = _uptr_kernel->supprot_radius();
-  _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid>(solution_domain, divide_length, _fluid_particles.position_vectors, _boundary_position_vectors);
+  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid_GPU>(
+    solution_domain,
+    divide_length,
+    _fluid_particles.position_vectors,
+    _boundary_position_vectors,
+    device_manager);
 
   this->init_mass_and_scailing_factor();
 
@@ -53,9 +61,9 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
   _max_density_errors.resize(omp_get_max_threads());
 }
 
-PCISPH::~PCISPH() = default;
+PCISPH_GPU::~PCISPH_GPU() = default;
 
-void PCISPH::update(void)
+void PCISPH_GPU::update(void)
 {
   _uptr_neighborhood->update(_fluid_particles.position_vectors, _boundary_position_vectors);
 
@@ -124,27 +132,27 @@ void PCISPH::update(void)
   //  exit(523);                                   //debug
 }
 
-float PCISPH::particle_radius(void) const
+float PCISPH_GPU::particle_radius(void) const
 {
   return _particle_radius;
 }
 
-size_t PCISPH::num_fluid_particle(void) const
+size_t PCISPH_GPU::num_fluid_particle(void) const
 {
   return _fluid_particles.num_particles();
 }
 
-const Vector3* PCISPH::fluid_particle_position_data(void) const
+const Vector3* PCISPH_GPU::fluid_particle_position_data(void) const
 {
   return _fluid_particles.position_vectors.data();
 }
 
-const float* PCISPH::fluid_particle_density_data(void) const
+const float* PCISPH_GPU::fluid_particle_density_data(void) const
 {
   return _fluid_particles.densities.data();
 }
 
-void PCISPH::initialize_fluid_acceleration_vectors(void)
+void PCISPH_GPU::initialize_fluid_acceleration_vectors(void)
 {
   constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
   //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
@@ -225,7 +233,7 @@ void PCISPH::initialize_fluid_acceleration_vectors(void)
   }
 }
 
-void PCISPH::initialize_pressure_and_pressure_acceleration(void)
+void PCISPH_GPU::initialize_pressure_and_pressure_acceleration(void)
 {
   auto& pressures     = _fluid_particles.pressures;
   auto& v_a_pressures = _pressure_acceleration_vectors;
@@ -234,7 +242,7 @@ void PCISPH::initialize_pressure_and_pressure_acceleration(void)
   std::fill(v_a_pressures.begin(), v_a_pressures.end(), Vector3(0.0f, 0.0f, 0.0f));
 }
 
-void PCISPH::predict_velocity_and_position(void)
+void PCISPH_GPU::predict_velocity_and_position(void)
 {
   const auto num_fluid_particles = _fluid_particles.num_particles();
 
@@ -260,7 +268,7 @@ void PCISPH::predict_velocity_and_position(void)
   //매번 boundary condition 적용해도 dt를 늘릴 수 없음
 }
 
-float PCISPH::predict_density_and_update_pressure_and_cal_error(void)
+float PCISPH_GPU::predict_density_and_update_pressure_and_cal_error(void)
 {
   const float h    = _smoothing_length;
   const float rho0 = _rest_density;
@@ -314,7 +322,7 @@ float PCISPH::predict_density_and_update_pressure_and_cal_error(void)
   return *std::max_element(_max_density_errors.begin(), _max_density_errors.end());
 }
 
-void PCISPH::cal_pressure_acceleration(void)
+void PCISPH_GPU::cal_pressure_acceleration(void)
 {
   //viscosity constant
   const float m0 = _mass_per_particle;
@@ -376,7 +384,7 @@ void PCISPH::cal_pressure_acceleration(void)
   }
 }
 
-void PCISPH::apply_boundary_condition(void)
+void PCISPH_GPU::apply_boundary_condition(void)
 {
   constexpr float cor  = 0.5f; // Coefficient Of Restitution
   constexpr float cor2 = 0.5f; // Coefficient Of Restitution
@@ -435,7 +443,7 @@ void PCISPH::apply_boundary_condition(void)
   }
 }
 
-void PCISPH::init_mass_and_scailing_factor(void)
+void PCISPH_GPU::init_mass_and_scailing_factor(void)
 {
   size_t max_index = 0;
 
@@ -505,7 +513,7 @@ void PCISPH::init_mass_and_scailing_factor(void)
   }
 }
 
-float PCISPH::cal_scailing_factor(void) const
+float PCISPH_GPU::cal_scailing_factor(void) const
 {
   const auto num_particle = _fluid_particles.num_particles();
 
@@ -558,7 +566,7 @@ float PCISPH::cal_scailing_factor(void) const
   return 1.0f / (beta * (sum_dot_sum + size_sum));
 }
 
-float PCISPH::cal_number_density(const size_t fluid_particle_id) const
+float PCISPH_GPU::cal_number_density(const size_t fluid_particle_id) const
 {
   float number_density = 0.0;
 

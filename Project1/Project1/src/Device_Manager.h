@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 namespace ms
 {
@@ -19,10 +20,30 @@ public:
 
 public:
   template <typename T>
+  ComPtr<ID3D11Buffer> create_constant_buffer_imuutable(T* init_data_ptr) const;
+
+  template <typename T>
   ComPtr<ID3D11Buffer> create_structured_buffer(const size_t num_data, T* init_data_ptr = nullptr) const;
 
   template <typename T>
+  ComPtr<ID3D11Texture2D> create_texutre_2D(
+    const UINT        width,
+    const UINT        height,
+    const DXGI_FORMAT format,
+    T*                init_data_ptr = nullptr) const;
+
+  template <typename T>
+  ComPtr<ID3D11Texture2D> create_texutre_2D_immutable(
+    const UINT        width,
+    const UINT        height,
+    const DXGI_FORMAT format,
+    T*                init_data_ptr = nullptr) const;
+
+  template <typename T>
   std::vector<T> download(const ComPtr<ID3D11Buffer> staging_buffer) const;
+
+  template <typename T>
+  std::vector<std::vector<T>> download(const ComPtr<ID3D11Texture2D> staging_texture) const;
 
   template <typename T>
   void upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_buffer) const;
@@ -34,19 +55,20 @@ public:
     const std::vector<D3D11_INPUT_ELEMENT_DESC>& input_element_descs,
     ComPtr<ID3D11InputLayout>&                   cptr_IL) const;
 
-  ComPtr<ID3D11ComputeShader>       create_CS(const wchar_t* file_name) const;
-  void                              create_PS(const wchar_t* file_name, ComPtr<ID3D11PixelShader>& cptr_PS) const;
+  ComPtr<ID3D11ComputeShader> create_CS(const wchar_t* file_name) const;
+  void                        create_PS(const wchar_t* file_name, ComPtr<ID3D11PixelShader>& cptr_PS) const;
 
   ComPtr<ID3D11ShaderResourceView>  create_SRV(ID3D11Resource* resource_ptr) const;
   ComPtr<ID3D11UnorderedAccessView> create_UAV(ID3D11Resource* resource_ptr) const;
   ComPtr<ID3D11UnorderedAccessView> create_AC_UAV(ID3D11Resource* resource_ptr, const UINT num_data) const;
 
-  ComPtr<ID3D11Buffer> create_constant_buffer(const UINT data_size) const;
-  ComPtr<ID3D11Buffer> create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
-  ComPtr<ID3D11Buffer> create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+  ComPtr<ID3D11Buffer>    create_constant_buffer(const UINT data_size) const;
+  ComPtr<ID3D11Buffer>    create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+  ComPtr<ID3D11Buffer>    create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+  ComPtr<ID3D11Texture2D> create_staging_texture_read(const ComPtr<ID3D11Texture2D> cptr_target_buffer) const;
 
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
-    
+
   void bind_OM_RTV_and_DSV(void) const;
   void bind_back_buffer_to_CS_UAV(void) const;
 
@@ -57,7 +79,6 @@ public:
   void CS_barrier(void) const;
   UINT read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) const;
 
-
   ComPtr<ID3D11Device>              device_cptr(void) const;
   ComPtr<ID3D11DeviceContext>       context_cptr(void) const;
   ComPtr<ID3D11UnorderedAccessView> back_buffer_UAV_cptr(void) const;
@@ -66,7 +87,6 @@ public:
   void                              switch_buffer(void) const;
   void                              prepare_render(void) const;
   std::pair<int, int>               render_size(void) const;
-
 
 private:
   void init_device_device_context(void);
@@ -79,7 +99,6 @@ private:
 
   ComPtr<ID3D11Texture2D> back_buffer_cptr(void) const;
   ComPtr<ID3D11Buffer>    create_staging_buffer_count(void) const;
-
 
 protected:
   bool           _do_use_Vsync     = true;
@@ -108,6 +127,33 @@ protected:
 //template definition
 namespace ms
 {
+
+template <typename T>
+ComPtr<ID3D11Buffer> Device_Manager::create_constant_buffer_imuutable(T* init_data_ptr) const
+{
+  const auto data_size = sizeof(T);
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = static_cast<UINT>(data_size);
+  desc.Usage               = D3D11_USAGE_IMMUTABLE;
+  desc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
+  desc.CPUAccessFlags      = NULL;
+  desc.MiscFlags           = NULL;
+  desc.StructureByteStride = NULL;
+
+  D3D11_SUBRESOURCE_DATA init_data = {};
+  init_data.pSysMem                = init_data_ptr;
+  init_data.SysMemPitch            = 0;
+  init_data.SysMemSlicePitch       = 0;
+
+  ComPtr<ID3D11Buffer> cptr_constant_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, &init_data, cptr_constant_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "structured buffer creation should succeed");
+
+  return cptr_constant_buffer;
+}
+
 template <typename T>
 ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_data, T* init_data_ptr) const
 {
@@ -140,6 +186,78 @@ ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_d
 }
 
 template <typename T>
+ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D(
+  const UINT        width,
+  const UINT        height,
+  const DXGI_FORMAT format,
+  T*                init_data_ptr) const
+{
+  D3D11_TEXTURE2D_DESC desc = {};
+  desc.Width                = width;
+  desc.Height               = height;
+  desc.MipLevels            = 1;
+  desc.ArraySize            = 1;
+  desc.Format               = format;
+  desc.SampleDesc.Count     = 1;
+  desc.Usage                = D3D11_USAGE_DEFAULT;
+  desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+  desc.CPUAccessFlags       = NULL;
+  desc.MiscFlags            = NULL;
+
+  ComPtr<ID3D11Texture2D> cptr_texutre_2D;
+
+  if (init_data_ptr == nullptr)
+  {
+    const auto result = _cptr_device->CreateTexture2D(&desc, nullptr, cptr_texutre_2D.GetAddressOf());
+    REQUIRE(!FAILED(result), "texture 2D creation without initial data should succeed");
+  }
+  else
+  {
+    D3D11_SUBRESOURCE_DATA init_data = {};
+    init_data.pSysMem                = init_data_ptr;
+    init_data.SysMemPitch            = width;
+    init_data.SysMemSlicePitch       = 0;
+
+    const auto result = _cptr_device->CreateTexture2D(&desc, &init_data, cptr_texutre_2D.GetAddressOf());
+    REQUIRE(!FAILED(result), "texture 2D creation with initial data should succeed");
+  }
+
+  return cptr_texutre_2D;
+}
+
+template <typename T>
+ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D_immutable(
+  const UINT        width,
+  const UINT        height,
+  const DXGI_FORMAT format,
+  T*                init_data_ptr) const
+{
+  D3D11_TEXTURE2D_DESC desc = {};
+  desc.Width                = width;
+  desc.Height               = height;
+  desc.MipLevels            = 1;
+  desc.ArraySize            = 1;
+  desc.Format               = format;
+  desc.SampleDesc.Count     = 1;
+  desc.Usage                = D3D11_USAGE_IMMUTABLE;
+  desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE;
+  desc.CPUAccessFlags       = NULL;
+  desc.MiscFlags            = NULL;
+
+  D3D11_SUBRESOURCE_DATA init_data = {};
+  init_data.pSysMem                = init_data_ptr;
+  init_data.SysMemPitch            = width;
+  init_data.SysMemSlicePitch       = 0;
+
+  ComPtr<ID3D11Texture2D> cptr_texutre_2D;
+
+  const auto result = _cptr_device->CreateTexture2D(&desc, &init_data, cptr_texutre_2D.GetAddressOf());
+  REQUIRE(!FAILED(result), "immutable texture 2D creation should succeed");
+
+  return cptr_texutre_2D;
+}
+
+template <typename T>
 std::vector<T> Device_Manager::download(const ComPtr<ID3D11Buffer> staging_buffer) const
 {
   D3D11_BUFFER_DESC desc;
@@ -154,6 +272,34 @@ std::vector<T> Device_Manager::download(const ComPtr<ID3D11Buffer> staging_buffe
   _cptr_context->Map(staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
   memcpy(datas.data(), ms.pData, num_data * data_size);
   _cptr_context->Unmap(staging_buffer.Get(), NULL);
+
+  return datas;
+}
+
+//이거 한번 해보자
+template <typename T>
+std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2D> staging_texture) const 
+{
+  D3D11_TEXTURE2D_DESC desc;
+  staging_texture->GetDesc(&desc);
+
+  const UINT width  = desc.Width;
+  const UINT height = desc.Height;
+
+  std::vector<std::vector<T>> datas(height, std::vector<T>(width));
+
+  D3D11_MAPPED_SUBRESOURCE ms;
+  _cptr_context->Map(staging_texture.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+
+  BYTE* source_ptr = reinterpret_cast<BYTE*>(ms.pData);
+  for (UINT y = 0; y < height; ++y)
+  {
+    T* dest_ptr = datas[y].data();    
+    memcpy(dest_ptr, source_ptr, width * sizeof(T));
+    source_ptr += ms.RowPitch;
+  }
+
+  _cptr_context->Unmap(staging_texture.Get(), NULL);
 
   return datas;
 }

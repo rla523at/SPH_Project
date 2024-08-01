@@ -3,7 +3,6 @@
 #include "../../_lib/_header/msexception/Exception.h"
 #include "windowsx.h"
 #include <imgui.h>
-#include <iostream>
 
 // imgui_impl_win32.cpp에 정의된 메시지 처리 함수에 대한 전방 선언
 // VCPKG를 통해 IMGUI를 사용할 경우 빨간줄로 경고가 뜰 수 있음
@@ -43,13 +42,9 @@ LRESULT __stdcall Window_Manager::window_procedure(HWND hWnd, UINT msg, WPARAM w
     break;
   case WM_KEYDOWN:
     _is_key_pressed[wParam] = true;
-
-    //std::cout << std::boolalpha << wParam << "key pressed? " << _is_key_pressed[wParam] << "\n";
     break;
   case WM_KEYUP:
     _is_key_pressed[wParam] = false;
-    //std::cout << wParam << "key pressed? " << _is_key_pressed[wParam] << "\n";
-
     break;
   case WM_DESTROY:
     ::PostQuitMessage(0);
@@ -94,18 +89,22 @@ bool Window_Manager::is_Up_key_pressed(void)
 {
   return _is_key_pressed[0x26];
 }
+
 bool Window_Manager::is_Down_key_pressed(void)
 {
   return _is_key_pressed[0x28];
 };
+
 bool Window_Manager::is_Right_key_pressed(void)
 {
   return _is_key_pressed[0x27];
 };
+
 bool Window_Manager::is_Left_key_pressed(void)
 {
   return _is_key_pressed[0x25];
 }
+
 bool Window_Manager::is_space_key_pressed(void)
 {
   return _is_key_pressed[0x20];
@@ -139,13 +138,15 @@ Window_Manager::Window_Manager(const int num_row_pixel, const int num_col_pixel)
   wc.hCursor       = NULL;                             // 윈도우 클래스에서 기본으로 사용할 커서를 지정하는 변수이다.
   wc.hbrBackground = NULL;                             // 윈도우의 배경을 칠할 때 사용할 브러시를 지정하는 변수이다.
   wc.lpszMenuName  = NULL;                             // 윈도우 클래스에 사용할 메뉴의 이름을 지정하는 변수이다.
-  wc.lpszClassName = L"MSGraphics";                    // 윈도우 클래스의 이름을 지정하는 변수이다.
+  wc.lpszClassName = _window_class_name;               // 윈도우 클래스의 이름을 지정하는 변수이다.
   wc.hIconSm       = NULL;                             // 작은 아이콘을 지정하는 변수이다.
 
   {
     const auto result = RegisterClassEx(&wc);
     REQUIRE(result != 0, "window class registration should succeed.");
   }
+
+  _window_class = wc.hInstance;
 
   RECT rect;
   rect.left   = 0;
@@ -181,6 +182,18 @@ Window_Manager::Window_Manager(const int num_row_pixel, const int num_col_pixel)
   UpdateWindow(_main_window);
 
   std::fill(_is_key_pressed, _is_key_pressed + _num_key, false);
+}
+
+Window_Manager::~Window_Manager(void)
+{
+  {
+    const auto result = DestroyWindow(_main_window);
+    REQUIRE(result != 0, "destroy window should suceed");
+  }
+  {
+    const auto result = UnregisterClass(_window_class_name, _window_class);
+    REQUIRE(result != 0, "unregister window class should succeed");
+  }
 }
 
 HWND Window_Manager::main_window(void) const

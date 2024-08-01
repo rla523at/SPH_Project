@@ -11,6 +11,7 @@ namespace ms
 {
 class Camera;
 class SPH_Scheme;
+class Device_Manager;
 } // namespace ms
 
 // Data Struct
@@ -33,7 +34,7 @@ namespace ms
 class SPH : public Mesh
 {
 public:
-  SPH(const ComPtr<ID3D11Device> cptr_device, const ComPtr<ID3D11DeviceContext> cptr_context);
+  SPH(const Device_Manager& device_manager);
   ~SPH(void);
 
 public:
