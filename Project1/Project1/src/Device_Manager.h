@@ -2,10 +2,10 @@
 #include "Abbreviation.h"
 
 #include "../../_lib/_header/msexception/Exception.h"
+#include <algorithm>
 #include <d3d11.h>
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 namespace ms
 {
@@ -124,7 +124,7 @@ protected:
 
 } // namespace ms
 
-//template definition
+// template definition
 namespace ms
 {
 
@@ -276,9 +276,9 @@ std::vector<T> Device_Manager::download(const ComPtr<ID3D11Buffer> staging_buffe
   return datas;
 }
 
-//이거 한번 해보자
+// 이거 한번 해보자
 template <typename T>
-std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2D> staging_texture) const 
+std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2D> staging_texture) const
 {
   D3D11_TEXTURE2D_DESC desc;
   staging_texture->GetDesc(&desc);
@@ -289,12 +289,16 @@ std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2
   std::vector<std::vector<T>> datas(height, std::vector<T>(width));
 
   D3D11_MAPPED_SUBRESOURCE ms;
-  _cptr_context->Map(staging_texture.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+
+  {
+    const auto result = _cptr_context->Map(staging_texture.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+    REQUIRE(!FAILED(result), "Map should be succeed");
+  }
 
   BYTE* source_ptr = reinterpret_cast<BYTE*>(ms.pData);
   for (UINT y = 0; y < height; ++y)
   {
-    T* dest_ptr = datas[y].data();    
+    T* dest_ptr = datas[y].data();
     memcpy(dest_ptr, source_ptr, width * sizeof(T));
     source_ptr += ms.RowPitch;
   }
@@ -310,8 +314,17 @@ void Device_Manager::upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_b
   D3D11_BUFFER_DESC desc;
   cptr_buffer->GetDesc(&desc);
 
+  D3D11_MAP map_type = D3D11_MAP_WRITE;
+
+  if (desc.Usage == D3D11_USAGE_DYNAMIC)
+    map_type = D3D11_MAP_WRITE_DISCARD;
+
   D3D11_MAPPED_SUBRESOURCE ms;
-  _cptr_context->Map(cptr_buffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+  {
+    const auto result = _cptr_context->Map(cptr_buffer.Get(), NULL, map_type, NULL, &ms);
+    REQUIRE(!FAILED(result), "Map should be succeed");
+  }
+
   memcpy(ms.pData, data_ptr, desc.ByteWidth);
   _cptr_context->Unmap(cptr_buffer.Get(), NULL);
 }

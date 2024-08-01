@@ -45,10 +45,15 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   // temporary code
   _cptr_fp_pos_buffer         = _device_manager_ptr->create_structured_buffer(_constant_data.num_particle, fluid_particle_pos_vectors.data());
   _cptr_fp_pos_buffer_SRV     = _device_manager_ptr->create_SRV(_cptr_fp_pos_buffer.Get());
-  _cptr_fp_pos_staging_buffer = _device_manager_ptr->create_staging_buffer_read(_cptr_fp_pos_buffer);
+  _cptr_fp_pos_staging_buffer = _device_manager_ptr->create_staging_buffer_write(_cptr_fp_pos_buffer);
   // temporary code
 
   this->update_nfp();
+
+  //temporary
+  _ninfos.resize(_constant_data.num_particle);
+  this->copy_to_ninfos();
+  //temporary
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(void)
@@ -361,9 +366,9 @@ void Neighborhood_Uniform_Grid_GPU::copy_to_ninfos(void)
   cptr_context->CopyResource(_cptr_nfp_count_staging_buffer.Get(), _cptr_nfp_count_buffer.Get());
 
   auto nfp_index = _device_manager_ptr->download<UINT>(_cptr_nfp_staging_texture);
-  auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_texture);
+  auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_staging_texture);
   auto nfp_dist  = _device_manager_ptr->download<float>(_cptr_nfp_dist_staging_texture);
-  auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_buffer);
+  auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_staging_buffer);
 
   for (UINT i = 0; i < _constant_data.num_particle; ++i)
   {
