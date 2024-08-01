@@ -44,7 +44,6 @@ public:
   ComPtr<ID3D11Buffer> create_constant_buffer(const UINT data_size) const;
   ComPtr<ID3D11Buffer> create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Buffer> create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
-  ComPtr<ID3D11Buffer> create_staging_buffer_count(void) const;
 
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
     
@@ -56,7 +55,7 @@ public:
 
   void copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const;
   void CS_barrier(void) const;
-  UINT read_count(const ComPtr<ID3D11UnorderedAccessView> UAV, const ComPtr<ID3D11Buffer> cptr_count_staging_buffer) const;
+  UINT read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) const;
 
 
   ComPtr<ID3D11Device>              device_cptr(void) const;
@@ -79,6 +78,8 @@ private:
   void init_depth_stencil_view(void);
 
   ComPtr<ID3D11Texture2D> back_buffer_cptr(void) const;
+  ComPtr<ID3D11Buffer>    create_staging_buffer_count(void) const;
+
 
 protected:
   bool           _do_use_Vsync     = true;
@@ -93,6 +94,8 @@ protected:
   ComPtr<ID3D11UnorderedAccessView> _cptr_back_buffer_UAV;
   ComPtr<ID3D11ShaderResourceView>  _cptr_back_buffer_SRV;
   ComPtr<ID3D11RasterizerState>     _cptr_rasterizer_state;
+
+  ComPtr<ID3D11Buffer> _cptr_count_staging_buffer;
 
   // Depth buffer 관련
   ComPtr<ID3D11Texture2D>         _cptr_depth_stencil_buffer;

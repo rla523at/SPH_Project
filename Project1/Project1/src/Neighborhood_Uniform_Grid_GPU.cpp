@@ -14,7 +14,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   const std::vector<Vector3>& fluid_particle_pos_vectors,
   const std::vector<Vector3>& boundary_particle_pos_vectors,
   const Device_Manager&       device_manager)
-  : _domain(domain), _divide_length(divide_length)
+    : _domain(domain), _divide_length(divide_length)
 {
   _device_manager_ptr = &device_manager;
 
@@ -29,8 +29,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
 
   const auto num_cell = _num_x_cell * _num_y_cell * _num_z_cell;
 
-  this->init_GCFP_texture(GCFP_texture.data()->data(), GCFP_counter_buffer.data());
-
+  this->init_GCFP_texture(fluid_particle_pos_vectors);
   this->init_ngc_texture(device_manager);
   this->init_fpid_to_ninfo(device_manager);
 
@@ -40,15 +39,17 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   _cptr_fp_pos_staging_buffer = _device_manager_ptr->create_staging_buffer_read(_cptr_fp_pos_buffer);
 }
 
-std::vector<int> Neighborhood_Uniform_Grid_GPU::make_gcid_to_ngcids_initial_data(void)
+void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& device_manager)
 {
+  // make inital data
   constexpr long long delta[3]              = {-1, 0, 1};
   constexpr size_t    num_max_data_per_cell = 27;
 
   const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
   const auto num_data  = num_cells * num_max_data_per_cell;
 
-  std::vector<int> neighbor_gcids(num_data, -1);
+  std::vector<UINT> ngc_counts(num_cells);
+  std::vector<UINT> ngcs(num_data);
 
   for (size_t i = 0; i < _num_x_cell; ++i)
   {
@@ -57,10 +58,11 @@ std::vector<int> Neighborhood_Uniform_Grid_GPU::make_gcid_to_ngcids_initial_data
       for (size_t k = 0; k < _num_z_cell; ++k)
       {
         const auto gcid_vector = Grid_Cell_ID{i, j, k};
-        const auto gcid        = this->grid_cell_index(gcid_vector);
+        const auto gc_index    = this->grid_cell_index(gcid_vector);
 
-        auto index = gcid * num_max_data_per_cell;
+        auto index = gc_index * num_max_data_per_cell;
 
+        size_t ngc_count = 0;
         for (size_t p = 0; p < 3; ++p)
         {
           for (size_t q = 0; q < 3; ++q)
@@ -76,19 +78,19 @@ std::vector<int> Neighborhood_Uniform_Grid_GPU::make_gcid_to_ngcids_initial_data
                 continue;
 
               const auto neighbor_gcid = this->grid_cell_index(neighbor_gcid_vector);
-              neighbor_gcids[index++]  = static_cast<int>(neighbor_gcid);
+              ngcs[index++]            = static_cast<UINT>(neighbor_gcid);
+              ngc_count++;
             }
           }
         }
+
+        ngc_counts[gc_index] = ngc_count;
       }
     }
   }
 
-  return neighbor_gcids;
-}
+  //
 
-void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& device_manager)
-{
   constexpr size_t num_max_neighbor_cell = 27;
 
   const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
@@ -98,7 +100,7 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& devic
   desc.Height               = static_cast<UINT>(num_cells);
   desc.MipLevels            = 1;
   desc.ArraySize            = 1;
-  desc.Format               = DXGI_FORMAT_R8_SINT;
+  desc.Format               = DXGI_FORMAT_R32_UINT;
   desc.SampleDesc.Count     = 1;
   desc.Usage                = D3D11_USAGE_IMMUTABLE;
   desc.BindFlags            = D3D11_BIND_SHADER_RESOURCE;
@@ -119,9 +121,9 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_texture(const Device_Manager& devic
 
 void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const std::vector<Vector3>& fluid_particle_pos_vectors)
 {
+  // make initial data
   const auto num_cell = _num_x_cell * _num_y_cell * _num_z_cell;
 
-  // make initial data
   std::vector<std::array<UINT, 40>> GCFP_texture(num_cell);
   std::vector<UINT>                 GCFP_counter_buffer(num_cell);
   std::vector<GCFPT_ID>             GCFPT_ID_buffer(_num_particle);
@@ -143,7 +145,7 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const std::vector<Vector3>
 
   const auto& device_manager = *_device_manager_ptr;
 
-  // init GCFP_texture related
+  // init GCFPT related
   constexpr size_t estimated_num_fpids       = 40;
   const auto       estimated_num_update_data = _num_particle / 10;
 
@@ -187,8 +189,6 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_texture(const std::vector<Vector3>
   // create changed GCFPT ID buffer
   _cptr_changed_GCFPT_ID_buffer = device_manager.create_structured_buffer<Changed_GCFPT_ID_Data>(estimated_num_update_data);
   _cptr_changed_GCFPT_ID_AC_UAV = device_manager.create_AC_UAV(_cptr_changed_GCFPT_ID_buffer.Get(), estimated_num_update_data);
-
-  _cptr_count_staging_buffer = device_manager.create_staging_buffer_count(); //device manager가 가지고 있게 만들자.
 
   // create find changed GCFPT ID CS
   _cptr_find_changed_GCFPT_ID_CS = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
@@ -296,7 +296,7 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_texture(void)
 {
   const auto& device_manager = *_device_manager_ptr;
 
-  const auto num_changed = device_manager.read_count(_cptr_changed_GCFPT_ID_AC_UAV, _cptr_count_staging_buffer);
+  const auto num_changed = device_manager.read_count(_cptr_changed_GCFPT_ID_AC_UAV);
   device_manager.upload(&num_changed, _cptr_update_GCFPT_CS_constant_buffer);
 
   constexpr size_t num_UAV      = 4;

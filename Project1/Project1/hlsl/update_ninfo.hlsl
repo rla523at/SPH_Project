@@ -49,11 +49,13 @@ void main(uint3 DTID : SV_DispatchThreadID)
   if (num_data < cur_fp_index)
     return;
     
-  const GCFPT_ID cur_id = GCFP_ID_buffer[cur_fp_index];
-  const uint cur_gc_index = cur_id.gc_index;
+  const GCFPT_ID    cur_id          = GCFP_ID_buffer[cur_fp_index];
+  const uint        cur_gc_index    = cur_id.gc_index;
   
   const float3 v_xi = fp_pos_buffer[cur_fp_index];
     
+  
+
   uint neighbor_count = 0;
   const uint num_neighbor = GCFP_counter_buffer[cur_gc_index];
   for (uint i = 0; i < num_neighbor; ++i)

@@ -27,17 +27,11 @@ RWStructuredBuffer<uint>                        GCFP_counter_buffer     : regist
 RWStructuredBuffer<GCFPT_ID>                    GCFPT_ID_buffer         : register(u2);
 ConsumeStructuredBuffer<Changed_GCFPT_ID_Data>  changed_GCFPT_ID_buffer : register(u3);
 
-//// user define fuction
-//uint2 to_uint2(const GCFPT_ID id)
-//{
-//  return uint2(id.gc_index, id.gcfp_index);
-//}
-
 // entry function
 [numthreads(1, 1, 1)]
 void main()
 {
-  for (int i = 0; i < consume_buffer_count; ++i)
+  for (uint i = 0; i < consume_buffer_count; ++i)
   {
     const Changed_GCFPT_ID_Data changed_data = changed_GCFPT_ID_buffer.Consume();
               

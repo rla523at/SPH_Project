@@ -26,6 +26,8 @@ Device_Manager::Device_Manager(
   this->init_swap_chain_and_depth_stencil_buffer(main_window);
   this->init_back_buffer_views();
   this->init_depth_stencil_view();
+
+  _cptr_count_staging_buffer = this->create_staging_buffer_count();
 }
 
 void Device_Manager::bind_OM_RTV_and_DSV(void) const
@@ -367,14 +369,14 @@ ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_count(void) const
   return cptr_count_staging_buffer;
 }
 
-UINT Device_Manager::read_count(const ComPtr<ID3D11UnorderedAccessView> UAV, const ComPtr<ID3D11Buffer> cptr_count_staging_buffer) const
+UINT Device_Manager::read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) const
 {
-  _cptr_context->CopyStructureCount(cptr_count_staging_buffer.Get(), 0, UAV.Get());
+  _cptr_context->CopyStructureCount(_cptr_count_staging_buffer.Get(), 0, UAV.Get());
 
   D3D11_MAPPED_SUBRESOURCE ms;
-  _cptr_context->Map(cptr_count_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+  _cptr_context->Map(_cptr_count_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
   UINT count = *reinterpret_cast<UINT*>(ms.pData);
-  _cptr_context->Unmap(cptr_count_staging_buffer.Get(), 0);
+  _cptr_context->Unmap(_cptr_count_staging_buffer.Get(), 0);
 
   return count;
 }

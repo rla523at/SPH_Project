@@ -1,3 +1,83 @@
+# 2024.07.31
+## Uniform Grid CPU >> GPU
+Uniform Grid는 다음 3단계의 작업을 한다.
+
+1. 새로운 Geometry Cell로 이동한 Fluid Particle들을 찾는다.
+2. Geometry Cell마다 어떤 Fluid Particle이 들어있는지 업데이트한다.
+3.  Fluid Particle마다 Neighbor Fluid Particle들의 정보를 업데이트한다.
+
+### 진행사항
+이 중 1,2 단계에 대한 GPU 코드 작성을 완료.
+
+3단계에 대한 GPU 코드 작성 중
+
+### 1단계 병렬화
+
+ 1단계와 3단계는 병렬화가 가능하지만 CPU 코드는 3단계만 병렬화가 되어 있었다.
+
+```cpp
+  for (size_t fpid = 0; fpid < num_fluid_particles; ++fpid)
+  {
+    // 1단계
+    //...
+    if (prev_gcid != cur_gcid) 
+    {      
+      // 2단계
+      // ...
+    }
+  }
+
+  this->update_fpid_to_neighbor_fpids(fluid_particle_pos_vectors); // 3단계
+```
+
+이를 GPU 코드로 옮기면서, 1단계도 병렬화를 진행하였다.
+
+### Append Consum StrucrtuedBuffer
+AppendStructuredBuffer와 ConsumeStructuredBuffer를 활용하여 2단계에서 필요한 만큼만 작업을 하게 하였다.
+
+```hlsl
+//find_changed_GCFPT_ID_CS.hlsl (1단계)
+AppendStructuredBuffer<Changed_GCFPT_ID_Data> changed_GCFPT_ID_buffer : register(u0);
+
+[numthreads(1024, 1, 1)]
+void main(uint3 DTID : SV_DispatchThreadID)
+{
+  //...
+  if (prev_GCFPT_id.gc_index != cur_gc_index)
+  {
+    //...
+    changed_GCFPT_ID_buffer.Append(data);
+  }
+  //...
+}
+```
+
+```hlsl
+//update_GCFPT_CS.hlsl (2단계)
+cbuffer Constant_Buffer : register(b0)
+{
+  uint consume_buffer_count;
+}
+
+ConsumeStructuredBuffer<Changed_GCFPT_ID_Data>  changed_GCFPT_ID_buffer : register(u3);
+
+[numthreads(1, 1, 1)]
+void main()
+{
+  for (int i = 0; i < consume_buffer_count; ++i)
+  {
+    const Changed_GCFPT_ID_Data changed_data = changed_GCFPT_ID_buffer.Consume();
+    //...
+  }
+}
+```
+
+
+
+
+
+</br></br></br>
+
 # 2024.07.30
 ## CPU >> GPU
 * Compute Shader 관련 기본적인 내용 학습

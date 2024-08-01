@@ -111,8 +111,6 @@ private:
   ComPtr<ID3D11Buffer>              _cptr_changed_GCFPT_ID_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
 
-  ComPtr<ID3D11Buffer> _cptr_count_staging_buffer;
-
   ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFPT_ID_CS;
 
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFPT_CS;
