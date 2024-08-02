@@ -12,7 +12,7 @@
 
 CPU 코드에 다음과 같은 자료구조가 있다.
 
-[그림]
+![CPU Data Structure](https://github.com/user-attachments/assets/f988fdee-23f7-436c-8dbb-f538ade96656)
 
 Neighbor_Informations 구조체 내부의 배열들은 neighbor particle의 개수만큼 데이터를 가지게 된다.
 
@@ -38,7 +38,8 @@ estimated_neighbor 200은 CPU 코드로 확인해본 결과를 토대로 판단�
 
 따라서 index texture, tvec texture, distance texture, neighbor_count_buffer로 나누어서 자료구조를 옮겼다.
 
-[그림]
+![GPU data structure](https://github.com/user-attachments/assets/9af88d40-e654-4539-8f77-90c2212ac9fc)
+
 
 ### DXGI FORMAT & UAV 문제
 
