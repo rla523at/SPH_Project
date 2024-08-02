@@ -40,13 +40,29 @@ public:
     T*                init_data_ptr = nullptr) const;
 
   template <typename T>
-  std::vector<T> download(const ComPtr<ID3D11Buffer> staging_buffer) const;
+  std::vector<T> download(const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
 
   template <typename T>
-  std::vector<std::vector<T>> download(const ComPtr<ID3D11Texture2D> staging_texture) const;
+  std::vector<std::vector<T>> download(const ComPtr<ID3D11Texture2D> cptr_staging_texture) const;
 
   template <typename T>
-  void upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_buffer) const;
+  std::vector<T> download(
+    const ComPtr<ID3D11Buffer> cptr_staging_buffer,
+    const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+
+  template <typename T>
+  std::vector<std::vector<T>> download(
+    const ComPtr<ID3D11Texture2D> cptr_staging_texture,
+    const ComPtr<ID3D11Texture2D> cptr_target_texture) const;
+
+  template <typename T>
+  void upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
+
+  template <typename T>
+  void upload(
+    const T*                   data_ptr,
+    const ComPtr<ID3D11Buffer> cptr_staging_buffer,
+    const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
 
 public:
   void create_VS_and_IL(
@@ -309,6 +325,24 @@ std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2
 }
 
 template <typename T>
+std::vector<T> Device_Manager::download(
+  const ComPtr<ID3D11Buffer> cptr_staging_buffer,
+  const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+{
+  _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_target_buffer.Get());
+  return this->download<T>(cptr_staging_buffer);
+}
+
+template <typename T>
+std::vector<std::vector<T>> Device_Manager::download(
+  const ComPtr<ID3D11Texture2D> cptr_staging_texture,
+  const ComPtr<ID3D11Texture2D> cptr_target_texture) const
+{
+  _cptr_context->CopyResource(cptr_staging_texture.Get(), cptr_target_texture.Get());
+  return this->download<T>(cptr_staging_texture);
+}
+
+template <typename T>
 void Device_Manager::upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_buffer) const
 {
   D3D11_BUFFER_DESC desc;
@@ -327,6 +361,16 @@ void Device_Manager::upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_b
 
   memcpy(ms.pData, data_ptr, desc.ByteWidth);
   _cptr_context->Unmap(cptr_buffer.Get(), NULL);
+}
+
+template <typename T>
+void Device_Manager::upload(
+  const T*                   data_ptr,
+  const ComPtr<ID3D11Buffer> cptr_staging_buffer,
+  const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+{
+  this->upload(data_ptr, cptr_staging_buffer);
+  _cptr_context->CopyResource(cptr_target_buffer.Get(), cptr_staging_buffer.Get());
 }
 
 } // namespace ms

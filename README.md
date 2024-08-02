@@ -1,6 +1,26 @@
-## 문제1
+# 2024.08.01
+## Uniform Grid CPU >> GPU
+
+**[진행사항]**
+
+* GPU 코드 작성 완료
+* GPU 코드 디버깅 중
+  
+### Structured Buffer 크기 한계 문제
+
+**[문제사항]**
+
+CPU 코드에 다음과 같은 자료구조가 있다.
+
+[그림]
+
+Neighbor_Informations 구조체 내부의 배열들은 neighbor particle의 개수만큼 데이터를 가지게 된다.
+
+이 자료구조를 GPU로 옮기기 위해 Neighbor_Informations_GPU의 StructuredBuffer를 사용하였다.
 
 ```cpp
+inline constexpr size_t estimated_neighbor = 200;
+
 struct Neighbor_Informations_GPU
 {
   UINT    indexes[estimated_neighbor];           //800
@@ -10,12 +30,31 @@ struct Neighbor_Informations_GPU
 };
 ```
 
-## 문제2
+estimated_neighbor 200은 CPU 코드로 확인해본 결과를 토대로 판단하였다.
 
-DXGI_FORMAT_R32G32B32_FLOAT format으로 Texutre2D를 만들고 UAV를 만들려고 했는데 안됨!
+하지만 StructuredBuffer의 Type으로 주어지는 구조체는 최대 크기가 2048Byte까지여서 위와 같은 방법을 사용할 수 없다.
 
-오류	X4596	typed UAV stores must write all declared components.	
+**[해결]**
 
+따라서 index texture, tvec texture, distance texture, neighbor_count_buffer로 나누어서 자료구조를 옮겼다.
+
+[그림]
+
+### DXGI FORMAT & UAV 문제
+
+**[문제사항]**
+
+tvec texture을 만들기 위해 DXGI_FORMAT_R32G32B32_FLOAT format으로 Texutre2D를 만들고 UAV를 만들려고 하였으나 오류가 발생하였다.
+
+```
+X4596	typed UAV stores must write all declared components.	
+```
+
+**[해결]**
+
+확인해보니, DXGI_FORMAT_R32G32B32_FLOAT는 UAV가 지원되지 않는 타입이기 때문이였고 이를 해결하기 위해  DXGI_FORMAT_R32G32B32A32_FLOAT format으로 수정하였다.
+
+</br></br></br>
 
 # 2024.07.31
 ## Uniform Grid CPU >> GPU
@@ -23,7 +62,7 @@ Uniform Grid는 다음 3단계의 작업을 한다.
 
 1. 새로운 Geometry Cell로 이동한 Fluid Particle들을 찾는다.
 2. Geometry Cell마다 어떤 Fluid Particle이 들어있는지 업데이트한다.
-3.  Fluid Particle마다 Neighbor Fluid Particle들의 정보를 업데이트한다.
+3. Fluid Particle마다 Neighbor Fluid Particle들의 정보를 업데이트한다.
 
 ### 진행사항
 이 중 1,2 단계에 대한 GPU 코드 작성을 완료.

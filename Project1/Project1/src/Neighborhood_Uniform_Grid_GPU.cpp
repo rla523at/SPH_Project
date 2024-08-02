@@ -276,7 +276,7 @@ void Neighborhood_Uniform_Grid_GPU::update(
   _device_manager_ptr->CS_barrier();
 
   //temporary code
-
+  this->copy_to_ninfos();
   //temporary code
 }
 
@@ -360,15 +360,20 @@ void Neighborhood_Uniform_Grid_GPU::copy_to_ninfos(void)
 {
   const auto cptr_context = _device_manager_ptr->context_cptr();
 
-  cptr_context->CopyResource(_cptr_nfp_staging_texture.Get(), _cptr_nfp_texture.Get());
-  cptr_context->CopyResource(_cptr_nfp_tvec_staging_texture.Get(), _cptr_nfp_tvec_texture.Get());
-  cptr_context->CopyResource(_cptr_nfp_dist_staging_texture.Get(), _cptr_nfp_dist_texture.Get());
-  cptr_context->CopyResource(_cptr_nfp_count_staging_buffer.Get(), _cptr_nfp_count_buffer.Get());
+  auto nfp_index = _device_manager_ptr->download<UINT>(_cptr_nfp_staging_texture, _cptr_nfp_texture);
+  auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_staging_texture, _cptr_nfp_tvec_texture);
+  auto nfp_dist  = _device_manager_ptr->download<float>(_cptr_nfp_dist_staging_texture, _cptr_nfp_dist_texture);
+  auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_staging_buffer, _cptr_nfp_count_buffer);
 
-  auto nfp_index = _device_manager_ptr->download<UINT>(_cptr_nfp_staging_texture);
-  auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_staging_texture);
-  auto nfp_dist  = _device_manager_ptr->download<float>(_cptr_nfp_dist_staging_texture);
-  auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_staging_buffer);
+  //cptr_context->CopyResource(_cptr_nfp_staging_texture.Get(), _cptr_nfp_texture.Get());
+  //cptr_context->CopyResource(_cptr_nfp_tvec_staging_texture.Get(), _cptr_nfp_tvec_texture.Get());
+  //cptr_context->CopyResource(_cptr_nfp_dist_staging_texture.Get(), _cptr_nfp_dist_texture.Get());
+  //cptr_context->CopyResource(_cptr_nfp_count_staging_buffer.Get(), _cptr_nfp_count_buffer.Get());
+
+  //auto nfp_index = _device_manager_ptr->download<UINT>(_cptr_nfp_staging_texture);
+  //auto nfp_tvec  = _device_manager_ptr->download<Vector4>(_cptr_nfp_tvec_staging_texture);
+  //auto nfp_dist  = _device_manager_ptr->download<float>(_cptr_nfp_dist_staging_texture);
+  //auto nfp_count = _device_manager_ptr->download<UINT>(_cptr_nfp_count_staging_buffer);
 
   for (UINT i = 0; i < _constant_data.num_particle; ++i)
   {
