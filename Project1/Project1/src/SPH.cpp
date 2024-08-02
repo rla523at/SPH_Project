@@ -48,33 +48,33 @@ SPH::SPH(const Device_Manager& device_manager)
 
   //constexpr float square_cvel = 1000;
 
-  //// Solo Particle
+  // Solo Particle
+  Domain init_cond_domain;
+  init_cond_domain.x_start = -0.1f;
+  init_cond_domain.x_end   = 0.1f;
+  init_cond_domain.y_start = 1.0f;
+  init_cond_domain.y_end   = 1.2f;
+  init_cond_domain.z_start = -0.1f;
+  init_cond_domain.z_end   = 0.1f;
+
+  init_cond_domains.push_back(init_cond_domain);
+
+  constexpr float eta         = 0.01f; // Tait's equation parameter
+  const float     square_cvel = 100.0f;
+
+  ////Dam breaking
   //Domain init_cond_domain;
-  //init_cond_domain.x_start = -0.2f;
-  //init_cond_domain.x_end   = 0.2f;
-  //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.4f;
+  //init_cond_domain.x_start = -1.9f;
+  //init_cond_domain.x_end   = -0.9f;
+  //init_cond_domain.y_start = 0.2f;
+  //init_cond_domain.y_end   = 2.2f;
   //init_cond_domain.z_start = -0.2f;
   //init_cond_domain.z_end   = 0.2f;
 
   //init_cond_domains.push_back(init_cond_domain);
 
   //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 100.0f;
-
-  //Dam breaking
-  Domain init_cond_domain;
-  init_cond_domain.x_start = -1.9f;
-  init_cond_domain.x_end   = -0.9f;
-  init_cond_domain.y_start = 0.2f;
-  init_cond_domain.y_end   = 2.2f;
-  init_cond_domain.z_start = -0.2f;
-  init_cond_domain.z_end   = 0.2f;
-
-  init_cond_domains.push_back(init_cond_domain);
-
-  constexpr float eta         = 0.01f; // Tait's equation parameter
-  const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
+  //const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
 
   //// Double Dam breaking
   //Domain dam1;

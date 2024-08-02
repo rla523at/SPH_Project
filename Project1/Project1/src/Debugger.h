@@ -135,7 +135,7 @@ void print_max_size(const std::vector<std::vector<T>>& v)
 }
 
 template <typename T>
-void print(const std::vector<T>& v, const size_t interval)
+void print(const std::vector<T>& v, const size_t interval = -1)
 {
   size_t print_count = 0;
   for (const auto& val : v)
@@ -149,6 +149,7 @@ void print(const std::vector<T>& v, const size_t interval)
       std::cout << "\n";
     }
   }
+  std::cout << "\n";
 }
 
 template <typename T>

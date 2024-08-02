@@ -419,11 +419,13 @@ void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_text
 
 void Device_Manager::CS_barrier(void) const
 {
-  constexpr size_t num_max_view = 6;
+  constexpr size_t num_max_view = 7;
 
-  ID3D11ShaderResourceView*  nullSRV[num_max_view] = {nullptr};
-  ID3D11UnorderedAccessView* nullUAV[num_max_view] = {nullptr};
+  ID3D11Buffer*              null_constant_buffer[num_max_view] = {nullptr};
+  ID3D11ShaderResourceView*  nullSRV[num_max_view]              = {nullptr};
+  ID3D11UnorderedAccessView* nullUAV[num_max_view]              = {nullptr};
 
+  _cptr_context->CSSetConstantBuffers(0, num_max_view, null_constant_buffer);
   _cptr_context->CSSetShaderResources(0, num_max_view, nullSRV);
   _cptr_context->CSSetUnorderedAccessViews(0, num_max_view, nullUAV, NULL);
 }

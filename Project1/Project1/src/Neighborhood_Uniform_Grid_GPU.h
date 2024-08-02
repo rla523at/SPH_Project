@@ -34,14 +34,16 @@ struct Uniform_Grid_Constants
   UINT  num_z_cell;
   UINT  num_cell;
   UINT  num_particle;
+  UINT  estimated_num_ngc  = 27;
+  UINT  estimated_num_gcfp = 40;
+  UINT  estimated_num_nfp  = 200;
   float domain_x_start;
   float domain_y_start;
   float domain_z_start;
   float divide_length;
-  float padding[3];
 };
 
-struct GCFPT_ID
+struct GCFP_ID
 {
   UINT gc_index   = 0;
   UINT gcfp_index = 0;
@@ -49,13 +51,13 @@ struct GCFPT_ID
 
 struct Changed_GCFPT_ID_Data
 {
-  GCFPT_ID prev_id;
+  GCFP_ID prev_id;
   UINT     cur_gc_index;
 };
 
 struct Neighbor_Information
 {
-  size_t  index;
+  UINT    fp_index;
   Vector3 translate_vector;
   float   distance;
 };
@@ -88,12 +90,11 @@ private:
   bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
 
   void find_changed_GCFPT_ID(void);
-  void update_GCFP_texture(void);
+  void update_GCFP_buffer(void);
   void update_nfp(void);
 
-  void init_ngc_texture(void);
-
-  void init_GCFP_texture(const std::vector<Vector3>& fluid_particle_pos_vectors);
+  void init_ngc_index_buffer(void);
+  void init_GCFP_buffer(const std::vector<Vector3>& fluid_particle_pos_vectors);
   void init_nfp(void);
 
   //temporary
@@ -106,15 +107,15 @@ private:
   //////////////////////////////////////////////////////////////////////
 
   Uniform_Grid_Constants _constant_data;
-  ComPtr<ID3D11Buffer>   _common_constnat_buffer;
+  ComPtr<ID3D11Buffer>   _cptr_common_constnat_buffer;
 
   //////////////////////////////////////////////////////////////////////
 
-  // grid cell마다 neighbor grid cell의 index들을 저장한 texture
-  ComPtr<ID3D11Texture2D>          _cptr_ngc_texture;
-  ComPtr<ID3D11ShaderResourceView> _cptr_ngc_texture_SRV;
+  // geometry cell * estimated ngc만큼 ngc index을 저장한 buffer
+  ComPtr<ID3D11Buffer>             _cptr_ngc_index_buffer;
+  ComPtr<ID3D11ShaderResourceView> _cptr_ngc_index_buffer_SRV;
 
-  // grid cell마다 neighbor grid cell의 개수를 저장한 buffer
+  // geometry cell마다 neighbor grid cell의 개수를 저장한 buffer
   ComPtr<ID3D11Buffer>             _cptr_ngc_count_buffer;
   ComPtr<ID3D11ShaderResourceView> _cptr_ngc_count_buffer_SRV;
 
@@ -128,41 +129,33 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFPT_ID_CS;
   ComPtr<ID3D11Buffer>        _cptr_find_changed_GCFPT_ID_CS_constant_buffer;
 
-  // geometry cell마다 속해있는 fluid particle의 index들을 저장한 texture
-  ComPtr<ID3D11Texture2D>           _cptr_GCFP_texture;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_texture_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_texture_UAV;
+  //////////////////////////////////////////////////////////////////////
+
+  // geometry cell * estimated gcfp만큼 fp index를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_fp_index_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_fp_index_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_fp_index_buffer_UAV;
 
   // geometry cell마다 속해있는 fluid particle의 개수를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_GCFP_count_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_count_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_count_buffer_UAV;
 
-  // fluid particle마다 GCFPT ID를 저장한 Buffer
-  ComPtr<ID3D11Buffer>              _cptr_GCFPT_ID_buffer;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFPT_ID_buffer_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFPT_ID_buffer_UAV;
+  // fluid particle마다 GCFP ID를 저장한 Buffer
+  ComPtr<ID3D11Buffer>              _cptr_GCFP_ID_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_ID_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_ID_buffer_UAV;
 
   //update_GCFPT_CS
-  ComPtr<ID3D11ComputeShader> _cptr_update_GCFPT_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_GCFPT_CS_constant_buffer;
+  ComPtr<ID3D11ComputeShader> _cptr_update_GCFP_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_GCFP_CS_constant_buffer;
 
   //////////////////////////////////////////////////////////////////////
 
-  // fluid particle마다 neighbor fluid particle의 index를 저장한 texture
-  ComPtr<ID3D11Texture2D>           _cptr_nfp_texture;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_nfp_texture_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_nfp_texture_UAV;
-
-  // fluid particle마다 neighbor fluid particle의 translate vector를 저장한 texture
-  ComPtr<ID3D11Texture2D>           _cptr_nfp_tvec_texture;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_nfp_tvec_texture_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_nfp_tvec_texture_UAV;
-
-  // fluid particle마다 neighbor fluid particle의 distance를 저장한 texture
-  ComPtr<ID3D11Texture2D>           _cptr_nfp_dist_texture;
-  ComPtr<ID3D11ShaderResourceView>  _cptr_nfp_dist_texture_SRV;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_nfp_dist_texture_UAV;
+  //fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 Buffer
+  ComPtr<ID3D11Buffer>              _cptr_nfp_info_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_nfp_info_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_nfp_info_buffer_UAV;
 
   // fluid particle 마다 neighbor fluid particle의 개수를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_nfp_count_buffer;
@@ -179,12 +172,10 @@ private:
   ComPtr<ID3D11ShaderResourceView> _cptr_fp_pos_buffer_SRV;
   ComPtr<ID3D11Buffer>             _cptr_fp_pos_staging_buffer;
 
-  ComPtr<ID3D11Texture2D> _cptr_nfp_staging_texture;
-  ComPtr<ID3D11Texture2D> _cptr_nfp_tvec_staging_texture;
-  ComPtr<ID3D11Texture2D> _cptr_nfp_dist_staging_texture;
-  ComPtr<ID3D11Buffer>    _cptr_nfp_count_staging_buffer;
+  ComPtr<ID3D11Buffer> _cptr_nfp_info_staging_buffer;
+  ComPtr<ID3D11Buffer> _cptr_nfp_count_staging_buffer;
 
-  std::vector<Neighbor_Informations> _ninfos;
+  std::vector<Neighbor_Informations> _ninfoss;
   std::vector<std::vector<size_t>>   _bpid_to_neighbor_fpids;
   // temporary
 };

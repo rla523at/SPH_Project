@@ -296,7 +296,7 @@ float PCISPH_GPU::predict_density_and_update_pressure_and_cal_error(void)
     const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(i);
     const auto& neighbor_indexes      = neighbor_informations.indexes;
 
-    const auto num_neighbor = neighbor_indexes.size();
+    const auto num_neighbor = neighbor_indexes.size();    
 
     for (int j = 0; j < num_neighbor; j++)
     {
@@ -335,7 +335,7 @@ void PCISPH_GPU::cal_pressure_acceleration(void)
 
   const size_t num_fluid_particle = _fluid_particles.num_particles();
 
-#pragma omp parallel for
+//#pragma omp parallel for
   for (int i = 0; i < num_fluid_particle; i++)
   {
     auto& v_a_pressure = _pressure_acceleration_vectors[i];

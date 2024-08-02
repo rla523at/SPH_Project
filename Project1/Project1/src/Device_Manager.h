@@ -26,6 +26,9 @@ public:
   ComPtr<ID3D11Buffer> create_structured_buffer(const size_t num_data, T* init_data_ptr = nullptr) const;
 
   template <typename T>
+  ComPtr<ID3D11Buffer> create_structured_buffer_immutable(const size_t num_data, T* init_data_ptr) const;
+
+  template <typename T>
   ComPtr<ID3D11Texture2D> create_texutre_2D(
     const UINT        width,
     const UINT        height,
@@ -40,18 +43,18 @@ public:
     T*                init_data_ptr = nullptr) const;
 
   template <typename T>
-  std::vector<T> download(const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
+  std::vector<T> read(const ComPtr<ID3D11Buffer> cptr_buffer) const;
 
   template <typename T>
-  std::vector<std::vector<T>> download(const ComPtr<ID3D11Texture2D> cptr_staging_texture) const;
+  std::vector<std::vector<T>> read(const ComPtr<ID3D11Texture2D> cptr_staging_texture) const;
 
   template <typename T>
-  std::vector<T> download(
+  std::vector<T> read(
     const ComPtr<ID3D11Buffer> cptr_staging_buffer,
     const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
 
   template <typename T>
-  std::vector<std::vector<T>> download(
+  std::vector<std::vector<T>> read(
     const ComPtr<ID3D11Texture2D> cptr_staging_texture,
     const ComPtr<ID3D11Texture2D> cptr_target_texture) const;
 
@@ -202,6 +205,32 @@ ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_d
 }
 
 template <typename T>
+ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer_immutable(const size_t num_data, T* init_data_ptr) const
+{
+  const auto data_size = sizeof(T);
+
+  D3D11_BUFFER_DESC desc   = {};
+  desc.ByteWidth           = static_cast<UINT>(num_data * data_size);
+  desc.Usage               = D3D11_USAGE_IMMUTABLE;
+  desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+  desc.CPUAccessFlags      = NULL;
+  desc.MiscFlags           = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+  desc.StructureByteStride = data_size;
+
+  D3D11_SUBRESOURCE_DATA init_data = {};
+  init_data.pSysMem                = init_data_ptr;
+  init_data.SysMemPitch            = 0;
+  init_data.SysMemSlicePitch       = 0;
+
+  ComPtr<ID3D11Buffer> cptr_structured_buffer;
+
+  const auto result = _cptr_device->CreateBuffer(&desc, &init_data, cptr_structured_buffer.GetAddressOf());
+  REQUIRE(!FAILED(result), "immutable structured buffer creation should succeed");
+
+  return cptr_structured_buffer;
+}
+
+template <typename T>
 ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D(
   const UINT        width,
   const UINT        height,
@@ -274,27 +303,33 @@ ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D_immutable(
 }
 
 template <typename T>
-std::vector<T> Device_Manager::download(const ComPtr<ID3D11Buffer> staging_buffer) const
+std::vector<T> Device_Manager::read(const ComPtr<ID3D11Buffer> cptr_buffer) const
 {
   D3D11_BUFFER_DESC desc;
-  staging_buffer->GetDesc(&desc);
+  cptr_buffer->GetDesc(&desc);
 
   constexpr auto data_size = sizeof(T);
   const auto     num_data  = desc.ByteWidth / data_size;
 
   std::vector<T> datas(num_data);
 
+  ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
+  if (desc.Usage != D3D11_USAGE_STAGING)
+  {
+    cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
+    _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());  
+  }
+
   D3D11_MAPPED_SUBRESOURCE ms;
-  _cptr_context->Map(staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+  _cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
   memcpy(datas.data(), ms.pData, num_data * data_size);
-  _cptr_context->Unmap(staging_buffer.Get(), NULL);
+  _cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
 
   return datas;
 }
 
-// 이거 한번 해보자
 template <typename T>
-std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2D> staging_texture) const
+std::vector<std::vector<T>> Device_Manager::read(const ComPtr<ID3D11Texture2D> staging_texture) const
 {
   D3D11_TEXTURE2D_DESC desc;
   staging_texture->GetDesc(&desc);
@@ -325,21 +360,21 @@ std::vector<std::vector<T>> Device_Manager::download(const ComPtr<ID3D11Texture2
 }
 
 template <typename T>
-std::vector<T> Device_Manager::download(
+std::vector<T> Device_Manager::read(
   const ComPtr<ID3D11Buffer> cptr_staging_buffer,
   const ComPtr<ID3D11Buffer> cptr_target_buffer) const
 {
   _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_target_buffer.Get());
-  return this->download<T>(cptr_staging_buffer);
+  return this->read<T>(cptr_staging_buffer);
 }
 
 template <typename T>
-std::vector<std::vector<T>> Device_Manager::download(
+std::vector<std::vector<T>> Device_Manager::read(
   const ComPtr<ID3D11Texture2D> cptr_staging_texture,
   const ComPtr<ID3D11Texture2D> cptr_target_texture) const
 {
   _cptr_context->CopyResource(cptr_staging_texture.Get(), cptr_target_texture.Get());
-  return this->download<T>(cptr_staging_texture);
+  return this->read<T>(cptr_staging_texture);
 }
 
 template <typename T>
