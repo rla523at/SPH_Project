@@ -1,4 +1,4 @@
-#include "Uniform_Grid_Common.hlsli"
+#include "uniform_grid_common.hlsli"
 
   struct Debug_Data
   {
@@ -35,15 +35,18 @@ void main(uint3 DTID : SV_DispatchThreadID)
 
   if (prev_gc_index != cur_gc_index)
   {
-    debug_data.cur_gc_index = cur_gc_index;
     debug_data.prev_gc_index = prev_gc_index;
-  
+    debug_data.cur_gc_index = cur_gc_index;  
     debug_buffer[fp_index] = debug_data;
 
     Changed_GCFP_ID_Data data;
     data.prev_id      = prev_GCFP_id;
     data.cur_gc_index = cur_gc_index;
 
+    //GCFP count buffer만 넣어주면 여기서 cur_id를 만들어서 줄 수 있지는 않네 여러개가 같은데 들어갈 수도 있으니까..
+    //GCFP count buffer를 여기서 업데이트하면 cur_id를 만들어 줄 수 있따. 하지만 병렬적으로 GCFP count buffer를 업데이트하면 문제가 될 수 있다.
+    //따라서 안된다!
+    
     changed_GCFP_ID_buffer.Append(data);
   }
 }

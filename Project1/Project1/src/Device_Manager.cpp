@@ -9,6 +9,12 @@
 namespace ms
 {
 
+Device_Manager::Device_Manager(void)
+{
+  this->init_device_device_context();
+  _cptr_count_staging_buffer = this->create_staging_buffer_count();
+}
+
 Device_Manager::Device_Manager(
   const HWND main_window,
   const int  num_row_pixel,
@@ -435,7 +441,7 @@ void Device_Manager::init_device_device_context(void)
 #if defined(_DEBUG)
   constexpr auto flags = D3D11_CREATE_DEVICE_DEBUG;
 #else
-  constexpr auto flags        = NULL;
+  constexpr auto flags = NULL;
 #endif
 
   constexpr D3D_FEATURE_LEVEL featureLevels[2] = {

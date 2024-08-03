@@ -335,7 +335,7 @@ void PCISPH_GPU::cal_pressure_acceleration(void)
 
   const size_t num_fluid_particle = _fluid_particles.num_particles();
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < num_fluid_particle; i++)
   {
     auto& v_a_pressure = _pressure_acceleration_vectors[i];

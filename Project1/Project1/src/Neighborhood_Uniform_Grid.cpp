@@ -214,7 +214,7 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
 {
   const size_t num_particles = fluid_particle_pos_vectors.size();
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < num_particles; ++i)
   {
     auto& informations = _fpid_to_neighbor_informations[i];
@@ -256,11 +256,7 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
       }
     }
 
-    std::cout << i << " particle neighbor list : "; //debug
-    print(indexes); //debug
   } 
-
-  std::cout << "\n\n"; //debug
 }
 
 void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(

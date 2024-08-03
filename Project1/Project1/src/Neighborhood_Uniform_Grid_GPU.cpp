@@ -38,6 +38,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   _cptr_find_changed_GCFPT_ID_CS       = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
   _cptr_update_GCFP_CS                 = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
   _cptr_update_GCFP_CS_constant_buffer = device_manager.create_constant_buffer(16);
+  _cptr_rearrange_GCFP_CS              = device_manager.create_CS(L"hlsl/rearrange_GCFP_CS.hlsl");
 
   this->init_nfp();
   _cptr_update_nfp_CS = device_manager.create_CS(L"hlsl/update_nfp_CS.hlsl");
@@ -50,10 +51,10 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
 
   this->update_nfp();
 
-  //temporary
+  // temporary
   _ninfoss.resize(_constant_data.num_particle);
   this->copy_to_ninfos();
-  //temporary
+  // temporary
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
@@ -167,8 +168,8 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const std::vector<Vector3>&
   _cptr_GCFP_ID_buffer_UAV = device_manager.create_UAV(_cptr_GCFP_ID_buffer.Get());
 
   // create changed GCFPT ID buffer
-  _cptr_changed_GCFPT_ID_buffer = device_manager.create_structured_buffer<Changed_GCFPT_ID_Data>(estimated_num_update_data);
-  _cptr_changed_GCFPT_ID_AC_UAV = device_manager.create_AC_UAV(_cptr_changed_GCFPT_ID_buffer.Get(), estimated_num_update_data);
+  _cptr_changed_GCFP_ID_buffer  = device_manager.create_structured_buffer<Changed_GCFPT_ID_Data>(estimated_num_update_data);
+  _cptr_changed_GCFPT_ID_AC_UAV = device_manager.create_AC_UAV(_cptr_changed_GCFP_ID_buffer.Get(), estimated_num_update_data);
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_nfp(void)
@@ -187,7 +188,7 @@ void Neighborhood_Uniform_Grid_GPU::init_nfp(void)
   // temporary code
   _cptr_nfp_info_staging_buffer  = _device_manager_ptr->create_staging_buffer_read(_cptr_nfp_info_buffer);
   _cptr_nfp_count_staging_buffer = _device_manager_ptr->create_staging_buffer_read(_cptr_nfp_count_buffer);
-  //temporary code
+  // temporary code
 }
 
 Grid_Cell_ID Neighborhood_Uniform_Grid_GPU::grid_cell_id(const Vector3& v_pos) const
@@ -251,21 +252,32 @@ void Neighborhood_Uniform_Grid_GPU::update(
   // temporary code
 
   this->find_changed_GCFPT_ID();
-
   this->update_GCFP_buffer();
+  this->rearrange_GCFP();
+  this->update_nfp();
 
-  //this->update_nfp();
-
-  //temporary code
-  //this->copy_to_ninfos();
-  //temporary code
+  // temporary code
+  this->copy_to_ninfos();
+  // temporary code
 }
 
 void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
 {
+  //
+  struct Debug_Data
+  {
+    UINT cur_gc_index;
+    UINT prev_gc_index;
+  };
+  auto debug_buffer = _device_manager_ptr->create_structured_buffer<Debug_Data>(_constant_data.num_particle);
+  auto debug_UAV    = _device_manager_ptr->create_UAV(debug_buffer.Get());
+  //
+
   constexpr size_t num_constant_buffer = 1;
   constexpr size_t num_SRV             = 2;
-  constexpr size_t num_UAV             = 1;
+  constexpr size_t num_UAV             = 2;
+
+  // auto before_count = _device_manager_ptr->read_count(_cptr_changed_GCFPT_ID_AC_UAV); // debug
 
   ID3D11Buffer* constant_buffers[num_constant_buffer] = {
     _cptr_common_constnat_buffer.Get()};
@@ -275,7 +287,8 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
     _cptr_GCFP_ID_buffer_SRV.Get()};
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_changed_GCFPT_ID_AC_UAV.Get()};
+    _cptr_changed_GCFPT_ID_AC_UAV.Get(),
+    debug_UAV.Get()};
 
   const auto cptr_context = _device_manager_ptr->context_cptr();
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
@@ -286,6 +299,11 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
   const auto num_group_x = static_cast<UINT>(std::ceil(_constant_data.num_particle / 1024.0f));
   cptr_context->Dispatch(num_group_x, 1, 1);
 
+  // const auto after_count = _device_manager_ptr->read_count(_cptr_changed_GCFPT_ID_AC_UAV);                 // debug
+  // const auto debug_data  = _device_manager_ptr->read<Debug_Data>(debug_buffer);                            // debug
+  // const auto read_data   = _device_manager_ptr->read<Changed_GCFPT_ID_Data>(_cptr_changed_GCFP_ID_buffer); // debug
+
+  // int debug = 0;
   _device_manager_ptr->CS_barrier();
 }
 
@@ -297,19 +315,20 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
   cptr_context->CopyStructureCount(_cptr_update_GCFP_CS_constant_buffer.Get(), 0, _cptr_changed_GCFPT_ID_AC_UAV.Get());
 
   constexpr size_t num_constant_buffer = 2;
-  constexpr size_t num_UAV             = 4;
+  constexpr size_t num_UAV             = 5;
 
-  //debug start
+  // debug start
   struct Debug_Strcut
   {
-    UINT prev_gc_index;
-    UINT GCFP_count;
+    GCFP_ID prev_id;
+    UINT    prev_id_GCFP_index;
+    UINT    GCFP_count;
+    UINT    prev_id_fp_index;
   };
 
   auto debug_buffer = _device_manager_ptr->create_structured_buffer<Debug_Strcut>(_constant_data.num_particle);
   auto debug_UAV    = _device_manager_ptr->create_UAV(debug_buffer.Get());
-
-  //debug end
+  // debug end
 
   ID3D11Buffer* constant_buffers[num_constant_buffer] = {
     _cptr_common_constnat_buffer.Get(),
@@ -319,40 +338,94 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
     _cptr_fp_index_buffer_UAV.Get(),
     _cptr_GCFP_count_buffer_UAV.Get(),
     _cptr_GCFP_ID_buffer_UAV.Get(),
-    _cptr_changed_GCFPT_ID_AC_UAV.Get()
-    deb};
+    _cptr_changed_GCFPT_ID_AC_UAV.Get(),
+    debug_UAV.Get()};
 
-  ////debug
-  //{
-  //  std::cout << "before \n";
-  //  const auto result = device_manager.read<UINT>(_cptr_GCFP_count_buffer);
-  //  print_sort_and_count(result);
-  //  const auto debug = 0;
-  //  std::cout << "\n";
-  //}
-  ////debug
+  // debug
+  // std::cout << "before \n";
+  // const auto result = device_manager.read<UINT>(_cptr_GCFP_count_buffer);
+  // auto       before_count           = _device_manager_ptr->read<UINT>(_cptr_update_GCFP_CS_constant_buffer);
+  // const auto GCFP_ID_before         = device_manager.read<GCFP_ID>(_cptr_GCFP_ID_buffer);
+  // const auto changed_GCFP_ID_result = _device_manager_ptr->read<Changed_GCFPT_ID_Data>(_cptr_changed_GCFP_ID_buffer);
+  // const auto GCFP_count_before      = device_manager.read<UINT>(_cptr_GCFP_count_buffer);
+  // const auto fp_index_before        = device_manager.read<UINT>(_cptr_fp_index_buffer);
+
+  // const auto debug = 0;
+  // debug
 
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_update_GCFP_CS.Get(), nullptr, NULL);
   cptr_context->Dispatch(1, 1, 1);
 
-  ////debug
+  //// debug
   //{
-  //  std::cout << "after \n";
-  //  const auto result = device_manager.read<UINT>(_cptr_GCFP_count_buffer);
-  //  print_sort_and_count(result); //debug
+  //  // std::cout << "after \n";
+  //  const auto after_count      = _device_manager_ptr->read_count(_cptr_changed_GCFPT_ID_AC_UAV);
+  //  const auto GCFP_count_after = device_manager.read<UINT>(_cptr_GCFP_count_buffer);
+  //  const auto GCFP_ID_after    = device_manager.read<GCFP_ID>(_cptr_GCFP_ID_buffer);
+  //  const auto fp_index_after   = device_manager.read<UINT>(_cptr_fp_index_buffer);
+  //  const auto debug_data       = device_manager.read<Debug_Strcut>(debug_buffer);
+  //  // print_sort_and_count(fp_index);
+  //  // const auto index_for_25 = std::find(fp_index.begin(), fp_index.end(), 25) - fp_index.begin();
+  //  const auto stop  = 0;
   //  const auto debug = 0;
-  //  std::cout << "\n\n";
-
+  //  // std::cout << "\n\n";
   //}
-  ////debug
+  //// debug
 
   _device_manager_ptr->CS_barrier();
 }
 
+void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
+{
+  //// debug
+  //const auto before_GCFP_id    = _device_manager_ptr->read<GCFP_ID>(_cptr_GCFP_ID_buffer);
+  //const auto before_GCFP_count = _device_manager_ptr->read<UINT>(_cptr_GCFP_count_buffer);
+  //print_sort_and_count(before_GCFP_count);
+  //// debug
+
+
+  constexpr UINT num_constant_buffer = 1;
+  constexpr UINT num_UAV             = 3;
+
+  ID3D11Buffer* constant_buffers[num_constant_buffer] = {
+    _cptr_common_constnat_buffer.Get(),
+  };
+
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_fp_index_buffer_UAV.Get(),
+    _cptr_GCFP_count_buffer_UAV.Get(),
+    _cptr_GCFP_ID_buffer_UAV.Get(),
+  };
+
+  const auto cptr_context = _device_manager_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_rearrange_GCFP_CS.Get(), nullptr, NULL);
+
+  const auto num_group_x = static_cast<UINT>(std::ceil(_constant_data.num_cell / 1024.0f));
+  cptr_context->Dispatch(num_group_x, 1, 1);
+
+  _device_manager_ptr->CS_barrier();
+
+  //// debug
+  //const auto after_GCFP_id    = _device_manager_ptr->read<GCFP_ID>(_cptr_GCFP_ID_buffer);
+  //const auto after_GCFP_count = _device_manager_ptr->read<UINT>(_cptr_GCFP_count_buffer);
+  //print_sort_and_count(after_GCFP_count);
+  //const auto stop = 0;
+  //// debug
+}
+
 void Neighborhood_Uniform_Grid_GPU::update_nfp(void)
 {
+  //// debug
+  //const auto GCFP_id    = _device_manager_ptr->read<GCFP_ID>(_cptr_GCFP_ID_buffer);
+  //const auto GCFP_count = _device_manager_ptr->read<UINT>(_cptr_GCFP_count_buffer);
+  //print_sort_and_count(GCFP_count);
+  //const auto stop = 0;
+  //// debug
+
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
   constexpr auto num_UAV             = 2;

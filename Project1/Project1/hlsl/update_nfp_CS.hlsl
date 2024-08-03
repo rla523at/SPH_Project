@@ -1,4 +1,4 @@
-#include "Uniform_Grid_Common.hlsli"
+#include "uniform_grid_common.hlsli"
 
 struct Neighbor_Information
 {

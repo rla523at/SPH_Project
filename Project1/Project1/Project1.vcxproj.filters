@@ -175,9 +175,12 @@
     <FxCompile Include="hlsl\update_GCFPT_CS.hlsl">
       <Filter>HLSL\Uniform_Grid</Filter>
     </FxCompile>
+    <FxCompile Include="hlsl\rearrange_GCFP_CS.hlsl">
+      <Filter>HLSL\Uniform_Grid</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="hlsl\Uniform_Grid_Common.hlsli">
+    <None Include="hlsl\uniform_grid_common.hlsli">
       <Filter>HLSL\Uniform_Grid</Filter>
     </None>
   </ItemGroup>

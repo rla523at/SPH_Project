@@ -91,6 +91,7 @@ private:
 
   void find_changed_GCFPT_ID(void);
   void update_GCFP_buffer(void);
+  void rearrange_GCFP(void);
   void update_nfp(void);
 
   void init_ngc_index_buffer(void);
@@ -122,7 +123,7 @@ private:
   //////////////////////////////////////////////////////////////////////
 
   // 이번 프레임에 바뀐 GCFPT ID를 저장한 Buffer
-  ComPtr<ID3D11Buffer>              _cptr_changed_GCFPT_ID_buffer;
+  ComPtr<ID3D11Buffer>              _cptr_changed_GCFP_ID_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
 
   //find_changed_GCFPT_ID_CS
@@ -149,6 +150,8 @@ private:
   //update_GCFPT_CS
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFP_CS;
   ComPtr<ID3D11Buffer>        _cptr_update_GCFP_CS_constant_buffer;
+
+  ComPtr<ID3D11ComputeShader> _cptr_rearrange_GCFP_CS;
 
   //////////////////////////////////////////////////////////////////////
 

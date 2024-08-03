@@ -12,6 +12,8 @@ namespace ms
 class Device_Manager
 {
 public:
+  Device_Manager(void);
+
   Device_Manager(
     const HWND main_window,
     const int  num_row_pixel,
@@ -23,10 +25,10 @@ public:
   ComPtr<ID3D11Buffer> create_constant_buffer_imuutable(T* init_data_ptr) const;
 
   template <typename T>
-  ComPtr<ID3D11Buffer> create_structured_buffer(const size_t num_data, T* init_data_ptr = nullptr) const;
+  ComPtr<ID3D11Buffer> create_structured_buffer(const size_t num_data, const T* init_data_ptr = nullptr) const;
 
   template <typename T>
-  ComPtr<ID3D11Buffer> create_structured_buffer_immutable(const size_t num_data, T* init_data_ptr) const;
+  ComPtr<ID3D11Buffer> create_structured_buffer_immutable(const size_t num_data, const T* init_data_ptr) const;
 
   template <typename T>
   ComPtr<ID3D11Texture2D> create_texutre_2D(
@@ -174,7 +176,7 @@ ComPtr<ID3D11Buffer> Device_Manager::create_constant_buffer_imuutable(T* init_da
 }
 
 template <typename T>
-ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_data, T* init_data_ptr) const
+ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_data, const T* init_data_ptr) const
 {
   const auto data_size = sizeof(T);
 
@@ -205,7 +207,7 @@ ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer(const size_t num_d
 }
 
 template <typename T>
-ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer_immutable(const size_t num_data, T* init_data_ptr) const
+ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer_immutable(const size_t num_data, const T* init_data_ptr) const
 {
   const auto data_size = sizeof(T);
 
