@@ -57,7 +57,6 @@ PCISPH_GPU::PCISPH_GPU(
 
   this->init_mass_and_scailing_factor();
 
-  //
   _max_density_errors.resize(omp_get_max_threads());
 }
 
@@ -77,59 +76,23 @@ void PCISPH_GPU::update(void)
   _current_position_vectors = _fluid_particles.position_vectors;
   _current_velocity_vectors = _fluid_particles.velocity_vectors;
 
-  //std::cout << _time << "\n"; //debug
-
   while (_allow_density_error < density_error || num_iter < _min_iter)
   {
     this->predict_velocity_and_position();
     density_error = this->predict_density_and_update_pressure_and_cal_error();
     this->cal_pressure_acceleration();
 
-    //std::cout << num_iter << " " << density_error << "\n"; //debug
-
     ++num_iter;
 
     if (_max_iter < num_iter)
-    {
       break;
-      //std::cout << "too many iter\n";
-
-      //  //auto debug = this->cal_scailing_factor();
-
-      //  //const auto num_data = this->num_particle();
-
-      //  //const auto* pos_data = this->fluid_particle_position_data();
-      //  //const auto  cptr_SRbuffer = Device_Manager_Debug::_cptr_buffers[0];
-      //  //const auto  cptr_Sbuffer = Device_Manager_Debug::_cptr_buffers[1];
-
-      //  //Device_Manager_Debug::copy(pos_data, num_data, cptr_Sbuffer, cptr_SRbuffer);
-
-      //  //const auto* density_data      = this->fluid_particle_density_data();
-      //  //const auto  cptr_SRbuffer2 = Device_Manager_Debug::_cptr_buffers[2];
-      //  //const auto  cptr_Sbuffer2  = Device_Manager_Debug::_cptr_buffers[3];
-
-      //  //Device_Manager_Debug::copy(density_data, num_data, cptr_Sbuffer2, cptr_SRbuffer2);
-
-      //  //Device_Manager_Debug::_cptr_context->Draw(num_data, 0);
-      //  //Device_Manager_Debug::_cptr_swap_chain->Present(1, 0);
-
-      //  int debug1231232 = 0;
-    }
   }
-
-  //std::cout << "\n\n";                      //debug
-  //if (_time > 0.2f && num_iter < _max_iter) //debug
-  //  exit(523);                              // debug
 
   //마지막으로 update된 pressure에 의한 accleration을 반영
   this->predict_velocity_and_position();
   this->apply_boundary_condition();
 
   _time += _dt;
-
-  //std::cout << _time << " " << num_iter << "\n"; //debug
-  //if (_time > 8.0f)                              //debug
-  //  exit(523);                                   //debug
 }
 
 float PCISPH_GPU::particle_radius(void) const

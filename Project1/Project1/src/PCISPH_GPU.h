@@ -4,7 +4,7 @@
 
 #include <memory>
 
-//Forward Declaration
+// Forward Declaration
 namespace ms
 {
 class Neighborhood;
@@ -12,7 +12,29 @@ class Cubic_Spline_Kernel;
 class Device_Manager;
 } // namespace ms
 
-//PCISPH_GPU declration
+namespace ms
+{
+struct PCISPH_Constant_Data
+{
+  float dt                  = 0.0f;
+  float rest_density        = 0.0f;
+  float viscosity           = 0.0f;
+  float allow_density_error = 0.0f;
+  float particle_radius     = 0.0f;
+  float smoothing_length    = 0.0f;
+  float mass_per_particle   = 0.0f;
+  UINT  min_iter            = 0;
+  UINT  max_iter            = 0;
+};
+
+struct PCISPH_Constant_Data2
+{
+  float scailing_factor = 0.0f;
+};
+
+} // namespace ms
+
+// PCISPH_GPU declration
 namespace ms
 {
 
@@ -20,8 +42,8 @@ class PCISPH_GPU : public SPH_Scheme
 {
 public:
   PCISPH_GPU(const Initial_Condition_Cubes& initial_condition,
-         const Domain&                  solution_domain,
-         const Device_Manager&          device_manager);
+             const Domain&                  solution_domain,
+             const Device_Manager&          device_manager);
   ~PCISPH_GPU();
 
 public:
@@ -34,7 +56,7 @@ public:
   const float*   fluid_particle_density_data(void) const override;
 
 private:
-  //it doesn't consider acceleration by pressure
+  // it doesn't consider acceleration by pressure
   void initialize_fluid_acceleration_vectors(void);
 
   void  initialize_pressure_and_pressure_acceleration(void);
@@ -74,7 +96,7 @@ private:
   //
   std::vector<float> _max_density_errors;
 
-  //Temp
+  // Temp
   std::vector<Vector3> _boundary_position_vectors;
 };
 

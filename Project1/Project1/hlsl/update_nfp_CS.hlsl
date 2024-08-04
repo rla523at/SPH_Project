@@ -23,8 +23,6 @@ RWStructuredBuffer<uint>                  nfp_count_buffer  : register(u1);
 [numthreads(1024, 1, 1)]
 void main(uint3 DTID : SV_DispatchThreadID)
 {        
-  //nfp_count_buffer[DTID.x] = 10;//debug
-
   if (g_num_cell <= DTID.x)
     return;
  
@@ -44,8 +42,7 @@ void main(uint3 DTID : SV_DispatchThreadID)
     const uint ngc_index    = ngc_index_buffer[start_index1 + i];
     const uint num_gcfp     = GCFP_count_buffer[ngc_index];
     const uint start_index2 = ngc_index * g_estimated_num_gcfp;
-
-
+    
     for (uint j = 0; j < num_gcfp; ++j)
     {
       const uint    nfp_index = fp_index_buffer[start_index2 + j];    
