@@ -12,8 +12,7 @@
     DM  : Device Manager
     SRV : Shader Resource View
     UAV : Unordered Acess View
-*/ 
-
+*/
 
 namespace ms
 {
@@ -69,10 +68,13 @@ public:
     const ComPtr<ID3D11Texture2D> cptr_target_texture) const;
 
   template <typename T>
-  void upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
+  T read_front(const ComPtr<ID3D11Buffer> cptr_buffer) const;
 
   template <typename T>
-  void upload(
+  void write(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
+
+  template <typename T>
+  void write(
     const T*                   data_ptr,
     const ComPtr<ID3D11Buffer> cptr_staging_buffer,
     const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
@@ -331,7 +333,7 @@ std::vector<T> Device_Manager::read(const ComPtr<ID3D11Buffer> cptr_buffer) cons
   if (desc.Usage != D3D11_USAGE_STAGING)
   {
     cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
-    _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());  
+    _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());
   }
 
   D3D11_MAPPED_SUBRESOURCE ms;
@@ -374,6 +376,31 @@ std::vector<std::vector<T>> Device_Manager::read(const ComPtr<ID3D11Texture2D> s
 }
 
 template <typename T>
+inline T Device_Manager::read_front(const ComPtr<ID3D11Buffer> cptr_buffer) const
+{
+  D3D11_BUFFER_DESC desc;
+  cptr_buffer->GetDesc(&desc);
+
+  constexpr auto data_size = sizeof(T);
+
+  T data = {};
+
+  ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
+  if (desc.Usage != D3D11_USAGE_STAGING)
+  {
+    cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
+    _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());
+  }
+
+  D3D11_MAPPED_SUBRESOURCE ms;
+  _cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+  memcpy(&data, ms.pData, data_size);
+  _cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
+
+  return data;
+}
+
+template <typename T>
 std::vector<T> Device_Manager::read(
   const ComPtr<ID3D11Buffer> cptr_staging_buffer,
   const ComPtr<ID3D11Buffer> cptr_target_buffer) const
@@ -392,33 +419,43 @@ std::vector<std::vector<T>> Device_Manager::read(
 }
 
 template <typename T>
-void Device_Manager::upload(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_buffer) const
+void Device_Manager::write(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_buffer) const
 {
   D3D11_BUFFER_DESC desc;
   cptr_buffer->GetDesc(&desc);
 
-  D3D11_MAP map_type = D3D11_MAP_WRITE;
+  const bool is_not_writable = desc.Usage != D3D11_USAGE_DYNAMIC && desc.Usage != D3D11_USAGE_STAGING;
 
-  if (desc.Usage == D3D11_USAGE_DYNAMIC)
-    map_type = D3D11_MAP_WRITE_DISCARD;
+  auto cptr_writable_buffer = cptr_buffer;
+  auto map_type             = D3D11_MAP_WRITE;
 
-  D3D11_MAPPED_SUBRESOURCE ms;
+  if (is_not_writable)
+    cptr_writable_buffer = this->create_staging_buffer_write(cptr_buffer);
+  else
   {
-    const auto result = _cptr_context->Map(cptr_buffer.Get(), NULL, map_type, NULL, &ms);
-    REQUIRE(!FAILED(result), "Map should be succeed");
+    if (desc.Usage == D3D11_USAGE_DYNAMIC)
+      map_type = D3D11_MAP_WRITE_DISCARD;
   }
 
+  D3D11_MAPPED_SUBRESOURCE ms;
+
+  const auto result = _cptr_context->Map(cptr_writable_buffer.Get(), NULL, map_type, NULL, &ms);
+  REQUIRE(!FAILED(result), "Map should be succeed");
+
   memcpy(ms.pData, data_ptr, desc.ByteWidth);
-  _cptr_context->Unmap(cptr_buffer.Get(), NULL);
+  _cptr_context->Unmap(cptr_writable_buffer.Get(), NULL);
+
+  if (is_not_writable)
+    _cptr_context->CopyResource(cptr_buffer.Get(), cptr_writable_buffer.Get());
 }
 
 template <typename T>
-void Device_Manager::upload(
+void Device_Manager::write(
   const T*                   data_ptr,
   const ComPtr<ID3D11Buffer> cptr_staging_buffer,
   const ComPtr<ID3D11Buffer> cptr_target_buffer) const
 {
-  this->upload(data_ptr, cptr_staging_buffer);
+  this->write(data_ptr, cptr_staging_buffer);
   _cptr_context->CopyResource(cptr_target_buffer.Get(), cptr_staging_buffer.Get());
 }
 

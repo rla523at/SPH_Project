@@ -21,7 +21,7 @@ StructuredBuffer<uint>                  nfp_count_buffer  : register(t2);
 
 RWStructuredBuffer<uint> scaling_factor_buffer : register(u0);
 
-groupshared float  shared_sum_grad_kernel[NUM_THREAD];
+groupshared float3  shared_sum_grad_kernel[NUM_THREAD];
 groupshared float  shared_sum_grad_kernel_size[NUM_THREAD];
 
 [numthreads(NUM_THREAD,1,1)]
@@ -42,7 +42,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     const float distance = ninfo.distance;
 
-    if (distnace != 0) 
+    if (distance != 0) 
     {
       const float3 v_xij          = ninfo.tvector;    
       const float3 v_grad_q       = 1.0 / (g_h * distance) * v_xij;
@@ -52,7 +52,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
   }
   
   shared_sum_grad_kernel[DTid.x]      = v_grad_kernel;
-  shared_sum_grad_kernel_size[DTid.x] = v_grad_kernel.dot(v_grad_kernel);
+  shared_sum_grad_kernel_size[DTid.x] = dot(v_grad_kernel, v_grad_kernel);
 
   GroupMemoryBarrierWithGroupSync();
 
@@ -72,7 +72,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
   {
     const float v_sum_grad_kernel_size  = shared_sum_grad_kernel_size[0];
     const float v_sum_grad_kernel       = shared_sum_grad_kernel[0];
-    const float sum_dot_sum             = v_sum_grad_kernel.dot(v_sum_grad_kernel);
+    const float sum_dot_sum             = dot(v_sum_grad_kernel, v_sum_grad_kernel);
  
     scaling_factor_buffer[0] = 1.0 / (g_beta * (sum_dot_sum + v_sum_grad_kernel_size));   
   }  

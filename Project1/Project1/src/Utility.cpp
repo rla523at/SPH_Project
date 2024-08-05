@@ -34,7 +34,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> va
 
   while (true)
   {
-    _DM_ptr->upload(&num_input, _cptr_uint_CB);
+    _DM_ptr->write(&num_input, _cptr_uint_CB);
 
     const auto input_SRV  = _DM_ptr->create_SRV(input_buffer.Get());
 
@@ -98,7 +98,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
 
   constexpr UINT num_thread = 256;
 
-  _DM_ptr->upload(&num_value, _cptr_uint_CB);
+  _DM_ptr->write(&num_value, _cptr_uint_CB);
 
   const auto input_SRV = _DM_ptr->create_SRV(float_value_buffer);
 
@@ -139,7 +139,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float(
   constexpr UINT num_SRV    = 2;
   constexpr UINT num_UAV    = 1;
 
-  _DM_ptr->upload(&num_input_index, _cptr_uint_CB);
+  _DM_ptr->write(&num_input_index, _cptr_uint_CB);
 
   const auto value_SRV       = _DM_ptr->create_SRV(value_buffer);
   const auto input_index_SRV = _DM_ptr->create_SRV(input_index_buffer);

@@ -1,4 +1,4 @@
-cbuffer Uniform_Grid_Constants : register(b0)
+cbuffer Common_CB : register(b0)
 {
   uint  g_num_x_cell;
   uint  g_num_y_cell;

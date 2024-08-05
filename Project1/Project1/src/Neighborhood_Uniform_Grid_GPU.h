@@ -24,23 +24,27 @@ GCFP  : Geometry Cell Fluid Particle(fluid particle in the geometry cell)
 
 */
 
+inline constexpr UINT g_estimated_num_ngc  = 27;
+inline constexpr UINT g_estimated_num_gcfp = 40;
+inline constexpr UINT g_estimated_num_nfp  = 200;
+
 // data structure
 namespace ms
 {
-struct Uniform_Grid_Constants
+struct Uniform_Grid_Common_CB_Data
 {
-  UINT  num_x_cell;
-  UINT  num_y_cell;
-  UINT  num_z_cell;
-  UINT  num_cell;
-  UINT  num_particle;
-  UINT  estimated_num_ngc  = 27;
-  UINT  estimated_num_gcfp = 40;
-  UINT  estimated_num_nfp  = 200;
-  float domain_x_start;
-  float domain_y_start;
-  float domain_z_start;
-  float divide_length;
+  UINT  num_x_cell         = 0;
+  UINT  num_y_cell         = 0;
+  UINT  num_z_cell         = 0;
+  UINT  num_cell           = 0;
+  UINT  num_particle       = 0;
+  UINT  estimated_num_ngc  = 0;
+  UINT  estimated_num_gcfp = 0;
+  UINT  estimated_num_nfp  = 0;
+  float domain_x_start     = 0.0f;
+  float domain_y_start     = 0.0f;
+  float domain_z_start     = 0.0f;
+  float divide_length      = 0.0f;
 };
 
 struct GCFP_ID
@@ -52,14 +56,14 @@ struct GCFP_ID
 struct Changed_GCFPT_ID_Data
 {
   GCFP_ID prev_id;
-  UINT    cur_gc_index;
+  UINT    cur_gc_index = 0;
 };
 
 struct Neighbor_Information
 {
-  UINT    fp_index;
+  UINT    fp_index = 0;
   Vector3 translate_vector;
-  float   distance;
+  float   distance = 0.0f;
 };
 
 } // namespace ms
@@ -76,7 +80,7 @@ public:
     const Device_Manager&       device_manager);
 
 public:
-  void                             update(void);
+  void                             update(const ComPtr<ID3D11Buffer> _cptr_fluid_v_pos_buffer);
   const Neighbor_Informations&     search_for_fluid(const size_t fpid) const;
   ComPtr<ID3D11ShaderResourceView> nfp_info_buffer_SRV_cptr(void) const;
   ComPtr<ID3D11ShaderResourceView> nfp_count_buffer_SRV_cptr(void) const;
@@ -95,17 +99,17 @@ private:
   void init_GCFP_buffer(const std::vector<Vector3>& fluid_particle_pos_vectors);
   void init_nfp(void);
 
-  //temporary
+  // temporary
   void copy_to_ninfos(void);
-  //temporary
+  // temporary
 
 private:
-  const Device_Manager* _device_manager_ptr;
+  const Device_Manager* _DM_ptr;
 
   //////////////////////////////////////////////////////////////////////
 
-  Uniform_Grid_Constants _constant_data;
-  ComPtr<ID3D11Buffer>   _cptr_common_constnat_buffer;
+  Uniform_Grid_Common_CB_Data _common_CB_data;
+  ComPtr<ID3D11Buffer>   _cptr_common_CB;
 
   //////////////////////////////////////////////////////////////////////
 
@@ -123,7 +127,7 @@ private:
   ComPtr<ID3D11Buffer>              _cptr_changed_GCFP_ID_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
 
-  //find_changed_GCFPT_ID_CS
+  // find_changed_GCFPT_ID_CS
   ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFPT_ID_CS;
   ComPtr<ID3D11Buffer>        _cptr_find_changed_GCFPT_ID_CS_constant_buffer;
 
@@ -144,15 +148,15 @@ private:
   ComPtr<ID3D11ShaderResourceView>  _cptr_GCFP_ID_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_GCFP_ID_buffer_UAV;
 
-  //update_GCFPT_CS
+  // update_GCFPT_CS
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFP_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_GCFP_CS_constant_buffer;
+  ComPtr<ID3D11Buffer>        _cptr_update_GCFP_CS_CB;
 
   ComPtr<ID3D11ComputeShader> _cptr_rearrange_GCFP_CS;
 
   //////////////////////////////////////////////////////////////////////
 
-  //fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 Buffer
+  // fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 Buffer
   ComPtr<ID3D11Buffer>              _cptr_nfp_info_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_nfp_info_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_nfp_info_buffer_UAV;
@@ -170,7 +174,6 @@ private:
   // temporary
   ComPtr<ID3D11Buffer>             _cptr_fp_pos_buffer;
   ComPtr<ID3D11ShaderResourceView> _cptr_fp_pos_buffer_SRV;
-  ComPtr<ID3D11Buffer>             _cptr_fp_pos_staging_buffer;
 
   ComPtr<ID3D11Buffer> _cptr_nfp_info_staging_buffer;
   ComPtr<ID3D11Buffer> _cptr_nfp_count_staging_buffer;

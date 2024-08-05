@@ -109,18 +109,18 @@ private:
 
   //////////////////////////////////////////////////////////////////////////
   UINT  _num_fluid_particle = 0;
-  float _rho0               = 0.0f; //rest density
-  float _m0                 = 0.0f; //mass per particle
-  float _h                  = 0.0f; //smoothing length
+  float _rho0               = 0.0f; // rest density
+  float _m0                 = 0.0f; // mass per particle
+  float _h                  = 0.0f; // smoothing length
 
-  const Device_Manager* _DM_ptr;
+  const Device_Manager* _DM_ptr = nullptr;
 
-  ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CB; //constant buffer
+  ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CB; // constant buffer
 
-  //fluid particle만큼 position vector를 저장한 buffer
+  // fluid particle만큼 position vector를 저장한 buffer
   ComPtr<ID3D11Buffer> _cptr_fluid_v_pos_buffer;
 
-  //fluid particle만큼 number density를 저장한 buffer
+  // fluid particle만큼 number density를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_number_density_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_number_density_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_number_density_buffer_UAV;
@@ -128,10 +128,12 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_cal_number_density_CS;
   ComPtr<ID3D11Buffer>        _cptr_cal_number_density_CS_CB;
 
-  //scailing factor를 저장한 buffer
+  // scailing factor를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_scailing_factor_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_scailing_factor_buffer_UAV;
-  ComPtr<ID3D11ComputeShader>       _cptr_cal_scailing_factor_CS;
+
+  ComPtr<ID3D11ComputeShader> _cptr_cal_scailing_factor_CS;
+  ComPtr<ID3D11Buffer>        _cptr_cal_scailing_factor_CS_CB;
 };
 
 } // namespace ms
