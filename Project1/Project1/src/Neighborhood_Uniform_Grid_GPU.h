@@ -52,7 +52,7 @@ struct GCFP_ID
 struct Changed_GCFPT_ID_Data
 {
   GCFP_ID prev_id;
-  UINT     cur_gc_index;
+  UINT    cur_gc_index;
 };
 
 struct Neighbor_Information
@@ -66,23 +66,20 @@ struct Neighbor_Information
 
 namespace ms
 {
-class Neighborhood_Uniform_Grid_GPU : public Neighborhood
+class Neighborhood_Uniform_Grid_GPU
 {
 public:
   Neighborhood_Uniform_Grid_GPU(
     const Domain&               domain,
     const float                 divide_length,
     const std::vector<Vector3>& fluid_particle_pos_vectors,
-    const std::vector<Vector3>& boundary_particle_pos_vectors,
     const Device_Manager&       device_manager);
 
 public:
-  void update(
-    const std::vector<Vector3>& fluid_particle_pos_vectors,
-    const std::vector<Vector3>& boundary_particle_pos_vectors) override;
-
-  const Neighbor_Informations& search_for_fluid(const size_t fpid) const override;
-  const std::vector<size_t>&   search_for_boundary(const size_t bpid) const override;
+  void                             update(void);
+  const Neighbor_Informations&     search_for_fluid(const size_t fpid) const;
+  ComPtr<ID3D11ShaderResourceView> nfp_info_buffer_SRV_cptr(void) const;
+  ComPtr<ID3D11ShaderResourceView> nfp_count_buffer_SRV_cptr(void) const;
 
 private:
   Grid_Cell_ID grid_cell_id(const Vector3& v_pos) const;

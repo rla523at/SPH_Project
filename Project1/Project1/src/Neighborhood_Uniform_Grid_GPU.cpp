@@ -12,7 +12,6 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   const Domain&               domain,
   const float                 divide_length,
   const std::vector<Vector3>& fluid_particle_pos_vectors,
-  const std::vector<Vector3>& boundary_particle_pos_vectors,
   const Device_Manager&       device_manager)
     : _device_manager_ptr(&device_manager)
 {
@@ -37,7 +36,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   this->init_GCFP_buffer(fluid_particle_pos_vectors);
   _cptr_find_changed_GCFPT_ID_CS       = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
   _cptr_update_GCFP_CS                 = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
-  _cptr_update_GCFP_CS_constant_buffer = device_manager.create_constant_buffer(16);
+  _cptr_update_GCFP_CS_constant_buffer = device_manager.create_CB(16);
   _cptr_rearrange_GCFP_CS              = device_manager.create_CS(L"hlsl/rearrange_GCFP_CS.hlsl");
 
   this->init_nfp();
@@ -229,14 +228,17 @@ const Neighbor_Informations& Neighborhood_Uniform_Grid_GPU::search_for_fluid(con
   return _ninfoss[pid];
 }
 
-const std::vector<size_t>& Neighborhood_Uniform_Grid_GPU::search_for_boundary(const size_t bpid) const
+ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_info_buffer_SRV_cptr(void) const
 {
-  return _bpid_to_neighbor_fpids[bpid];
+  return _cptr_nfp_info_buffer_SRV;
 }
 
-void Neighborhood_Uniform_Grid_GPU::update(
-  const std::vector<Vector3>& fluid_particle_pos_vectors,
-  const std::vector<Vector3>& boundary_particle_pos_vectors)
+ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_count_buffer_SRV_cptr(void) const
+{
+  return _cptr_nfp_count_buffer_SRV;
+}
+
+void Neighborhood_Uniform_Grid_GPU::update(void)
 {
   // temporary code
   const auto cptr_context = _device_manager_ptr->context_cptr();

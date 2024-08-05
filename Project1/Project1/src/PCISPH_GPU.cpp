@@ -5,12 +5,31 @@
 #include "Kernel.h"
 #include "Neighborhood_Uniform_Grid.h"
 #include "Neighborhood_Uniform_Grid_GPU.h"
+#include "Utility.h"
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <omp.h>
 
 #undef max
+
+namespace ms
+{
+struct Cubic_Spline_Kernel_CB_Data
+{
+  float h           = 0.0f;
+  float coefficient = 0.0f;
+  float padding[2];
+};
+
+struct Cal_Number_Density_CS_CB_Data
+{
+  UINT estimated_num_nfp = 200;
+  float padding[3];
+};
+
+} // namespace ms
 
 namespace ms
 {
@@ -20,6 +39,7 @@ PCISPH_GPU::PCISPH_GPU(
   const Device_Manager&          device_manager)
     : _domain(solution_domain)
 {
+  constexpr float pi                  = std::numbers::pi_v<float>;
   constexpr float smooth_length_param = 1.2f;
 
   _dt                  = 1.0e-2f;
@@ -48,16 +68,50 @@ PCISPH_GPU::PCISPH_GPU(
   _uptr_kernel = std::make_unique<Cubic_Spline_Kernel>(_smoothing_length);
 
   const float divide_length = _uptr_kernel->supprot_radius();
-  _uptr_neighborhood = std::make_unique<Neighborhood_Uniform_Grid_GPU>(
+  _uptr_neighborhood        = std::make_unique<Neighborhood_Uniform_Grid_GPU>(
     solution_domain,
     divide_length,
     _fluid_particles.position_vectors,
-    _boundary_position_vectors,
     device_manager);
 
   this->init_mass_and_scailing_factor();
 
   _max_density_errors.resize(omp_get_max_threads());
+
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::init_for_utility_using_GPU(device_manager);
+
+  _DM_ptr = &device_manager;
+
+  _num_fluid_particle = num_fluid_particle;
+
+  _cptr_fluid_v_pos_buffer = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.position_vectors.data());
+
+  _cptr_number_density_buffer     = _DM_ptr->create_structured_buffer<float>(_num_fluid_particle);
+  _cptr_number_density_buffer_SRV = _DM_ptr->create_SRV(_cptr_number_density_buffer);
+  _cptr_number_density_buffer_UAV = _DM_ptr->create_UAV(_cptr_number_density_buffer);
+
+  _cptr_cal_number_density_CS     = _DM_ptr->create_CS(L"hlsl/cal_number_density_CS.hlsl");  
+  {
+    Cal_Number_Density_CS_CB_Data CB_data;
+    _cptr_cal_number_density_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);  
+  }
+
+  //init mass
+  this->update_number_density();
+  const auto max_value_buffer   = Utility::find_max_value_float(_cptr_number_density_buffer, _num_fluid_particle);
+  const auto max_number_density = _DM_ptr->read<float>(max_value_buffer)[0];
+  _m0                           = _rho0 / max_number_density;
+
+  _h = _smoothing_length;
+  
+  {
+    Cubic_Spline_Kernel_CB_Data CB_data = {};
+    CB_data.h                           = _h;
+    CB_data.coefficient                 = 3.0f / (2.0f * pi * _h * _h * _h);
+
+    _cptr_cubic_spline_kerenel_CB = _DM_ptr->create_CB_imuutable(&CB_data);  
+  }
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
@@ -259,7 +313,7 @@ float PCISPH_GPU::predict_density_and_update_pressure_and_cal_error(void)
     const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(i);
     const auto& neighbor_indexes      = neighbor_informations.indexes;
 
-    const auto num_neighbor = neighbor_indexes.size();    
+    const auto num_neighbor = neighbor_indexes.size();
 
     for (int j = 0; j < num_neighbor; j++)
     {
@@ -476,57 +530,66 @@ void PCISPH_GPU::init_mass_and_scailing_factor(void)
   }
 }
 
-float PCISPH_GPU::cal_scailing_factor(void) const
+float PCISPH_GPU::cal_scailing_factor(void)
 {
-  const auto num_particle = _fluid_particles.num_particles();
+  this->update_number_density();
+  const auto cptr_max_index_buffer     = Utility::find_max_index_float(_cptr_number_density_buffer, _num_fluid_particle);
+  const auto cptr_max_index_buffer_SRV = _DM_ptr->create_SRV(cptr_max_index_buffer);
+  const auto cptr_nfp_info_buffer_SRV  = _uptr_neighborhood->nfp_info_buffer_SRV_cptr();
+  const auto cptr_nfp_count_buffer_SRV = _uptr_neighborhood->nfp_count_buffer_SRV_cptr();
 
-  //find particle which has maximum number density
-  size_t max_index          = 0;
-  float  max_number_density = 0.0f;
+  constexpr UINT num_CB = 2;
+  constexpr UINT 
 
-  for (size_t i = 0; i < num_particle; i++)
-  {
-    const float number_density = this->cal_number_density(i);
+  //const auto num_particle = _fluid_particles.num_particles();
 
-    if (max_number_density < number_density)
-    {
-      max_number_density = number_density;
-      max_index          = i;
-    }
-  }
+  ////find particle which has maximum number density
+  //size_t max_index          = 0;
+  //float  max_number_density = 0.0f;
 
-  const float rho0 = _rest_density;
-  const float m0   = _mass_per_particle;
-  const float beta = _dt * _dt * m0 * m0 * 2 / (rho0 * rho0);
-  const float h    = _smoothing_length;
+  //for (size_t i = 0; i < num_particle; i++)
+  //{
+  //  const float number_density = this->cal_number_density(i);
 
-  const auto& neighbor_informations      = _uptr_neighborhood->search_for_fluid(max_index);
-  const auto& neighbor_translate_vectors = neighbor_informations.translate_vectors;
-  const auto& neighbor_distances         = neighbor_informations.distances;
-  const auto  num_neighbor               = neighbor_translate_vectors.size();
+  //  if (max_number_density < number_density)
+  //  {
+  //    max_number_density = number_density;
+  //    max_index          = i;
+  //  }
+  //}
 
-  Vector3 v_sum_grad_kernel = {0.0f, 0.0f, 0.0f};
-  float   size_sum          = 0.0f;
-  for (size_t i = 0; i < num_neighbor; ++i)
-  {
-    const float distance = neighbor_distances[i];
+  //const float rho0 = _rest_density;
+  //const float m0   = _mass_per_particle;
+  //const float beta = _dt * _dt * m0 * m0 * 2 / (rho0 * rho0);
+  //const float h    = _smoothing_length;
 
-    //ignore my self
-    if (distance == 0)
-      continue;
+  //const auto& neighbor_informations      = _uptr_neighborhood->search_for_fluid(max_index);
+  //const auto& neighbor_translate_vectors = neighbor_informations.translate_vectors;
+  //const auto& neighbor_distances         = neighbor_informations.distances;
+  //const auto  num_neighbor               = neighbor_translate_vectors.size();
 
-    const auto& v_xij = neighbor_translate_vectors[i];
+  //Vector3 v_sum_grad_kernel = {0.0f, 0.0f, 0.0f};
+  //float   size_sum          = 0.0f;
+  //for (size_t i = 0; i < num_neighbor; ++i)
+  //{
+  //  const float distance = neighbor_distances[i];
 
-    const auto v_grad_q      = 1.0f / (h * distance) * v_xij;
-    const auto v_grad_kernel = _uptr_kernel->dWdq(distance) * v_grad_q;
+  //  //ignore my self
+  //  if (distance == 0)
+  //    continue;
 
-    v_sum_grad_kernel += v_grad_kernel;
-    size_sum += v_grad_kernel.Dot(v_grad_kernel);
-  }
+  //  const auto& v_xij = neighbor_translate_vectors[i];
 
-  const float sum_dot_sum = v_sum_grad_kernel.Dot(v_sum_grad_kernel);
+  //  const auto v_grad_q      = 1.0f / (h * distance) * v_xij;
+  //  const auto v_grad_kernel = _uptr_kernel->dWdq(distance) * v_grad_q;
 
-  return 1.0f / (beta * (sum_dot_sum + size_sum));
+  //  v_sum_grad_kernel += v_grad_kernel;
+  //  size_sum += v_grad_kernel.Dot(v_grad_kernel);
+  //}
+
+  //const float sum_dot_sum = v_sum_grad_kernel.Dot(v_sum_grad_kernel);
+
+  //return 1.0f / (beta * (sum_dot_sum + size_sum));
 }
 
 float PCISPH_GPU::cal_number_density(const size_t fluid_particle_id) const
@@ -544,6 +607,45 @@ float PCISPH_GPU::cal_number_density(const size_t fluid_particle_id) const
   }
 
   return number_density;
+}
+
+void PCISPH_GPU::update_number_density(void)
+{
+  const auto cptr_nfp_info_buffer_SRV  = _uptr_neighborhood->nfp_info_buffer_SRV_cptr();
+  const auto cptr_nfp_count_buffer_SRV = _uptr_neighborhood->nfp_count_buffer_SRV_cptr();
+
+  constexpr size_t num_CB     = 2;
+  constexpr size_t num_SRV    = 2;
+  constexpr size_t num_UAV    = 1;
+  constexpr UINT   num_thread = 256;
+
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_cubic_spline_kerenel_CB.Get(),
+  };
+
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    cptr_nfp_info_buffer_SRV.Get(),
+    cptr_nfp_count_buffer_SRV.Get(),
+  };
+
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_number_density_buffer_UAV.Get(),
+  };
+
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_cal_number_density_CS.Get(), nullptr, NULL);
+
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
+
+  _DM_ptr->CS_barrier();
+}
+
+float PCISPH_GPU::cal_mass(void) const
+{
 }
 
 } // namespace ms

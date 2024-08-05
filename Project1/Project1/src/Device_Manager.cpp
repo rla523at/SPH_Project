@@ -263,11 +263,31 @@ ComPtr<ID3D11ShaderResourceView> Device_Manager::create_SRV(ID3D11Resource* reso
   return SRV;
 }
 
+ComPtr<ID3D11ShaderResourceView> Device_Manager::create_SRV(const ComPtr<ID3D11Buffer> cptr_buffer) const
+{
+  ComPtr<ID3D11ShaderResourceView> SRV;
+
+  const auto result = _cptr_device->CreateShaderResourceView(cptr_buffer.Get(), nullptr, SRV.GetAddressOf());
+  REQUIRE(!FAILED(result), "shader resource view creation should succeed");
+
+  return SRV;
+}
+
 ComPtr<ID3D11UnorderedAccessView> Device_Manager::create_UAV(ID3D11Resource* resource_ptr) const
 {
   ComPtr<ID3D11UnorderedAccessView> UAV;
 
   const auto result = _cptr_device->CreateUnorderedAccessView(resource_ptr, nullptr, UAV.GetAddressOf());
+  REQUIRE(!FAILED(result), "unordered access view creation should succeed");
+
+  return UAV;
+}
+
+ComPtr<ID3D11UnorderedAccessView> Device_Manager::create_UAV(const ComPtr<ID3D11Buffer> cptr_buffer) const
+{
+  ComPtr<ID3D11UnorderedAccessView> UAV;
+
+  const auto result = _cptr_device->CreateUnorderedAccessView(cptr_buffer.Get(), nullptr, UAV.GetAddressOf());
   REQUIRE(!FAILED(result), "unordered access view creation should succeed");
 
   return UAV;
@@ -301,7 +321,7 @@ void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cp
   REQUIRE(!FAILED(result), "texture like back buffer creation should succeed");
 }
 
-ComPtr<ID3D11Buffer> Device_Manager::create_constant_buffer(const UINT data_size) const
+ComPtr<ID3D11Buffer> Device_Manager::create_CB(const UINT data_size) const
 {
   D3D11_BUFFER_DESC desc   = {};
   desc.ByteWidth           = data_size;
@@ -414,6 +434,14 @@ UINT Device_Manager::read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) con
   _cptr_context->Unmap(_cptr_count_staging_buffer.Get(), 0);
 
   return count;
+}
+
+UINT Device_Manager::num_data(const ComPtr<ID3D11Buffer> cptr_buffer, const UINT data_size) const
+{
+  D3D11_BUFFER_DESC desc = {};
+  cptr_buffer->GetDesc(&desc);
+
+  return desc.ByteWidth / data_size;
 }
 
 void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const

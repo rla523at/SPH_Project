@@ -2,18 +2,20 @@
 #include "SPH_Common_Data.h"
 #include "SPH_Scheme.h"
 
+#include <d3d11.h>
 #include <memory>
 
 // Forward Declaration
 namespace ms
 {
-class Neighborhood;
+class Neighborhood_Uniform_Grid_GPU;
 class Cubic_Spline_Kernel;
 class Device_Manager;
 } // namespace ms
 
 namespace ms
 {
+
 struct PCISPH_Constant_Data
 {
   float dt                  = 0.0f;
@@ -67,8 +69,14 @@ private:
   void  init_mass_and_scailing_factor(void);
 
 private:
-  float cal_scailing_factor(void) const;
   float cal_number_density(const size_t fluid_particle_id) const;
+
+  //////////////////////////////////////////////////////////////////////////
+
+private:
+  void  update_number_density(void);
+  float cal_mass(void) const;
+  float cal_scailing_factor(void);
 
 private:
   float  _time                 = 0.0f;
@@ -84,10 +92,10 @@ private:
   size_t _max_iter             = 0;
   size_t _min_iter             = 3;
 
-  Fluid_Particles                      _fluid_particles;
-  std::unique_ptr<Neighborhood>        _uptr_neighborhood;
-  std::unique_ptr<Cubic_Spline_Kernel> _uptr_kernel;
-  Domain                               _domain;
+  Fluid_Particles                                _fluid_particles;
+  std::unique_ptr<Neighborhood_Uniform_Grid_GPU> _uptr_neighborhood;
+  std::unique_ptr<Cubic_Spline_Kernel>           _uptr_kernel;
+  Domain                                         _domain;
 
   std::vector<Vector3> _pressure_acceleration_vectors;
   std::vector<Vector3> _current_position_vectors;
@@ -98,6 +106,32 @@ private:
 
   // Temp
   std::vector<Vector3> _boundary_position_vectors;
+
+  //////////////////////////////////////////////////////////////////////////
+  UINT  _num_fluid_particle = 0;
+  float _rho0               = 0.0f; //rest density
+  float _m0                 = 0.0f; //mass per particle
+  float _h                  = 0.0f; //smoothing length
+
+  const Device_Manager* _DM_ptr;
+
+  ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CB; //constant buffer
+
+  //fluid particle만큼 position vector를 저장한 buffer
+  ComPtr<ID3D11Buffer> _cptr_fluid_v_pos_buffer;
+
+  //fluid particle만큼 number density를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_number_density_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_number_density_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_number_density_buffer_UAV;
+
+  ComPtr<ID3D11ComputeShader> _cptr_cal_number_density_CS;
+  ComPtr<ID3D11Buffer>        _cptr_cal_number_density_CS_CB;
+
+  //scailing factor를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_scailing_factor_buffer;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_scailing_factor_buffer_UAV;
+  ComPtr<ID3D11ComputeShader>       _cptr_cal_scailing_factor_CS;
 };
 
 } // namespace ms

@@ -7,6 +7,14 @@
 #include <utility>
 #include <vector>
 
+/*  Abbreviation
+    CB  : Constant Buffer
+    DM  : Device Manager
+    SRV : Shader Resource View
+    UAV : Unordered Acess View
+*/ 
+
+
 namespace ms
 {
 class Device_Manager
@@ -22,7 +30,7 @@ public:
 
 public:
   template <typename T>
-  ComPtr<ID3D11Buffer> create_constant_buffer_imuutable(T* init_data_ptr) const;
+  ComPtr<ID3D11Buffer> create_CB_imuutable(T* init_data_ptr) const;
 
   template <typename T>
   ComPtr<ID3D11Buffer> create_structured_buffer(const size_t num_data, const T* init_data_ptr = nullptr) const;
@@ -80,10 +88,12 @@ public:
   void                        create_PS(const wchar_t* file_name, ComPtr<ID3D11PixelShader>& cptr_PS) const;
 
   ComPtr<ID3D11ShaderResourceView>  create_SRV(ID3D11Resource* resource_ptr) const;
+  ComPtr<ID3D11ShaderResourceView>  create_SRV(const ComPtr<ID3D11Buffer> cptr_buffer) const;
   ComPtr<ID3D11UnorderedAccessView> create_UAV(ID3D11Resource* resource_ptr) const;
+  ComPtr<ID3D11UnorderedAccessView> create_UAV(const ComPtr<ID3D11Buffer> cptr_buffer) const;
   ComPtr<ID3D11UnorderedAccessView> create_AC_UAV(ID3D11Resource* resource_ptr, const UINT num_data) const;
 
-  ComPtr<ID3D11Buffer>    create_constant_buffer(const UINT data_size) const;
+  ComPtr<ID3D11Buffer>    create_CB(const UINT data_size) const;
   ComPtr<ID3D11Buffer>    create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Buffer>    create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Texture2D> create_staging_texture_read(const ComPtr<ID3D11Texture2D> cptr_target_buffer) const;
@@ -99,6 +109,8 @@ public:
   void copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const;
   void CS_barrier(void) const;
   UINT read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) const;
+
+  UINT num_data(const ComPtr<ID3D11Buffer> cptr_buffer, const UINT data_size) const;
 
   ComPtr<ID3D11Device>              device_cptr(void) const;
   ComPtr<ID3D11DeviceContext>       context_cptr(void) const;
@@ -150,7 +162,7 @@ namespace ms
 {
 
 template <typename T>
-ComPtr<ID3D11Buffer> Device_Manager::create_constant_buffer_imuutable(T* init_data_ptr) const
+ComPtr<ID3D11Buffer> Device_Manager::create_CB_imuutable(T* init_data_ptr) const
 {
   const auto data_size = sizeof(T);
 

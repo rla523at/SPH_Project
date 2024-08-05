@@ -1,3 +1,6 @@
+# 2024.08.05
+## parallel reduction algorithm
+
 # 2024.08.02
 ## Uniform Grid CPU >> GPU
 * GPU 코드 결과 검증 완료
@@ -49,6 +52,8 @@ PCISPH는 다음 단계로 이루어져 있다.
 **[진행사항]**
 
 * 1단계 (scailing factor 계산) GPU 코드 작성 중
+
+</br></br></br>
 
 # 2024.08.01
 ## Uniform Grid CPU >> GPU

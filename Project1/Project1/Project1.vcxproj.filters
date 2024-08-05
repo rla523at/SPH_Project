@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="헤더 파일">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
@@ -16,133 +12,30 @@
     <Filter Include="HLSL">
       <UniqueIdentifier>{d528d9d6-d4fa-4c17-ad5c-c425ca2fc45f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\Mesh">
-      <UniqueIdentifier>{dce09a6a-1ecc-4dbf-9957-e02d5e360598}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\Manager">
-      <UniqueIdentifier>{8c42eed7-69b6-4df7-af2b-a46a9a6a7579}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\SPH">
-      <UniqueIdentifier>{b7c656f2-90ba-4d08-9a3b-635e884967c6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\SPH\Neighborhood">
-      <UniqueIdentifier>{5b0ab4cf-9014-47c8-b6bb-b77d058462b3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="HLSL\Uniform_Grid">
       <UniqueIdentifier>{1ec2eb58-36ad-486f-832c-f958a094f437}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\SPH\Scheme">
-      <UniqueIdentifier>{39a0b234-b1d2-4839-8eaa-24db3aed78aa}</UniqueIdentifier>
+    <Filter Include="HLSL\PCISPH">
+      <UniqueIdentifier>{4fbdf4c9-74b1-4659-8c9b-2d1a91c06d9e}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClCompile>
-    <ClCompile Include="src\SPH.cpp">
-      <Filter>소스 파일\SPH</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Kernel.cpp">
-      <Filter>소스 파일\SPH</Filter>
-    </ClCompile>
-    <ClCompile Include="src\main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Device_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="src\GUI_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Square.cpp">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Texture_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Window_Manager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Camera.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Debugger.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Neighborhood_Uniform_Grid_GPU.cpp">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClCompile>
-    <ClCompile Include="src\PCISPH.cpp">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClCompile>
-    <ClCompile Include="src\PCISPH_GPU.cpp">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClCompile>
-    <ClCompile Include="src\WCSPH.cpp">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\Neighborhood.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Neighborhood_Brute_Force.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Neighborhood_Uniform_Grid.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SPH.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SPH_Common_Data.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Abbreviation.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Kernel.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Device_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="src\GUI_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Mesh.h">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Square.h">
-      <Filter>소스 파일\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Texture_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Window_Manager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Camera.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Debugger.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SPH_Scheme.h">
-      <Filter>소스 파일\SPH</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Neighborhood_Uniform_Grid_GPU.h">
-      <Filter>소스 파일\SPH\Neighborhood</Filter>
-    </ClInclude>
-    <ClInclude Include="src\PCISPH.h">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClInclude>
-    <ClInclude Include="src\PCISPH_GPU.h">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClInclude>
-    <ClInclude Include="src\WCSPH.h">
-      <Filter>소스 파일\SPH\Scheme</Filter>
-    </ClInclude>
+    <Filter Include="src">
+      <UniqueIdentifier>{3700b3e7-d5d5-4418-b26f-1bdc39af78da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Manager">
+      <UniqueIdentifier>{02436f08-af9b-4785-9aed-5896f913ecad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SPH">
+      <UniqueIdentifier>{5d48af68-8cf1-48b0-bece-44be6b2cd001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SPH\Neighborhood">
+      <UniqueIdentifier>{8f84d4e6-c64a-477b-a90b-2107760d81ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\SPH\SPHScheme">
+      <UniqueIdentifier>{30b0c44b-6afa-4068-acf1-701a8da6a927}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Mesh">
+      <UniqueIdentifier>{53e78680-45f3-46e0-a16a-544c6ea25b15}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="hlsl\SPH_boundary_PS.hlsl">
@@ -178,10 +71,137 @@
     <FxCompile Include="hlsl\rearrange_GCFP_CS.hlsl">
       <Filter>HLSL\Uniform_Grid</Filter>
     </FxCompile>
+    <FxCompile Include="hlsl\cal_number_density_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\cal_scailing_factor_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="hlsl\uniform_grid_common.hlsli">
       <Filter>HLSL\Uniform_Grid</Filter>
     </None>
+    <None Include="hlsl\PCISPH_common.hlsli">
+      <Filter>HLSL\PCISPH</Filter>
+    </None>
+    <None Include="hlsl\Cubic_Spline_Kernel.hlsli">
+      <Filter>HLSL\PCISPH</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Device_Manager.cpp">
+      <Filter>src\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GUI_Manager.cpp">
+      <Filter>src\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Texture_Manager.cpp">
+      <Filter>src\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Window_Manager.cpp">
+      <Filter>src\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Neighborhood_Uniform_Grid.cpp">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Neighborhood_Uniform_Grid_GPU.cpp">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Kernel.cpp">
+      <Filter>src\SPH</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SPH.cpp">
+      <Filter>src\SPH</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Debugger.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WCSPH.cpp">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PCISPH.cpp">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PCISPH_GPU.cpp">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Utility.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Square.cpp">
+      <Filter>src\Mesh</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Device_Manager.h">
+      <Filter>src\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\GUI_Manager.h">
+      <Filter>src\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Texture_Manager.h">
+      <Filter>src\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Window_Manager.h">
+      <Filter>src\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood.h">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Brute_Force.h">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Uniform_Grid.h">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Neighborhood_Uniform_Grid_GPU.h">
+      <Filter>src\SPH\Neighborhood</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Kernel.h">
+      <Filter>src\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SPH.h">
+      <Filter>src\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SPH_Common_Data.h">
+      <Filter>src\SPH</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Abbreviation.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Debugger.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SPH_Scheme.h">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WCSPH.h">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PCISPH.h">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PCISPH_GPU.h">
+      <Filter>src\SPH\SPHScheme</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utility.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mesh.h">
+      <Filter>src\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Square.h">
+      <Filter>src\Mesh</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
