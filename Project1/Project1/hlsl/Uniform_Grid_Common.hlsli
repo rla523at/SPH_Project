@@ -31,6 +31,13 @@ struct Changed_GCFP_ID_Data
   uint cur_gc_index;
 };
 
+GCFP_ID make_GCFP_ID(uint gc_index, uint gcfp_index)
+{
+  GCFP_ID result;
+  result.gc_index   = gc_index;
+  result.gcfp_index = gcfp_index;
+  return result;
+}
 
 uint grid_cell_index(float3 position)
 {

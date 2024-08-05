@@ -12,8 +12,7 @@ void main(uint3 DTID : SV_DispatchThreadID)
   
   const uint gc_index     = DTID.x;  
   const uint num_gcfp     = GCFP_count_buffer[gc_index];
-  const uint start_index  = gc_index * g_estimated_num_gcfp;
-  const uint last_index   = start_index + num_gcfp - 1;
+  const uint last_index   = gc_index * g_estimated_num_gcfp + num_gcfp - 1;
   
   uint change_index = last_index;
   for (uint i = 0; i < num_gcfp; ++i)

@@ -20,16 +20,13 @@ void main()
   {
     const Changed_GCFP_ID_Data data = changed_GCFP_ID_buffer.Consume();
     
-    const GCFP_ID   prev_id             = data.prev_id;
-    const uint      prev_id_GCFP_index  = prev_id.GCFP_index();
+    const uint    cur_gcfp_index  = GCFP_count_buffer[data.cur_gc_index];
+    const GCFP_ID cur_id          = make_GCFP_ID(data.cur_gc_index, cur_gcfp_index);
     
-    const uint      fp_index            = fp_index_buffer[prev_id_GCFP_index];
+    const uint prev_id_GCFP_index = data.prev_id.GCFP_index(); 
+    const uint cur_id_GCFP_index  = cur_id.GCFP_index();
     
-    GCFP_ID cur_id;
-    cur_id.gc_index   = data.cur_gc_index;
-    cur_id.gcfp_index = GCFP_count_buffer[data.cur_gc_index];
-   
-    const uint cur_id_GCFP_index = cur_id.GCFP_index();
+    const uint fp_index = fp_index_buffer[prev_id_GCFP_index];
     
     //update fp index buffer
     fp_index_buffer[prev_id_GCFP_index] = -1;      
@@ -39,6 +36,7 @@ void main()
     GCFP_ID_buffer[fp_index] = cur_id;
     
     //update GCFP count buffer
-    GCFP_count_buffer[cur_id.gc_index]++;
+    //prev_id가 지워진 정보는 rearrange_GCFP_CS에서 업데이트함
+    GCFP_count_buffer[cur_id.gc_index]++; //이 부분 때문에 병렬화가 안됨
   }
 }

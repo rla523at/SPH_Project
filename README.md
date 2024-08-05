@@ -1,3 +1,55 @@
+# 2024.08.02
+## Uniform Grid CPU >> GPU
+* GPU 코드 결과 검증 완료
+
+### Texture2D > StructuredBuffer
+기존에 Texture2D로 구현된 데이터들이 있었다.
+
+```
+// geometry cell마다 neighbor geometry cell의 index들을 저장한 texture
+ComPtr<ID3D11Texture2D>          _cptr_ngc_texture;
+
+// geometry cell마다 속해있는 fluid particle의 index들을 저장한 texture
+ComPtr<ID3D11Texture2D>           _cptr_GCFP_texture;
+
+// fluid particle마다 neighbor fluid particle의 index를 저장한 texture
+ComPtr<ID3D11Texture2D>           _cptr_nfp_texture;
+
+...
+```
+
+실제로 이 데이터들을 사용할 때, data access는 width 방향으로만 이루어진다.
+
+하지만 Texture2D에서는 Tiling하여 데이터를 저장하기 때문에 전체 width에 대해서 spatial locality가 보장되지 않아 적합하지 않은 데이터 구조이다.
+
+따라서, 현재 data access pattern에는 Texture2D보다 StructuredBuffer가 더 적합하기 때문에 Texture2D를 StructuredBuffer로 전부 수정하였다.
+
+```
+// geometry cell * estimated ngc만큼 ngc index을 저장한 buffer
+ComPtr<ID3D11Buffer>             _cptr_ngc_index_buffer;
+
+// geometry cell * estimated gcfp만큼 fp index를 저장한 buffer
+ComPtr<ID3D11Buffer>              _cptr_fp_index_buffer;
+
+//fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 Buffer
+ComPtr<ID3D11Buffer>              _cptr_nfp_info_buffer;
+```
+
+## PCISPH CPU >> GPU
+PCISPH는 다음 단계로 이루어져 있다.
+
+1. scailing factor를 계산한다.
+2. pressure을 제외한 acceleration을 계산한다.
+3. Pressure acceleration 계산을 위한 Iteration을 돈다.
+   1. velocity와 position을 예측한다.
+   2. density와 density error를 계산하고 pressure을 업데이트 한다.
+   3. pressure acceleration을 계산한다.
+4. velocity와 position을 업데이트한다.
+
+**[진행사항]**
+
+* 1단계 (scailing factor 계산) GPU 코드 작성 중
+
 # 2024.08.01
 ## Uniform Grid CPU >> GPU
 
