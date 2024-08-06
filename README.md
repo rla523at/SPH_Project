@@ -13,7 +13,9 @@ PCISPH는 다음 단계로 이루어져 있다.
 **[진행사항]**
 
 * 1단계 (scailing factor 계산) GPU 코드 작성 및 검증 완료
-* 2단계 (pressure을 제외한 acceleration을 계산) GPU 코드 작성 중
+* 2단계 (pressure을 제외한 acceleration을 계산) GPU 코드 작성 및 검증 완료
+* 3-1 단계 (velocity와 position 예측) GPU 코드 작성 완료
+* 3-1 단계 (velocity와 position 예측) GPU 코드 디버깅
 
 ### parallel reduction algorithm
 CPU 코드 중 어떻게 병렬화 해야 될지 고민이 되는 코드들이 있었다.

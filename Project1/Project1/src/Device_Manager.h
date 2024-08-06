@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Abbreviation.h"
+#include "Buffer_Set.h"
 
 #include "../../_lib/_header/msexception/Exception.h"
 #include <algorithm>
@@ -13,6 +13,8 @@
     SRV : Shader Resource View
     UAV : Unordered Acess View
 */
+
+
 
 namespace ms
 {
@@ -38,6 +40,9 @@ public:
   ComPtr<ID3D11Buffer> create_structured_buffer_immutable(const size_t num_data, const T* init_data_ptr) const;
 
   template <typename T>
+  Buffer_Set create_structured_buffer_set(const size_t num_data, const T* init_data_ptr = nullptr) const;
+
+  template <typename T>
   ComPtr<ID3D11Texture2D> create_texutre_2D(
     const UINT        width,
     const UINT        height,
@@ -50,6 +55,9 @@ public:
     const UINT        height,
     const DXGI_FORMAT format,
     T*                init_data_ptr = nullptr) const;
+
+  template <typename T>
+  void read(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_buffer, const UINT num_read_data = -1) const;
 
   template <typename T>
   std::vector<T> read(const ComPtr<ID3D11Buffer> cptr_buffer) const;
@@ -247,6 +255,18 @@ ComPtr<ID3D11Buffer> Device_Manager::create_structured_buffer_immutable(const si
 }
 
 template <typename T>
+Buffer_Set Device_Manager::create_structured_buffer_set(const size_t num_data, const T* init_data_ptr) const
+{
+  Buffer_Set result = {};
+  result.cptr_buffer = this->create_structured_buffer<T>(num_data, init_data_ptr);
+  result.cptr_SRV    = this->create_SRV(result.cptr_buffer);
+  result.cptr_UAV    = this->create_UAV(result.cptr_buffer);
+
+  return result;
+}
+
+
+template <typename T>
 ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D(
   const UINT        width,
   const UINT        height,
@@ -319,15 +339,13 @@ ComPtr<ID3D11Texture2D> Device_Manager::create_texutre_2D_immutable(
 }
 
 template <typename T>
-std::vector<T> Device_Manager::read(const ComPtr<ID3D11Buffer> cptr_buffer) const
+void Device_Manager::read(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_buffer, const UINT num_read_data) const
 {
   D3D11_BUFFER_DESC desc;
   cptr_buffer->GetDesc(&desc);
 
-  constexpr auto data_size = sizeof(T);
-  const auto     num_data  = desc.ByteWidth / data_size;
-
-  std::vector<T> datas(num_data);
+  constexpr UINT data_size = sizeof(T);
+  const auto     num_data  = (std::min)(desc.ByteWidth / data_size, num_read_data);
 
   ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
   if (desc.Usage != D3D11_USAGE_STAGING)
@@ -338,8 +356,21 @@ std::vector<T> Device_Manager::read(const ComPtr<ID3D11Buffer> cptr_buffer) cons
 
   D3D11_MAPPED_SUBRESOURCE ms;
   _cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
-  memcpy(datas.data(), ms.pData, num_data * data_size);
+  memcpy(dest_ptr, ms.pData, num_data * data_size);
   _cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
+}
+
+template <typename T>
+std::vector<T> Device_Manager::read(const ComPtr<ID3D11Buffer> cptr_buffer) const
+{
+  D3D11_BUFFER_DESC desc;
+  cptr_buffer->GetDesc(&desc);
+
+  constexpr auto data_size = sizeof(T);
+  const auto     num_data  = desc.ByteWidth / data_size;
+
+  std::vector<T> datas(num_data);
+  this->read(datas.data(), cptr_buffer);
 
   return datas;
 }
@@ -378,26 +409,28 @@ std::vector<std::vector<T>> Device_Manager::read(const ComPtr<ID3D11Texture2D> s
 template <typename T>
 inline T Device_Manager::read_front(const ComPtr<ID3D11Buffer> cptr_buffer) const
 {
-  D3D11_BUFFER_DESC desc;
-  cptr_buffer->GetDesc(&desc);
-
-  constexpr auto data_size = sizeof(T);
-
   T data = {};
-
-  ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
-  if (desc.Usage != D3D11_USAGE_STAGING)
-  {
-    cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
-    _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());
-  }
-
-  D3D11_MAPPED_SUBRESOURCE ms;
-  _cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
-  memcpy(&data, ms.pData, data_size);
-  _cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
-
+  read(&data, cptr_buffer, 1);
   return data;
+
+  //D3D11_BUFFER_DESC desc;
+  //cptr_buffer->GetDesc(&desc);
+
+  //constexpr auto data_size = sizeof(T);
+
+  //ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
+  //if (desc.Usage != D3D11_USAGE_STAGING)
+  //{
+  //  cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
+  //  _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());
+  //}
+
+  //D3D11_MAPPED_SUBRESOURCE ms;
+  //_cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+  //memcpy(&data, ms.pData, data_size);
+  //_cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
+
+  //return data;
 }
 
 template <typename T>

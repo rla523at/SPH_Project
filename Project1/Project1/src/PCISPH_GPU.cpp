@@ -25,14 +25,38 @@ struct Cubic_Spline_Kernel_CB_Data
 
 struct Cal_Number_Density_CS_CB_Data
 {
-  UINT  estimated_num_nfp = 0;
-  float padding[3];
+  UINT  estimated_num_nfp  = 0;
+  UINT  num_fluid_particle = 0;
+  float padding[2];
 };
 
 struct Cal_Scailing_Factor_CS_CB_Data
 {
   UINT  estimated_num_nfp = 0;
   float beta              = 0.0f;
+  float padding[2];
+};
+
+struct Init_Fluid_Acceleration_CS_CB_Data
+{
+  Vector3 v_a_gravity;
+  float   m0                  = 0.0f;
+  float   viscosity_constant  = 0.0f;
+  float   regularization_term = 0.0f;
+  UINT    num_fluid_particle  = 0;
+  UINT    estimated_num_nfp   = 0;
+};
+
+struct Init_Pressure_and_a_pressure_CS_CB_Data
+{
+  UINT  num_fluid_particle = 0;
+  float padding[3];
+};
+
+struct Predict_Vel_and_Pos_CS_CB_Data
+{
+  UINT  num_fp = 0;
+  float dt     = 0.0f;
   float padding[2];
 };
 
@@ -49,9 +73,7 @@ PCISPH_GPU::PCISPH_GPU(
   constexpr float pi                  = std::numbers::pi_v<float>;
   constexpr float smooth_length_param = 1.2f;
 
-  _dt                  = 1.0e-2f;
   _rest_density        = 1000.0f;
-  _viscosity           = 1.0e-2f;
   _allow_density_error = _rest_density * 4.0e-2f;
   _min_iter            = 3;
   _max_iter            = 5;
@@ -88,13 +110,40 @@ PCISPH_GPU::PCISPH_GPU(
   //////////////////////////////////////////////////////////////////////////
   ms::Utility::init_for_utility_using_GPU(device_manager);
 
-  _rho0 = 1000;
+  _dt        = 1.0e-2f;
+  _rho0      = 1000;
+  _viscosity = 1.0e-2f;
 
   _DM_ptr = &device_manager;
 
   _num_fluid_particle = static_cast<UINT>(num_fluid_particle);
 
-  _cptr_fluid_v_pos_buffer = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.position_vectors.data());
+  //fluid initial state
+  _fluid_v_pos_BS = _DM_ptr->create_structured_buffer_set(_num_fluid_particle, _fluid_particles.position_vectors.data());
+
+  _cptr_fluid_v_cur_pos_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.position_vectors.data());
+  _cptr_fluid_v_cur_pos_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_cur_pos_buffer);
+
+  _fluid_v_vel_BS = _DM_ptr->create_structured_buffer_set(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
+
+  //_cptr_fluid_v_vel_buffer         = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
+  //_cptr_fluid_v_vel_buffer_SRV     = _DM_ptr->create_SRV(_cptr_fluid_v_vel_buffer);
+  _cptr_fluid_v_cur_vel_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
+  _cptr_fluid_v_cur_vel_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_cur_vel_buffer);
+
+  _cptr_fluid_v_accel_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.acceleration_vectors.data());
+  _cptr_fluid_v_accel_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_accel_buffer);
+  _cptr_fluid_v_accel_buffer_UAV = _DM_ptr->create_UAV(_cptr_fluid_v_accel_buffer);
+
+  _cptr_fluid_v_a_pressure_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _pressure_acceleration_vectors.data());
+  _cptr_fluid_v_a_pressure_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_a_pressure_buffer);
+  _cptr_fluid_v_a_pressure_buffer_UAV = _DM_ptr->create_UAV(_cptr_fluid_v_a_pressure_buffer);
+
+  _cptr_fluid_density_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.densities.data());
+  _cptr_fluid_density_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_density_buffer);
+
+  _cptr_fluid_pressure_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.pressures.data());
+  _cptr_fluid_pressure_buffer_UAV = _DM_ptr->create_UAV(_cptr_fluid_pressure_buffer);
 
   // kernel
   _h = _smoothing_length;
@@ -115,16 +164,14 @@ PCISPH_GPU::PCISPH_GPU(
   {
     Cal_Number_Density_CS_CB_Data CB_data;
     CB_data.estimated_num_nfp         = g_estimated_num_nfp;
+    CB_data.num_fluid_particle        = _num_fluid_particle;
     _cptr_update_number_density_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
   }
 
-  // init mass
-  this->update_number_density();
-  const auto max_value_buffer   = Utility::find_max_value_float(_cptr_number_density_buffer, _num_fluid_particle);
-  const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);
-  _m0                           = _rho0 / max_number_density;
+  // init mass (after kernel, after number density)
+  _m0 = this->cal_mass();
 
-  // scailing factor
+  // scailing factor(after mass)
   _cptr_scailing_factor_buffer     = _DM_ptr->create_structured_buffer<float>(1);
   _cptr_scailing_factor_buffer_UAV = _DM_ptr->create_UAV(_cptr_scailing_factor_buffer);
 
@@ -138,25 +185,69 @@ PCISPH_GPU::PCISPH_GPU(
 
     _cptr_cal_scailing_factor_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
   }
+
+  // init fluid acceleration
+  _cptr_init_fluid_acceleration_CS = _DM_ptr->create_CS(L"hlsl/init_fluid_acceleration_CS.hlsl");
+  {
+    REQUIRE(_m0 != 0, "mass should be initialized first");
+
+    Init_Fluid_Acceleration_CS_CB_Data CB_data = {};
+    CB_data.v_a_gravity                        = Vector3(0.0f, -9.8f, 0.0f);
+    CB_data.m0                                 = _m0;
+    CB_data.viscosity_constant                 = 10.0f * _m0 * _viscosity;
+    CB_data.regularization_term                = 0.01f * _h * _h;
+    CB_data.num_fluid_particle                 = _num_fluid_particle;
+    CB_data.estimated_num_nfp                  = g_estimated_num_nfp;
+
+    _cptr_init_fluid_acceleration_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
+  }
+
+  // init pressure and a_pressure
+  _cptr_init_pressure_and_a_pressure_CS = _DM_ptr->create_CS(L"hlsl/init_pressure_and_a_pressure.hlsl");
+  {
+    Init_Pressure_and_a_pressure_CS_CB_Data CB_data = {};
+    CB_data.num_fluid_particle                      = _num_fluid_particle;
+
+    _cptr_init_pressure_and_a_pressure_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
+  }
+
+  // predict vel and pos
+  _cptr_predict_vel_and_pos_CS = _DM_ptr->create_CS(L"hlsl/predict_vel_and_pos_CS.hlsl");
+  {
+    Predict_Vel_and_Pos_CS_CB_Data CB_data = {};
+    CB_data.num_fp                         = _num_fluid_particle;
+    CB_data.dt                             = _dt;
+
+    _cptr_predict_vel_and_pos_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
+  }
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
 
 void PCISPH_GPU::update(void)
 {
-  _DM_ptr->write(_fluid_particles.position_vectors.data(), _cptr_fluid_v_pos_buffer); //temporary
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer); //temporary
 
-  _uptr_neighborhood->update(_cptr_fluid_v_pos_buffer);
+  _uptr_neighborhood->update(_fluid_v_pos_BS.cptr_buffer);
 
   _scailing_factor = this->cal_scailing_factor();
-  this->initialize_fluid_acceleration_vectors();
-  this->initialize_pressure_and_pressure_acceleration();
+  this->init_fluid_acceleration();
+  this->init_pressure_and_a_pressure();
 
   float  density_error = _rest_density;
   size_t num_iter      = 0;
 
-  _current_position_vectors = _fluid_particles.position_vectors;
-  _current_velocity_vectors = _fluid_particles.velocity_vectors;
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CopyResource(_cptr_fluid_v_cur_pos_buffer.Get(), _fluid_v_pos_BS.cptr_buffer.Get());
+  cptr_context->CopyResource(_cptr_fluid_v_cur_vel_buffer.Get(), _fluid_v_vel_BS.cptr_buffer.Get());
+
+  //temporary
+  _DM_ptr->read(_current_position_vectors.data(), _cptr_fluid_v_cur_pos_buffer);
+  _DM_ptr->read(_current_velocity_vectors.data(), _cptr_fluid_v_cur_vel_buffer);
+  //temporary
+
+  //_current_position_vectors = _fluid_particles.position_vectors;
+  //_current_velocity_vectors = _fluid_particles.velocity_vectors;
 
   while (_allow_density_error < density_error || num_iter < _min_iter)
   {
@@ -197,120 +288,142 @@ const float* PCISPH_GPU::fluid_particle_density_data(void) const
   return _fluid_particles.densities.data();
 }
 
-void PCISPH_GPU::initialize_fluid_acceleration_vectors(void)
+void PCISPH_GPU::init_fluid_acceleration(void)
 {
-  constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  // constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
+  //temporary
+  _DM_ptr->write(_fluid_particles.densities.data(), _cptr_fluid_density_buffer);
+  _DM_ptr->write(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_BS.cptr_buffer);
+  //temporary
 
-  // viscosity constant
-  const float m0                  = _mass_per_particle;
-  const float h                   = _smoothing_length;
-  const float viscosity_constant  = 10.0f * m0 * _viscosity;
-  const float regularization_term = 0.01f * h * h;
+  constexpr UINT num_thread = 256;
+  constexpr UINT num_CB     = 2;
+  constexpr UINT num_SRV    = 4;
+  constexpr UINT num_UAV    = 1;
 
-  // surface tension constant
-  const float sigma = 0.0e0f;
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_cubic_spline_kerenel_CB.Get(),
+    _cptr_init_fluid_acceleration_CS_CB.Get(),
+  };
 
-  // references
-  const auto& fluid_densities            = _fluid_particles.densities;
-  const auto& fluid_pressures            = _fluid_particles.pressures;
-  const auto& fluid_position_vectors     = _fluid_particles.position_vectors;
-  const auto& fluid_velocity_vectors     = _fluid_particles.velocity_vectors;
-  auto&       fluid_acceleration_vectors = _fluid_particles.acceleration_vectors;
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    _cptr_fluid_density_buffer_SRV.Get(),
+    _fluid_v_vel_BS.cptr_SRV.Get(),
+    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
+    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
+  };
 
-  const size_t num_fluid_particle = _fluid_particles.num_particles();
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_fluid_v_accel_buffer_UAV.Get(),
+  };
 
-#pragma omp parallel for
-  for (int i = 0; i < num_fluid_particle; i++)
-  {
-    auto& v_a = fluid_acceleration_vectors[i];
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_init_fluid_acceleration_CS.Get(), nullptr, NULL);
 
-    Vector3 v_a_viscosity(0.0f);
-    Vector3 v_a_surface_tension(0.0f);
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
 
-    const float    rhoi = fluid_densities[i];
-    const Vector3& v_vi = fluid_velocity_vectors[i];
+  _DM_ptr->CS_barrier();
 
-    const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(i);
-
-    const auto& neighbor_indexes           = neighbor_informations.indexes;
-    const auto& neighbor_translate_vectors = neighbor_informations.translate_vectors;
-    const auto& neighbor_distances         = neighbor_informations.distances;
-
-    const auto num_neighbor = neighbor_indexes.size();
-
-    for (size_t j = 0; j < num_neighbor; j++)
-    {
-      const auto neighbor_index = neighbor_indexes[j];
-
-      if (i == neighbor_index)
-        continue;
-
-      const float    rhoj = fluid_densities[neighbor_index];
-      const Vector3& v_vj = fluid_velocity_vectors[neighbor_index];
-
-      const auto v_xij     = neighbor_translate_vectors[j];
-      const auto distance  = neighbor_distances[j];
-      const auto distance2 = distance * distance;
-
-      // distance가 0이면 v_xij_normal과 grad_q 계산시 0으로 나누어서 문제가 됨
-      if (distance == 0.0f)
-        continue;
-
-      const Vector3 v_xij_normal = v_xij / distance;
-      v_a_surface_tension -= sigma * m0 * _uptr_kernel->W(distance) * v_xij_normal;
-
-      // cal grad_kernel
-      const auto v_grad_q      = 1.0f / (h * distance) * v_xij;
-      const auto v_grad_kernel = _uptr_kernel->dWdq(distance) * v_grad_q;
-
-      // cal v_laplacian_velocity
-      const auto v_vij  = v_vi - v_vj;
-      const auto coeff2 = v_vij.Dot(v_xij) / (rhoj * (distance2 + regularization_term));
-
-      const auto v_laplacian_velocity = coeff2 * v_grad_kernel;
-
-      // update acceleration
-      v_a_viscosity += v_laplacian_velocity;
-    }
-
-    v_a = viscosity_constant * v_a_viscosity + v_a_gravity + v_a_surface_tension;
-  }
+  //temporary
+  _DM_ptr->read(_fluid_particles.acceleration_vectors.data(), _cptr_fluid_v_accel_buffer);
+  //temporary
 }
 
-void PCISPH_GPU::initialize_pressure_and_pressure_acceleration(void)
+void PCISPH_GPU::init_pressure_and_a_pressure(void)
 {
-  auto& pressures     = _fluid_particles.pressures;
-  auto& v_a_pressures = _pressure_acceleration_vectors;
+  constexpr UINT num_thread = 256;
+  constexpr UINT num_CB     = 1;
+  constexpr UINT num_UAV    = 2;
 
-  std::fill(pressures.begin(), pressures.end(), 0.0f);
-  std::fill(v_a_pressures.begin(), v_a_pressures.end(), Vector3(0.0f, 0.0f, 0.0f));
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_init_pressure_and_a_pressure_CS_CB.Get(),
+  };
+
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_fluid_pressure_buffer_UAV.Get(),
+    _cptr_fluid_v_a_pressure_buffer_UAV.Get(),
+  };
+
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_init_pressure_and_a_pressure_CS.Get(), nullptr, NULL);
+
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
+
+  _DM_ptr->CS_barrier();
+
+  //temporary
+  _DM_ptr->read(_fluid_particles.pressures.data(), _cptr_fluid_pressure_buffer);
+  _DM_ptr->read(_pressure_acceleration_vectors.data(), _cptr_fluid_v_a_pressure_buffer);
+  //temporary
 }
 
 void PCISPH_GPU::predict_velocity_and_position(void)
 {
-  const auto num_fluid_particles = _fluid_particles.num_particles();
+  constexpr UINT num_thread = 256;
+  constexpr UINT num_CB     = 1;
+  constexpr UINT num_SRV    = 4;
+  constexpr UINT num_UAV    = 2;
 
-  auto&       position_vectors     = _fluid_particles.position_vectors;
-  auto&       velocity_vectors     = _fluid_particles.velocity_vectors;
-  const auto& acceleration_vectors = _fluid_particles.acceleration_vectors;
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_predict_vel_and_pos_CS_CB.Get(),
+  };
 
-#pragma omp parallel for
-  for (int i = 0; i < num_fluid_particles; i++)
-  {
-    const auto& v_p_cur = _current_position_vectors[i];
-    const auto& v_v_cur = _current_velocity_vectors[i];
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    _cptr_fluid_v_cur_pos_buffer_SRV.Get(),
+    _cptr_fluid_v_cur_vel_buffer_SRV.Get(),
+    _cptr_fluid_v_accel_buffer_SRV.Get(),
+    _cptr_fluid_v_a_pressure_buffer_SRV.Get(),
+  };
 
-    auto&      v_p = position_vectors[i];
-    auto&      v_v = velocity_vectors[i];
-    const auto v_a = acceleration_vectors[i] + _pressure_acceleration_vectors[i];
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _fluid_v_pos_BS.cptr_UAV.Get(),
+    _fluid_v_vel_BS.cptr_UAV.Get(),
+  };
 
-    v_v = v_v_cur + v_a * _dt;
-    v_p = v_p_cur + v_v * _dt;
-  }
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_predict_vel_and_pos_CS.Get(), nullptr, NULL);
 
-  // this->apply_boundary_condition();
-  // 매번 boundary condition 적용해도 dt를 늘릴 수 없음
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
+
+  _DM_ptr->CS_barrier();
+
+  //temporary
+  _DM_ptr->read(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
+  _DM_ptr->read(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_BS.cptr_buffer);
+  //temporary
+
+  //  const auto num_fluid_particles = _fluid_particles.num_particles();
+  //
+  //  auto&       position_vectors     = _fluid_particles.position_vectors;
+  //  auto&       velocity_vectors     = _fluid_particles.velocity_vectors;
+  //  const auto& acceleration_vectors = _fluid_particles.acceleration_vectors;
+  //
+  //#pragma omp parallel for
+  //  for (int i = 0; i < num_fluid_particles; i++)
+  //  {
+  //    const auto& v_p_cur = _current_position_vectors[i];
+  //    const auto& v_v_cur = _current_velocity_vectors[i];
+  //
+  //    auto&      v_p = position_vectors[i];
+  //    auto&      v_v = velocity_vectors[i];
+  //    const auto v_a = acceleration_vectors[i] + _pressure_acceleration_vectors[i];
+  //
+  //    v_v = v_v_cur + v_a * _dt;
+  //    v_p = v_p_cur + v_v * _dt;
+  //  }
+  //
+  //  // this->apply_boundary_condition();
+  //  // 매번 boundary condition 적용해도 dt를 늘릴 수 없음
 }
 
 float PCISPH_GPU::predict_density_and_update_pressure_and_cal_error(void)
@@ -651,9 +764,12 @@ void PCISPH_GPU::update_number_density(void)
   _DM_ptr->CS_barrier();
 }
 
-float PCISPH_GPU::cal_mass(void) const
+float PCISPH_GPU::cal_mass(void)
 {
-  return 0.0f;
+  this->update_number_density();
+  const auto max_value_buffer   = Utility::find_max_value_float(_cptr_number_density_buffer, _num_fluid_particle);
+  const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);
+  return _rho0 / max_number_density;
 }
 
 } // namespace ms

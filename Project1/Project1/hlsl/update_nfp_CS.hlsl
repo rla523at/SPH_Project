@@ -1,11 +1,5 @@
 #include "uniform_grid_common.hlsli"
-
-struct Neighbor_Information
-{
-  uint    fp_index;
-  float3  tvector;
-  float   distance;
-};
+#include "uniform_grid_output.hlsli"
 
 //shader resource
 StructuredBuffer<float3>    fp_pos_buffer       : register(t0);

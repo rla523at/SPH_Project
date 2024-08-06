@@ -1,17 +1,12 @@
 #define NUM_THREAD 256
 
+#include "uniform_grid_output.hlsli"
 #include "Cubic_Spline_Kernel.hlsli"
-
-struct Neighbor_Information
-{
-  uint    fp_index;
-  float3  tvector;
-  float   distance;
-};
 
 cbuffer Constant_Buffer : register(b1)
 {
   uint  g_estimated_num_nfp;
+  uint  g_num_fluid_particle;
 };
 
 StructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(t0);
@@ -22,6 +17,9 @@ RWStructuredBuffer<float> result_buffer : register(u0);
 [numthreads(NUM_THREAD, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
+  if(g_num_fluid_particle <= DTid.x) 
+    return;
+
   const uint fp_index     = DTid.x;
   const uint start_index  = fp_index * g_estimated_num_nfp;
 

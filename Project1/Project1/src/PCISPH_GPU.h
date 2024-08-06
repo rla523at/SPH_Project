@@ -1,4 +1,5 @@
 #pragma once
+#include "Buffer_Set.h"
 #include "SPH_Common_Data.h"
 #include "SPH_Scheme.h"
 
@@ -58,11 +59,6 @@ public:
   const float*   fluid_particle_density_data(void) const override;
 
 private:
-  // it doesn't consider acceleration by pressure
-  void initialize_fluid_acceleration_vectors(void);
-
-  void  initialize_pressure_and_pressure_acceleration(void);
-  void  predict_velocity_and_position(void);
   float predict_density_and_update_pressure_and_cal_error(void);
   void  cal_pressure_acceleration(void);
   void  apply_boundary_condition(void);
@@ -75,15 +71,21 @@ private:
 
 private:
   void  update_number_density(void);
-  float cal_mass(void) const;
+  float cal_mass(void);
   float cal_scailing_factor(void);
+
+  // it doesn't consider acceleration by pressure
+  void init_fluid_acceleration(void);
+
+  void init_pressure_and_a_pressure(void);
+
+  void predict_velocity_and_position(void);
 
 private:
   float  _time                 = 0.0f;
   float  _scailing_factor      = 0.0f;
   float  _mass_per_particle    = 0.0f;
   float  _smoothing_length     = 0.0f;
-  float  _viscosity            = 0.0f;
   float  _rest_density         = 0.0f;
   float  _dt                   = 0.0f;
   float  _particle_radius      = 0.0f;
@@ -112,28 +114,74 @@ private:
   float _rho0               = 0.0f; // rest density
   float _m0                 = 0.0f; // mass per particle
   float _h                  = 0.0f; // smoothing length
+  float _viscosity          = 0.0f;
 
   const Device_Manager* _DM_ptr = nullptr;
 
   ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CB; // constant buffer
 
-  // fluid particle만큼 position vector를 저장한 buffer
-  ComPtr<ID3D11Buffer> _cptr_fluid_v_pos_buffer;
+  // fluid particle만큼 position vector를 저장한 buffer_set
+  Buffer_Set _fluid_v_pos_BS;
+
+  ComPtr<ID3D11Buffer>             _cptr_fluid_v_cur_pos_buffer;
+  ComPtr<ID3D11ShaderResourceView> _cptr_fluid_v_cur_pos_buffer_SRV;
+
+  // fluid particle만큼 velocity vector를 저장한 buffer
+  Buffer_Set _fluid_v_vel_BS;
+
+  //ComPtr<ID3D11Buffer>             _cptr_fluid_v_vel_buffer;
+  //ComPtr<ID3D11ShaderResourceView> _cptr_fluid_v_vel_buffer_SRV;
+
+  ComPtr<ID3D11Buffer>             _cptr_fluid_v_cur_vel_buffer;
+  ComPtr<ID3D11ShaderResourceView> _cptr_fluid_v_cur_vel_buffer_SRV;
+
+  // fluid particle만큼 acceleration vector를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_fluid_v_accel_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_fluid_v_accel_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_fluid_v_accel_buffer_UAV;
+
+  // fluid particle만큼 acceleration by pressure vector를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_fluid_v_a_pressure_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_fluid_v_a_pressure_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_fluid_v_a_pressure_buffer_UAV;
+
+  // fluid particle만큼 density를 저장한 buffer
+  ComPtr<ID3D11Buffer>             _cptr_fluid_density_buffer;
+  ComPtr<ID3D11ShaderResourceView> _cptr_fluid_density_buffer_SRV;
+
+  // fluid particle만큼 pressure를 저장한 buffer
+  ComPtr<ID3D11Buffer>              _cptr_fluid_pressure_buffer;
+  ComPtr<ID3D11ShaderResourceView>  _cptr_fluid_pressure_buffer_SRV;
+  ComPtr<ID3D11UnorderedAccessView> _cptr_fluid_pressure_buffer_UAV;
 
   // fluid particle만큼 number density를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_number_density_buffer;
   ComPtr<ID3D11ShaderResourceView>  _cptr_number_density_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_number_density_buffer_UAV;
 
-  ComPtr<ID3D11ComputeShader> _cptr_update_number_density_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_number_density_CS_CB;
-
   // scailing factor를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_scailing_factor_buffer;
   ComPtr<ID3D11UnorderedAccessView> _cptr_scailing_factor_buffer_UAV;
 
+  // update number density
+  ComPtr<ID3D11ComputeShader> _cptr_update_number_density_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_number_density_CS_CB;
+
+  // cal scailing factor
   ComPtr<ID3D11ComputeShader> _cptr_cal_scailing_factor_CS;
   ComPtr<ID3D11Buffer>        _cptr_cal_scailing_factor_CS_CB;
+
+  // init fluid acceleration
+  ComPtr<ID3D11ComputeShader> _cptr_init_fluid_acceleration_CS;
+  ComPtr<ID3D11Buffer>        _cptr_init_fluid_acceleration_CS_CB;
+
+  // init pressure and a_pressure
+  ComPtr<ID3D11ComputeShader> _cptr_init_pressure_and_a_pressure_CS;
+  ComPtr<ID3D11Buffer>        _cptr_init_pressure_and_a_pressure_CS_CB;
+
+  // prdict vel and pos
+  ComPtr<ID3D11ComputeShader> _cptr_predict_vel_and_pos_CS;
+  ComPtr<ID3D11Buffer>        _cptr_predict_vel_and_pos_CS_CB;
 };
 
 } // namespace ms
