@@ -26,7 +26,8 @@ CPU 코드 중 어떻게 병렬화 해야 될지 고민이 되는 코드들이 �
 
 parallel reduction algorithm은 데이터 집합을 재귀적으로 축소하여 최종 결과를 얻는 방식으로 작동한다. 
 
-[그림]
+![paralle reduction algorithm](https://github.com/user-attachments/assets/373ca5ce-1b43-470c-9e96-ccfc34f1f46e)
+
 
 어떤 단계에서 2N개의 element가 있다면, N개의 thread들이 병렬적으로 binary operation을 수행해서, N개의 결과를 만들어내고 그 다음단계의 input이 되는 과정을 반복하여 최종 결과를 얻는다.
 
@@ -81,7 +82,8 @@ groupshared float shared_value[NUM_THREAD];
 
 parallel reduction algorithm을 사용하여 개발한 코드들은 Google Test FrameWork를 사용하여 test 코드를 작성하여 단위 테스트 검증을 진행하였다.
 
-[그림]
+![paralle reduction algorithm test](https://github.com/user-attachments/assets/522c5b77-10cf-4664-96d1-b36dcb3e309e)
+
 
 </br></br></br>
 
