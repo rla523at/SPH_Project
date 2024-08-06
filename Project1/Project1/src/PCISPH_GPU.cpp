@@ -60,6 +60,22 @@ struct Predict_Vel_and_Pos_CS_CB_Data
   float padding[2];
 };
 
+struct Predict_Density_Error_and_Update_Pressure_CS_CB_Data
+{
+  float rho0              = 0.0f;
+  float m0                = 0.0f;
+  UINT  num_fp            = 0;
+  UINT  estimated_num_nfp = 0;
+};
+
+struct Update_a_pressure_CS_CB_Data
+{
+  float m0                = 0.0f;
+  UINT  num_fp            = 0;
+  UINT  estimated_num_nfp = 0;
+  float padding           = 0.0f;
+};
+
 } // namespace ms
 
 namespace ms
@@ -126,8 +142,6 @@ PCISPH_GPU::PCISPH_GPU(
 
   _fluid_v_vel_BS = _DM_ptr->create_structured_buffer_set(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
 
-  //_cptr_fluid_v_vel_buffer         = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
-  //_cptr_fluid_v_vel_buffer_SRV     = _DM_ptr->create_SRV(_cptr_fluid_v_vel_buffer);
   _cptr_fluid_v_cur_vel_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.velocity_vectors.data());
   _cptr_fluid_v_cur_vel_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_cur_vel_buffer);
 
@@ -139,11 +153,9 @@ PCISPH_GPU::PCISPH_GPU(
   _cptr_fluid_v_a_pressure_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_v_a_pressure_buffer);
   _cptr_fluid_v_a_pressure_buffer_UAV = _DM_ptr->create_UAV(_cptr_fluid_v_a_pressure_buffer);
 
-  _cptr_fluid_density_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.densities.data());
-  _cptr_fluid_density_buffer_SRV = _DM_ptr->create_SRV(_cptr_fluid_density_buffer);
-
-  _cptr_fluid_pressure_buffer     = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.pressures.data());
-  _cptr_fluid_pressure_buffer_UAV = _DM_ptr->create_UAV(_cptr_fluid_pressure_buffer);
+  _fluid_density_BS       = _DM_ptr->create_structured_buffer_set(_num_fluid_particle, _fluid_particles.densities.data());
+  _fluid_pressure_BS      = _DM_ptr->create_structured_buffer_set(_num_fluid_particle, _fluid_particles.pressures.data());
+  _fluid_density_error_BS = _DM_ptr->create_structured_buffer_set<float>(_num_fluid_particle);
 
   // kernel
   _h = _smoothing_length;
@@ -172,8 +184,7 @@ PCISPH_GPU::PCISPH_GPU(
   _m0 = this->cal_mass();
 
   // scailing factor(after mass)
-  _cptr_scailing_factor_buffer     = _DM_ptr->create_structured_buffer<float>(1);
-  _cptr_scailing_factor_buffer_UAV = _DM_ptr->create_UAV(_cptr_scailing_factor_buffer);
+  _scailing_factor_BS = _DM_ptr->create_structured_buffer_set<float>(1);
 
   _cptr_cal_scailing_factor_CS = _DM_ptr->create_CS(L"hlsl/cal_scailing_factor_CS.hlsl");
   {
@@ -220,6 +231,31 @@ PCISPH_GPU::PCISPH_GPU(
 
     _cptr_predict_vel_and_pos_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
   }
+
+  // predict density error and update pressure
+  _cptr_predict_density_error_and_update_pressure_CS = _DM_ptr->create_CS(L"hlsl/predict_density_error_and_update_pressure_CS.hlsl");
+  {
+    Predict_Density_Error_and_Update_Pressure_CS_CB_Data data = {};
+
+    data.rho0              = _rho0;
+    data.m0                = _m0;
+    data.num_fp            = _num_fluid_particle;
+    data.estimated_num_nfp = g_estimated_num_nfp;
+
+    _cptr_predict_density_error_and_update_pressure_CS_CB = _DM_ptr->create_CB_imuutable(&data);
+  }
+
+  // update a_pressure
+  _cptr_update_a_pressure_CS = _DM_ptr->create_CS(L"hlsl/update_a_pressure_CS.hlsl");
+  {
+    Update_a_pressure_CS_CB_Data data = {};
+
+    data.m0                = _m0;
+    data.num_fp            = _num_fluid_particle;
+    data.estimated_num_nfp = g_estimated_num_nfp;
+
+    _cptr_update_a_pressure_CS_CB = _DM_ptr->create_CB_imuutable(&data);
+  }
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
@@ -227,6 +263,7 @@ PCISPH_GPU::~PCISPH_GPU() = default;
 void PCISPH_GPU::update(void)
 {
   _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer); //temporary
+  _DM_ptr->write(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_BS.cptr_buffer); //temporary
 
   _uptr_neighborhood->update(_fluid_v_pos_BS.cptr_buffer);
 
@@ -246,14 +283,17 @@ void PCISPH_GPU::update(void)
   _DM_ptr->read(_current_velocity_vectors.data(), _cptr_fluid_v_cur_vel_buffer);
   //temporary
 
-  //_current_position_vectors = _fluid_particles.position_vectors;
-  //_current_velocity_vectors = _fluid_particles.velocity_vectors;
-
   while (_allow_density_error < density_error || num_iter < _min_iter)
   {
     this->predict_velocity_and_position();
-    density_error = this->predict_density_and_update_pressure_and_cal_error();
-    this->cal_pressure_acceleration();
+
+    //density_error = this->predict_density_error_and_update_pressure_CPU();
+
+    this->predict_density_error_and_update_pressure();
+    density_error = this->cal_max_density_error();
+
+    this->update_a_pressure_CPU();
+    //this->update_a_pressure();
 
     ++num_iter;
 
@@ -291,7 +331,7 @@ const float* PCISPH_GPU::fluid_particle_density_data(void) const
 void PCISPH_GPU::init_fluid_acceleration(void)
 {
   //temporary
-  _DM_ptr->write(_fluid_particles.densities.data(), _cptr_fluid_density_buffer);
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
   _DM_ptr->write(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_BS.cptr_buffer);
   //temporary
 
@@ -306,7 +346,7 @@ void PCISPH_GPU::init_fluid_acceleration(void)
   };
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _cptr_fluid_density_buffer_SRV.Get(),
+    _fluid_density_BS.cptr_SRV.Get(),
     _fluid_v_vel_BS.cptr_SRV.Get(),
     _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
     _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
@@ -343,7 +383,7 @@ void PCISPH_GPU::init_pressure_and_a_pressure(void)
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_fluid_pressure_buffer_UAV.Get(),
+    _fluid_pressure_BS.cptr_UAV.Get(),
     _cptr_fluid_v_a_pressure_buffer_UAV.Get(),
   };
 
@@ -358,13 +398,15 @@ void PCISPH_GPU::init_pressure_and_a_pressure(void)
   _DM_ptr->CS_barrier();
 
   //temporary
-  _DM_ptr->read(_fluid_particles.pressures.data(), _cptr_fluid_pressure_buffer);
+  _DM_ptr->read(_fluid_particles.pressures.data(), _fluid_pressure_BS.cptr_buffer);
   _DM_ptr->read(_pressure_acceleration_vectors.data(), _cptr_fluid_v_a_pressure_buffer);
   //temporary
 }
 
 void PCISPH_GPU::predict_velocity_and_position(void)
 {
+  _DM_ptr->write(_pressure_acceleration_vectors.data(), _cptr_fluid_v_a_pressure_buffer); //temporary
+
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 1;
   constexpr UINT num_SRV    = 4;
@@ -401,86 +443,94 @@ void PCISPH_GPU::predict_velocity_and_position(void)
   _DM_ptr->read(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
   _DM_ptr->read(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_BS.cptr_buffer);
   //temporary
-
-  //  const auto num_fluid_particles = _fluid_particles.num_particles();
-  //
-  //  auto&       position_vectors     = _fluid_particles.position_vectors;
-  //  auto&       velocity_vectors     = _fluid_particles.velocity_vectors;
-  //  const auto& acceleration_vectors = _fluid_particles.acceleration_vectors;
-  //
-  //#pragma omp parallel for
-  //  for (int i = 0; i < num_fluid_particles; i++)
-  //  {
-  //    const auto& v_p_cur = _current_position_vectors[i];
-  //    const auto& v_v_cur = _current_velocity_vectors[i];
-  //
-  //    auto&      v_p = position_vectors[i];
-  //    auto&      v_v = velocity_vectors[i];
-  //    const auto v_a = acceleration_vectors[i] + _pressure_acceleration_vectors[i];
-  //
-  //    v_v = v_v_cur + v_a * _dt;
-  //    v_p = v_p_cur + v_v * _dt;
-  //  }
-  //
-  //  // this->apply_boundary_condition();
-  //  // 매번 boundary condition 적용해도 dt를 늘릴 수 없음
 }
 
-float PCISPH_GPU::predict_density_and_update_pressure_and_cal_error(void)
+void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 {
-  const float h    = _smoothing_length;
-  const float rho0 = _rest_density;
-  const float m0   = _mass_per_particle;
+  constexpr UINT num_thread = 256;
+  constexpr UINT num_CB     = 2;
+  constexpr UINT num_SRV    = 4;
+  constexpr UINT num_UAV    = 3;
 
-  const auto  num_fluid_particle = _fluid_particles.num_particles();
-  auto&       densities          = _fluid_particles.densities;
-  auto&       pressures          = _fluid_particles.pressures;
-  const auto& position_vectors   = _fluid_particles.position_vectors;
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_cubic_spline_kerenel_CB.Get(),
+    _cptr_predict_density_error_and_update_pressure_CS_CB.Get(),
+  };
 
-  std::fill(_max_density_errors.begin(), _max_density_errors.end(), -1.0f);
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    _fluid_v_pos_BS.cptr_SRV.Get(),
+    _scailing_factor_BS.cptr_SRV.Get(),
+    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
+    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
+  };
 
-#pragma omp parallel for
-  for (int i = 0; i < num_fluid_particle; i++)
-  {
-    const auto thread_id = omp_get_thread_num();
-    auto&      max_error = _max_density_errors[thread_id];
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _fluid_density_BS.cptr_UAV.Get(),
+    _fluid_pressure_BS.cptr_UAV.Get(),
+    _fluid_density_error_BS.cptr_UAV.Get(),
+  };
 
-    auto&       rho  = densities[i];
-    auto&       p    = pressures[i];
-    const auto& v_xi = position_vectors[i];
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_predict_density_error_and_update_pressure_CS.Get(), nullptr, NULL);
 
-    rho = 0.0;
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
 
-    const auto& neighbor_informations = _uptr_neighborhood->search_for_fluid(i);
-    const auto& neighbor_indexes      = neighbor_informations.indexes;
+  _DM_ptr->CS_barrier();
 
-    const auto num_neighbor = neighbor_indexes.size();
-
-    for (int j = 0; j < num_neighbor; j++)
-    {
-      const auto& v_xj     = position_vectors[neighbor_indexes[j]];
-      const auto  distance = (v_xi - v_xj).Length();
-
-      rho += _uptr_kernel->W(distance);
-    }
-
-    rho *= m0;
-
-    const float density_error = rho - rho0;
-
-    p += _scailing_factor * density_error;
-    p = std::max(p, 0.0f);
-
-    // const float density_error = std::max(0.0f, rho - rho0);
-    // p += _scailing_factor * density_error;
-
-    max_error = (std::max)(max_error, density_error);
-  }
-
-  return *std::max_element(_max_density_errors.begin(), _max_density_errors.end());
+  _DM_ptr->read(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);  //temporary
+  _DM_ptr->read(_fluid_particles.pressures.data(), _fluid_pressure_BS.cptr_buffer); //temporary
 }
 
-void PCISPH_GPU::cal_pressure_acceleration(void)
+float PCISPH_GPU::cal_max_density_error(void)
+{
+  const auto max_value_buffer = ms::Utility::find_max_value_float(_fluid_density_error_BS.cptr_buffer, _num_fluid_particle);
+  return _DM_ptr->read_front<float>(max_value_buffer);
+}
+
+void PCISPH_GPU::update_a_pressure(void)
+{
+  constexpr UINT num_thread = 256;
+  constexpr UINT num_CB     = 2;
+  constexpr UINT num_SRV    = 5;
+  constexpr UINT num_UAV    = 1;
+
+  ID3D11Buffer* CBs[num_CB] = {
+    _cptr_cubic_spline_kerenel_CB.Get(),
+    _cptr_update_number_density_CS_CB.Get(),
+  };
+
+  ID3D11ShaderResourceView* SRVs[num_SRV] = {
+    _fluid_density_BS.cptr_SRV.Get(),
+    _fluid_pressure_BS.cptr_SRV.Get(),
+    _fluid_v_pos_BS.cptr_SRV.Get(),
+    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
+    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
+  };
+
+  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+    _cptr_fluid_v_a_pressure_buffer_UAV.Get(),
+  };
+
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
+  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  cptr_context->CSSetShader(_cptr_update_a_pressure_CS.Get(), nullptr, NULL);
+
+  const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
+  cptr_context->Dispatch(num_group_x, 1, 1);
+
+  _DM_ptr->CS_barrier();
+
+  _DM_ptr->read(_pressure_acceleration_vectors.data(), _cptr_fluid_v_a_pressure_buffer); //temporary
+  //const auto stop = 0; //debug
+}
+
+void PCISPH_GPU::cal_pressure_acceleration_CPU(void)
 {
   // viscosity constant
   const float m0 = _mass_per_particle;
@@ -695,7 +745,7 @@ float PCISPH_GPU::cal_scailing_factor(void)
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_scailing_factor_buffer_UAV.Get(),
+    _scailing_factor_BS.cptr_UAV.Get(),
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -708,7 +758,7 @@ float PCISPH_GPU::cal_scailing_factor(void)
 
   _DM_ptr->CS_barrier();
 
-  return _DM_ptr->read_front<float>(_cptr_scailing_factor_buffer);
+  return _DM_ptr->read_front<float>(_scailing_factor_BS.cptr_buffer); //temporary
 }
 
 float PCISPH_GPU::cal_number_density(const size_t fluid_particle_id) const

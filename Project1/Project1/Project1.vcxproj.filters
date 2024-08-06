@@ -86,6 +86,12 @@
     <FxCompile Include="hlsl\predict_vel_and_pos_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
+    <FxCompile Include="hlsl\predict_density_error_and_update_pressure_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\update_a_pressure_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="hlsl\uniform_grid_common.hlsli">
