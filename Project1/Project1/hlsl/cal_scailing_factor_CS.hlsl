@@ -11,15 +11,15 @@ struct Neighbor_Information
 
 cbuffer Constant_Data : register(b1)
 {
-  float g_beta;
   uint  g_estimated_num_nfp;  
+  float g_beta;
 };
 
 StructuredBuffer<uint>                  max_index_buffer  : register(t0);
 StructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(t1);
 StructuredBuffer<uint>                  nfp_count_buffer  : register(t2);
 
-RWStructuredBuffer<uint> scaling_factor_buffer : register(u0);
+RWStructuredBuffer<float> scailing_factor_buffer : register(u0);
 
 groupshared float3  shared_sum_grad_kernel[NUM_THREAD];
 groupshared float  shared_sum_grad_kernel_size[NUM_THREAD];
@@ -70,10 +70,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
   if (DTid.x == 0)
   {
-    const float v_sum_grad_kernel_size  = shared_sum_grad_kernel_size[0];
-    const float v_sum_grad_kernel       = shared_sum_grad_kernel[0];
-    const float sum_dot_sum             = dot(v_sum_grad_kernel, v_sum_grad_kernel);
+    const float   sum_grad_kernel_size  = shared_sum_grad_kernel_size[0];
+    const float3  v_sum_grad_kernel     = shared_sum_grad_kernel[0];
+    const float   sum_dot_sum           = dot(v_sum_grad_kernel, v_sum_grad_kernel);
  
-    scaling_factor_buffer[0] = 1.0 / (g_beta * (sum_dot_sum + v_sum_grad_kernel_size));   
+    scailing_factor_buffer[0] = 1.0 / (g_beta * (sum_dot_sum + sum_grad_kernel_size));   
   }  
 }

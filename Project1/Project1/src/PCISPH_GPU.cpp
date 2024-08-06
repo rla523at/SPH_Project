@@ -96,24 +96,6 @@ PCISPH_GPU::PCISPH_GPU(
 
   _cptr_fluid_v_pos_buffer = _DM_ptr->create_structured_buffer(_num_fluid_particle, _fluid_particles.position_vectors.data());
 
-  // number density
-  _cptr_number_density_buffer     = _DM_ptr->create_structured_buffer<float>(_num_fluid_particle);
-  _cptr_number_density_buffer_SRV = _DM_ptr->create_SRV(_cptr_number_density_buffer);
-  _cptr_number_density_buffer_UAV = _DM_ptr->create_UAV(_cptr_number_density_buffer);
-
-  _cptr_cal_number_density_CS = _DM_ptr->create_CS(L"hlsl/cal_number_density_CS.hlsl");
-  {
-    Cal_Number_Density_CS_CB_Data CB_data;
-    CB_data.estimated_num_nfp      = g_estimated_num_nfp;
-    _cptr_cal_number_density_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
-  }
-
-  // init mass
-  this->update_number_density();
-  const auto max_value_buffer   = Utility::find_max_value_float(_cptr_number_density_buffer, _num_fluid_particle);
-  const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);
-  _m0                           = _rho0 / max_number_density;
-
   // kernel
   _h = _smoothing_length;
   {
@@ -123,6 +105,24 @@ PCISPH_GPU::PCISPH_GPU(
 
     _cptr_cubic_spline_kerenel_CB = _DM_ptr->create_CB_imuutable(&CB_data);
   }
+
+  // number density
+  _cptr_number_density_buffer     = _DM_ptr->create_structured_buffer<float>(_num_fluid_particle);
+  _cptr_number_density_buffer_SRV = _DM_ptr->create_SRV(_cptr_number_density_buffer);
+  _cptr_number_density_buffer_UAV = _DM_ptr->create_UAV(_cptr_number_density_buffer);
+
+  _cptr_update_number_density_CS = _DM_ptr->create_CS(L"hlsl/cal_number_density_CS.hlsl");
+  {
+    Cal_Number_Density_CS_CB_Data CB_data;
+    CB_data.estimated_num_nfp         = g_estimated_num_nfp;
+    _cptr_update_number_density_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
+  }
+
+  // init mass
+  this->update_number_density();
+  const auto max_value_buffer   = Utility::find_max_value_float(_cptr_number_density_buffer, _num_fluid_particle);
+  const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);
+  _m0                           = _rho0 / max_number_density;
 
   // scailing factor
   _cptr_scailing_factor_buffer     = _DM_ptr->create_structured_buffer<float>(1);
@@ -136,15 +136,15 @@ PCISPH_GPU::PCISPH_GPU(
     CB_data.beta              = _dt * _dt * _m0 * _m0 * 2 / (_rho0 * _rho0);
     CB_data.estimated_num_nfp = g_estimated_num_nfp;
 
-    _cptr_cal_number_density_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
+    _cptr_cal_scailing_factor_CS_CB = _DM_ptr->create_CB_imuutable(&CB_data);
   }
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
 
 void PCISPH_GPU::update(void)
-{  
-  _DM_ptr->write(_fluid_particles.position_vectors.data(), _cptr_fluid_v_pos_buffer);//temporary
+{
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _cptr_fluid_v_pos_buffer); //temporary
 
   _uptr_neighborhood->update(_cptr_fluid_v_pos_buffer);
 
@@ -572,7 +572,7 @@ float PCISPH_GPU::cal_scailing_factor(void)
 
   ID3D11Buffer* CBs[num_CB] = {
     _cptr_cubic_spline_kerenel_CB.Get(),
-    _cptr_cal_number_density_CS_CB.Get(),
+    _cptr_cal_scailing_factor_CS_CB.Get(),
   };
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
@@ -627,6 +627,7 @@ void PCISPH_GPU::update_number_density(void)
 
   ID3D11Buffer* CBs[num_CB] = {
     _cptr_cubic_spline_kerenel_CB.Get(),
+    _cptr_update_number_density_CS_CB.Get(),
   };
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
@@ -642,15 +643,12 @@ void PCISPH_GPU::update_number_density(void)
   cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
   cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  cptr_context->CSSetShader(_cptr_cal_number_density_CS.Get(), nullptr, NULL);
+  cptr_context->CSSetShader(_cptr_update_number_density_CS.Get(), nullptr, NULL);
 
   const auto num_group_x = ms::Utility::ceil(_num_fluid_particle, num_thread);
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
-
-  const auto debug = _DM_ptr->read<float>(_cptr_number_density_buffer); // ¹ö±×! ¿©±â¼­ ´Ù 0ÀÌ ÂïÈû
-  const auto stop  = 0;
 }
 
 float PCISPH_GPU::cal_mass(void) const

@@ -125,8 +125,8 @@ private:
   ComPtr<ID3D11ShaderResourceView>  _cptr_number_density_buffer_SRV;
   ComPtr<ID3D11UnorderedAccessView> _cptr_number_density_buffer_UAV;
 
-  ComPtr<ID3D11ComputeShader> _cptr_cal_number_density_CS;
-  ComPtr<ID3D11Buffer>        _cptr_cal_number_density_CS_CB;
+  ComPtr<ID3D11ComputeShader> _cptr_update_number_density_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_number_density_CS_CB;
 
   // scailing factor를 저장한 buffer
   ComPtr<ID3D11Buffer>              _cptr_scailing_factor_buffer;

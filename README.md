@@ -1,5 +1,88 @@
 # 2024.08.05
-## parallel reduction algorithm
+## PCISPH CPU >> GPU
+PCISPH는 다음 단계로 이루어져 있다.
+
+1. scailing factor를 계산한다.
+2. pressure을 제외한 acceleration을 계산한다.
+3. Pressure acceleration 계산을 위한 Iteration을 돈다.
+   1. velocity와 position을 예측한다.
+   2. density와 density error를 계산하고 pressure을 업데이트 한다.
+   3. pressure acceleration을 계산한다.
+4. velocity와 position을 업데이트한다.
+
+**[진행사항]**
+
+* 1단계 (scailing factor 계산) GPU 코드 작성 및 검증 완료
+* 2단계 (pressure을 제외한 acceleration을 계산) GPU 코드 작성 중
+
+### parallel reduction algorithm
+CPU 코드 중 어떻게 병렬화 해야 될지 고민이 되는 코드들이 있었다.
+1. 배열의 최대값과 index를 찾는 문제
+2. 배열의 모든 원소의 합을 구하는 문제
+
+이를 병렬화 하기 위해 parallel reduction algorithm을 사용하였다.
+
+parallel reduction algorithm은 데이터 집합을 재귀적으로 축소하여 최종 결과를 얻는 방식으로 작동한다. 
+
+[그림]
+
+어떤 단계에서 2N개의 element가 있다면, N개의 thread들이 병렬적으로 binary operation을 수행해서, N개의 결과를 만들어내고 그 다음단계의 input이 되는 과정을 반복하여 최종 결과를 얻는다.
+
+아래는 parallel reduction algorithm을 사용해서 최대값을 찾는 알고리즘의 부분적인 hlsl code와 cpp code이다.
+
+```
+//hlsl code
+
+groupshared float shared_value[NUM_THREAD];
+
+//...
+
+  if (data_index < g_num_data)
+    shared_value[Gindex] = input[data_index];
+  else
+    shared_value[Gindex] = g_float_min;
+  
+  GroupMemoryBarrierWithGroupSync();
+
+//...
+
+  for (uint stride = NUM_THREAD / 2; 0 < stride; stride /= 2)
+  {
+    if (Gindex < stride)
+      shared_value[Gindex] = max(shared_value[Gindex], shared_value[Gindex + stride]);
+    
+    GroupMemoryBarrierWithGroupSync();
+  }
+  
+  if (Gindex == 0)
+    output[Gid.x] = shared_value[0];
+```
+
+```cpp
+//cpp code  
+  //...
+  while (true)
+  {
+    //...
+    const auto num_output = Utility::ceil(num_input, num_thread);
+    cptr_context->Dispatch(num_output, 1, 1);
+
+    //...    
+
+    if (num_output == 1)
+      break;
+
+    num_input = num_output;
+    std::swap(input_buffer, output_buffer);
+  }
+```
+
+parallel reduction algorithm을 사용하여 개발한 코드들은 Google Test FrameWork를 사용하여 test 코드를 작성하여 단위 테스트 검증을 진행하였다.
+
+[그림]
+
+</br></br></br>
+
 
 # 2024.08.02
 ## Uniform Grid CPU >> GPU
@@ -187,10 +270,6 @@ void main()
   }
 }
 ```
-
-
-
-
 
 </br></br></br>
 
