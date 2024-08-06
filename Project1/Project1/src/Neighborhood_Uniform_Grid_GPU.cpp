@@ -251,10 +251,6 @@ void Neighborhood_Uniform_Grid_GPU::update(const ComPtr<ID3D11Buffer> _cptr_flui
   this->update_GCFP_buffer();
   this->rearrange_GCFP();
   this->update_nfp();
-
-  // temporary code
-  this->copy_to_ninfos();
-  // temporary code
 }
 
 void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)

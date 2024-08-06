@@ -3,12 +3,6 @@
 
 #include <d3d11.h>
 
-/*  Abbreviation
-    BS  : Buffer Set
-    SRV : Shader Resource View
-    UAV : Unordered Acess View
-*/
-
 namespace ms
 {
 struct Buffer_Set

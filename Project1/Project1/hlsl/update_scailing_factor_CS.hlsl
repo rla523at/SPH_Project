@@ -1,4 +1,4 @@
-#include "Cubic_Spline_Kernel.hlsli"
+#include "cubic_spline_kernel.hlsli"
 
 #define NUM_THREAD 256
 

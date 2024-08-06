@@ -16,9 +16,15 @@ class Utility
 public:
   static UINT ceil(const UINT numerator, const UINT denominator);
 
-  //GPU CODE
+  // GPU CODE
   static void                 init_for_utility_using_GPU(const Device_Manager& DM);
   static ComPtr<ID3D11Buffer> find_max_value_float(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value);
+
+  static ComPtr<ID3D11Buffer> find_max_value_float_opt(
+    const ComPtr<ID3D11Buffer> value_buffer,
+    const ComPtr<ID3D11Buffer> intermediate_buffer,
+    const UINT                 num_value);
+
   static ComPtr<ID3D11Buffer> find_max_index_float(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value);
   static ComPtr<ID3D11Buffer> find_max_index_float_256(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value);
 
@@ -34,6 +40,10 @@ private:
 private:
   static inline const Device_Manager* _DM_ptr = nullptr;
   static inline ComPtr<ID3D11Buffer>  _cptr_uint_CB;
+
+  static inline ComPtr<ID3D11ComputeShader> _cptr_find_max_value_float_CS;
+  static inline ComPtr<ID3D11ComputeShader> _cptr_find_max_index_float_CS;
+  static inline ComPtr<ID3D11ComputeShader> _cptr_find_max_index_float_256_CS;
 };
 
 } // namespace ms

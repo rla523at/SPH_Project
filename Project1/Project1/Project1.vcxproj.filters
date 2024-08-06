@@ -74,7 +74,7 @@
     <FxCompile Include="hlsl\cal_number_density_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
-    <FxCompile Include="hlsl\cal_scailing_factor_CS.hlsl">
+    <FxCompile Include="hlsl\update_scailing_factor_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
     <FxCompile Include="hlsl\init_fluid_acceleration_CS.hlsl">
@@ -90,6 +90,9 @@
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
     <FxCompile Include="hlsl\update_a_pressure_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\apply_BC_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
   </ItemGroup>
