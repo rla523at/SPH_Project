@@ -14,17 +14,21 @@
 
 namespace ms
 {
-PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& solution_domain)
+PCISPH::PCISPH(
+  const Initial_Condition_Cubes& initial_condition,
+  const Domain&                  solution_domain,
+  const Device_Manager&          device_manager)
     : _domain(solution_domain)
 {
+
   constexpr float smooth_length_param = 1.2f;
 
   _dt                  = 1.0e-2f;
   _rest_density        = 1000.0f;
   _viscosity           = 1.0e-2f;
   _allow_density_error = _rest_density * 4.0e-2f;
-  _min_iter            = 3;
-  _max_iter            = 5;
+  _min_iter            = 1;
+  _max_iter            = 3;
 
   const auto& ic = initial_condition;
 
@@ -32,7 +36,7 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
   _smoothing_length                 = smooth_length_param * ic.particle_spacing;
   _fluid_particles.position_vectors = ic.cal_initial_position();
 
-  const auto num_fluid_particle = _fluid_particles.position_vectors.size();
+  const auto num_fluid_particle = static_cast<UINT>(_fluid_particles.position_vectors.size());
 
   _fluid_particles.pressures.resize(num_fluid_particle);
   _fluid_particles.densities.resize(num_fluid_particle, _rest_density);
@@ -51,6 +55,12 @@ PCISPH::PCISPH(const Initial_Condition_Cubes& initial_condition, const Domain& s
 
   //
   _max_density_errors.resize(omp_get_max_threads());
+
+  //for output
+  _DM_ptr = &device_manager;
+
+  _fluid_v_pos_BS   = _DM_ptr->create_STRB_RWBS<Vector3>(num_fluid_particle);
+  _fluid_density_BS = _DM_ptr->create_STRB_RWBS<float>(num_fluid_particle);
 }
 
 PCISPH::~PCISPH() = default;
@@ -122,6 +132,9 @@ void PCISPH::update(void)
   //std::cout << _time << " " << num_iter << "\n"; //debug
   //if (_time > 8.0f)                              //debug
   //  exit(523);                                   //debug
+
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
 }
 
 float PCISPH::particle_radius(void) const
@@ -134,14 +147,14 @@ size_t PCISPH::num_fluid_particle(void) const
   return _fluid_particles.num_particles();
 }
 
-const Vector3* PCISPH::fluid_particle_position_data(void) const
+const Read_Write_Buffer_Set& PCISPH::get_fluid_v_pos_BS(void) const
 {
-  return _fluid_particles.position_vectors.data();
+  return _fluid_v_pos_BS;
 }
 
-const float* PCISPH::fluid_particle_density_data(void) const
+const Read_Write_Buffer_Set& PCISPH::get_fluid_density_BS(void) const
 {
-  return _fluid_particles.densities.data();
+  return _fluid_density_BS;
 }
 
 void PCISPH::initialize_fluid_acceleration_vectors(void)

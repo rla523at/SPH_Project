@@ -61,6 +61,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     if (distance == 0.0)
       continue;
 
+    //neighbor update를 iteration에 한번만 하니까, 밀도가 0인 애들이 생겼다.
+    //어 왜 자기 자신이 neighbor list에 없지?
+
     const float3 v_grad_q       = 1.0f / (g_h * distance) * v_xij;
     const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
 

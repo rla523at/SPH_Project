@@ -12,6 +12,7 @@ namespace ms
 {
 class Neighborhood;
 class Cubic_Spline_Kernel;
+class Device_Manager;
 } // namespace ms
 
 namespace ms
@@ -31,7 +32,8 @@ public:
   WCSPH(
     const Material_Property&       property,
     const Initial_Condition_Cubes& initial_condition,
-    const Domain&                  solution_domain);
+    const Domain&                  solution_domain,
+    const Device_Manager&          device_manager);
 
   ~WCSPH(void);
 
@@ -39,10 +41,10 @@ public:
   void update(void) override;
 
 public:
-  float          particle_radius(void) const override;
-  size_t         num_fluid_particle(void) const override;
-  const Vector3* fluid_particle_position_data(void) const override;
-  const float*   fluid_particle_density_data(void) const override;
+  float             particle_radius(void) const override;
+  size_t            num_fluid_particle(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_v_pos_BS(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_density_BS(void) const override;
 
   //const Vector3* boundary_particle_position_data(void) const override;
   //size_t         num_boundary_particle(void) const override;
@@ -84,6 +86,12 @@ private:
 
   std::vector<Vector3> _boundary_position_vectors;
   std::vector<Vector3> _boundary_normal_vectors;
+
+  // for ouput
+  const Device_Manager* _DM_ptr;
+
+  Read_Write_Buffer_Set _fluid_v_pos_BS;
+  Read_Write_Buffer_Set _fluid_density_BS;
 };
 
 } // namespace ms

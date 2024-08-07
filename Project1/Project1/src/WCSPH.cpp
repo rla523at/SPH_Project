@@ -1,6 +1,7 @@
 #include "WCSPH.h"
 
 #include "Debugger.h"
+#include "Device_Manager.h"
 #include "Kernel.h"
 #include "Neighborhood_Brute_Force.h"
 #include "Neighborhood_Uniform_Grid.h"
@@ -15,10 +16,12 @@ namespace ms
 WCSPH::WCSPH(
   const Material_Property&       property,
   const Initial_Condition_Cubes& initial_condition,
-  const Domain&                  solution_domain)
+  const Domain&                  solution_domain,
+  const Device_Manager&          device_manager)
     : _material_proeprty(property), _domain(solution_domain)
 
 {
+
   constexpr float smooth_length_param = 1.2f;
 
   _dt                     = 1.0e-03f;
@@ -49,6 +52,12 @@ WCSPH::WCSPH(
 
   const float L        = ic.particle_spacing;
   _volume_per_particle = L * L * L;
+
+  //for output
+  _DM_ptr = &device_manager;
+
+  _fluid_v_pos_BS   = _DM_ptr->create_STRB_RWBS<Vector3>((UINT)(_num_fluid_particle));
+  _fluid_density_BS = _DM_ptr->create_STRB_RWBS<float>((UINT)(_num_fluid_particle));
 }
 
 WCSPH::~WCSPH(void) = default;
@@ -56,21 +65,9 @@ WCSPH::~WCSPH(void) = default;
 void WCSPH::update(void)
 {
   this->time_integration();
-}
 
-const Vector3* WCSPH::fluid_particle_position_data(void) const
-{
-  return _fluid_particles.position_vectors.data();
-}
-
-//const Vector3* WCSPH::boundary_particle_position_data(void) const
-//{
-//  return _boundary_position_vectors.data();
-//}
-
-const float* WCSPH::fluid_particle_density_data(void) const
-{
-  return _fluid_particles.densities.data();
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
 }
 
 size_t WCSPH::num_fluid_particle(void) const
@@ -78,10 +75,15 @@ size_t WCSPH::num_fluid_particle(void) const
   return _num_fluid_particle;
 }
 
-//size_t WCSPH::num_boundary_particle(void) const
-//{
-//  return _boundary_position_vectors.size();
-//}
+const Read_Write_Buffer_Set& WCSPH::get_fluid_v_pos_BS(void) const
+{
+  return _fluid_v_pos_BS;
+}
+
+const Read_Write_Buffer_Set& WCSPH::get_fluid_density_BS(void) const
+{
+  return _fluid_density_BS;
+}
 
 float WCSPH::particle_radius(void) const
 {
@@ -90,7 +92,6 @@ float WCSPH::particle_radius(void) const
 
 void WCSPH::update_density_and_pressure(void)
 {
-
   const float h     = _smoothing_length;
   const float rho0  = _material_proeprty.rest_density;
   const float gamma = _material_proeprty.gamma;

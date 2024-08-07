@@ -1,5 +1,5 @@
-Buffer<float3> positions : register(t0);
-Buffer<float> densities : register(t1);
+StructuredBuffer<float3> position_buffer  : register(t0);
+StructuredBuffer<float>  density_buffer   : register(t1);
 
 struct VS_Output
 {
@@ -7,13 +7,14 @@ struct VS_Output
     float density : DENSITY;
 };
 
-VS_Output main(uint vertexID : SV_VertexID)
+VS_Output main(uint Vid : SV_VertexID)
 {
-    const float3 pos = positions.Load(vertexID);
+    const float3  pos     = position_buffer[Vid];
+    const float   density = density_buffer[Vid];
     
     VS_Output output;    
     output.position = float4(pos, 1.0); 
-    output.density = densities.Load(vertexID);
+    output.density = density;
 
     return output;
 }

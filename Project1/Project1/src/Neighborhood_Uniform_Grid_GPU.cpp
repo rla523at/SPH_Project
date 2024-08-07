@@ -9,10 +9,11 @@ namespace ms
 {
 
 Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
-  const Domain&               domain,
-  const float                 divide_length,
-  const std::vector<Vector3>& fluid_particle_pos_vectors,
-  const Device_Manager&       device_manager)
+  const Domain&          domain,
+  const float            divide_length,
+  const Read_Buffer_Set& fluid_v_pos_RBS,
+  const UINT             num_fp,
+  const Device_Manager&  device_manager)
     : _DM_ptr(&device_manager)
 {
   const float dx = domain.x_end - domain.x_start;
@@ -23,7 +24,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   _common_CB_data.num_y_cell         = static_cast<UINT>(std::ceil(dy / divide_length));
   _common_CB_data.num_z_cell         = static_cast<UINT>(std::ceil(dz / divide_length));
   _common_CB_data.num_cell           = _common_CB_data.num_x_cell * _common_CB_data.num_y_cell * _common_CB_data.num_z_cell;
-  _common_CB_data.num_particle       = static_cast<UINT>(fluid_particle_pos_vectors.size());
+  _common_CB_data.num_particle       = num_fp;
   _common_CB_data.estimated_num_ngc  = g_estimated_num_ngc;
   _common_CB_data.estimated_num_gcfp = g_estimated_num_gcfp;
   _common_CB_data.estimated_num_nfp  = g_estimated_num_nfp;
@@ -32,30 +33,24 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   _common_CB_data.domain_z_start     = domain.z_start;
   _common_CB_data.divide_length      = divide_length;
 
-  _cptr_common_CB = device_manager.create_CB_imuutable(&_common_CB_data);
+  _cptr_common_CB = device_manager.create_ICONB(&_common_CB_data);
 
   this->init_ngc_index_buffer();
+  this->init_GCFP_buffer(fluid_v_pos_RBS);
 
-  this->init_GCFP_buffer(fluid_particle_pos_vectors);
-  _cptr_find_changed_GCFPT_ID_CS = device_manager.create_CS(L"hlsl/find_changed_GCFPT_ID_CS.hlsl");
-  _cptr_update_GCFP_CS           = device_manager.create_CS(L"hlsl/update_GCFPT_CS.hlsl");
-  _cptr_update_GCFP_CS_CB        = device_manager.create_CB(16);
-  _cptr_rearrange_GCFP_CS        = device_manager.create_CS(L"hlsl/rearrange_GCFP_CS.hlsl");
+  _ninfo_RWBS  = _DM_ptr->create_STRB_RWBS<Neighbor_Information>(num_fp * g_estimated_num_nfp);
+  _ncount_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(num_fp);
 
-  this->init_nfp();
+  _cptr_find_changed_GCFP_ID_CS = device_manager.create_CS(L"hlsl/find_changed_GCFP_ID_CS.hlsl");
+
+  _cptr_update_GCFP_CS    = device_manager.create_CS(L"hlsl/update_GCFP_CS.hlsl");
+  _cptr_update_GCFP_CS_CB = device_manager.create_CONB(16);
+
+  _cptr_rearrange_GCFP_CS = device_manager.create_CS(L"hlsl/rearrange_GCFP_CS.hlsl");
+
   _cptr_update_nfp_CS = device_manager.create_CS(L"hlsl/update_nfp_CS.hlsl");
 
-  // temporary code
-  _cptr_fp_pos_buffer         = _DM_ptr->create_structured_buffer(_common_CB_data.num_particle, fluid_particle_pos_vectors.data());
-  _cptr_fp_pos_buffer_SRV     = _DM_ptr->create_SRV(_cptr_fp_pos_buffer.Get());
-  // temporary code
-
-  this->update_nfp();
-
-  // temporary
-  _ninfoss.resize(_common_CB_data.num_particle);
-  this->copy_to_ninfos();
-  // temporary
+  this->update_nfp(fluid_v_pos_RBS);
 }
 
 void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
@@ -70,9 +65,7 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
   const auto num_z_cell        = _common_CB_data.num_z_cell;
   const auto estiamted_num_ngc = _common_CB_data.estimated_num_ngc;
 
-  const auto num_data = num_cell * estimated_num_ngc;
-
-  std::vector<UINT> ngc_indexes(num_data, -1);
+  std::vector<UINT> ngc_indexes(num_cell * estimated_num_ngc, -1);
   std::vector<UINT> ngc_counts(num_cell);
 
   for (size_t i = 0; i < num_x_cell; ++i)
@@ -113,17 +106,16 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
     }
   }
 
-  const auto& dm = *_DM_ptr;
-
-  _cptr_ngc_index_buffer     = dm.create_structured_buffer_immutable(num_data, ngc_indexes.data());
-  _cptr_ngc_index_buffer_SRV = dm.create_SRV(_cptr_ngc_index_buffer.Get());
-
-  _cptr_ngc_count_buffer     = dm.create_structured_buffer(num_cell, ngc_counts.data());
-  _cptr_ngc_count_buffer_SRV = dm.create_SRV(_cptr_ngc_count_buffer.Get());
+  _ngc_index_RBS = _DM_ptr->create_ISTRB_RBS(num_cell * estimated_num_ngc, ngc_indexes.data());
+  _ngc_count_RBS = _DM_ptr->create_ISTRB_RBS(num_cell, ngc_counts.data());
 }
 
-void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const std::vector<Vector3>& fluid_particle_pos_vectors)
+void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
+  //temporary
+  const auto fp_pos_vectors = _DM_ptr->read<Vector3>(fluid_v_pos_RBS.cptr_buffer);
+  //temporary
+
   // make initial data
   const auto num_cell           = _common_CB_data.num_cell;
   const auto num_particle       = _common_CB_data.num_particle;
@@ -135,7 +127,7 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const std::vector<Vector3>&
 
   for (UINT i = 0; i < num_particle; ++i)
   {
-    const auto& v_pos    = fluid_particle_pos_vectors[i];
+    const auto& v_pos    = fp_pos_vectors[i];
     const auto  gc_id    = this->grid_cell_id(v_pos);
     const auto  gc_index = this->grid_cell_index(gc_id);
 
@@ -151,39 +143,12 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const std::vector<Vector3>&
   const auto& dm                        = *_DM_ptr;
   const auto  estimated_num_update_data = _common_CB_data.num_particle;
 
-  _cptr_fp_index_buffer     = dm.create_structured_buffer(num_cell * estimated_num_gcfp, GCFP_indexes.data());
-  _cptr_fp_index_buffer_SRV = dm.create_SRV(_cptr_fp_index_buffer.Get());
-  _cptr_fp_index_buffer_UAV = dm.create_UAV(_cptr_fp_index_buffer.Get());
+  _fp_index_RWBS   = _DM_ptr->create_STRB_RWBS(num_cell * estimated_num_gcfp, GCFP_indexes.data());
+  _GCFP_count_RWBS = _DM_ptr->create_STRB_RWBS(num_cell, GCFP_counts.data());
+  _GCFP_ID_RWBS    = _DM_ptr->create_STRB_RWBS(num_particle, GCFP_IDs.data());
 
-  _cptr_GCFP_count_buffer     = dm.create_structured_buffer(num_cell, GCFP_counts.data());
-  _cptr_GCFP_count_buffer_SRV = dm.create_SRV(_cptr_GCFP_count_buffer.Get());
-  _cptr_GCFP_count_buffer_UAV = dm.create_UAV(_cptr_GCFP_count_buffer.Get());
-
-  _cptr_GCFP_ID_buffer     = dm.create_structured_buffer(num_particle, GCFP_IDs.data());
-  _cptr_GCFP_ID_buffer_SRV = dm.create_SRV(_cptr_GCFP_ID_buffer.Get());
-  _cptr_GCFP_ID_buffer_UAV = dm.create_UAV(_cptr_GCFP_ID_buffer.Get());
-
-  _cptr_changed_GCFP_ID_buffer  = dm.create_structured_buffer<Changed_GCFPT_ID_Data>(estimated_num_update_data);
+  _cptr_changed_GCFP_ID_buffer  = dm.create_STRB<Changed_GCFPT_ID_Data>(estimated_num_update_data);
   _cptr_changed_GCFPT_ID_AC_UAV = dm.create_AC_UAV(_cptr_changed_GCFP_ID_buffer.Get(), estimated_num_update_data);
-}
-
-void Neighborhood_Uniform_Grid_GPU::init_nfp(void)
-{
-  constexpr UINT estimated_neighbor = 200;
-  const auto     num_data           = _common_CB_data.num_particle * estimated_neighbor;
-
-  _cptr_nfp_info_buffer     = _DM_ptr->create_structured_buffer<Neighbor_Information>(num_data);
-  _cptr_nfp_info_buffer_SRV = _DM_ptr->create_SRV(_cptr_nfp_info_buffer.Get());
-  _cptr_nfp_info_buffer_UAV = _DM_ptr->create_UAV(_cptr_nfp_info_buffer.Get());
-
-  _cptr_nfp_count_buffer     = _DM_ptr->create_structured_buffer<UINT>(_common_CB_data.num_particle);
-  _cptr_nfp_count_buffer_SRV = _DM_ptr->create_SRV(_cptr_nfp_count_buffer.Get());
-  _cptr_nfp_count_buffer_UAV = _DM_ptr->create_UAV(_cptr_nfp_count_buffer.Get());
-
-  // temporary code
-  _cptr_nfp_info_staging_buffer  = _DM_ptr->create_staging_buffer_read(_cptr_nfp_info_buffer);
-  _cptr_nfp_count_staging_buffer = _DM_ptr->create_staging_buffer_read(_cptr_nfp_count_buffer);
-  // temporary code
 }
 
 Grid_Cell_ID Neighborhood_Uniform_Grid_GPU::grid_cell_id(const Vector3& v_pos) const
@@ -225,35 +190,35 @@ bool Neighborhood_Uniform_Grid_GPU::is_valid_index(const Grid_Cell_ID& index_vec
   return true;
 }
 
-const Neighbor_Informations& Neighborhood_Uniform_Grid_GPU::search_for_fluid(const size_t pid) const
-{
-  return _ninfoss[pid];
-}
-
 ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_info_buffer_SRV_cptr(void) const
 {
-  return _cptr_nfp_info_buffer_SRV;
+  return _ninfo_RWBS.cptr_SRV;
 }
 
 ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_count_buffer_SRV_cptr(void) const
 {
-  return _cptr_nfp_count_buffer_SRV;
+  return _ncount_RWBS.cptr_SRV;
 }
 
-void Neighborhood_Uniform_Grid_GPU::update(const ComPtr<ID3D11Buffer> _cptr_fluid_v_pos_buffer)
+void Neighborhood_Uniform_Grid_GPU::update(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
-  // temporary code
-  _cptr_fp_pos_buffer     = _cptr_fluid_v_pos_buffer;
-  _cptr_fp_pos_buffer_SRV = _DM_ptr->create_SRV(_cptr_fp_pos_buffer);
-  // temporary code
-
-  this->find_changed_GCFPT_ID();
+  this->find_changed_GCFPT_ID(fluid_v_pos_RBS);
   this->update_GCFP_buffer();
   this->rearrange_GCFP();
-  this->update_nfp();
+  this->update_nfp(fluid_v_pos_RBS);
 }
 
-void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
+const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ninfo_BS(void) const
+{
+  return _ninfo_RWBS;
+}
+
+const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ncount_BS(void) const
+{
+  return _ncount_RWBS;
+}
+
+void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
   constexpr size_t num_constant_buffer = 1;
   constexpr size_t num_SRV             = 2;
@@ -264,8 +229,8 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
   };
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _cptr_fp_pos_buffer_SRV.Get(),
-    _cptr_GCFP_ID_buffer_SRV.Get(),
+    fluid_v_pos_RBS.cptr_SRV.Get(),
+    _GCFP_ID_RWBS.cptr_SRV.Get(),
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
@@ -276,7 +241,7 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(void)
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
   cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  cptr_context->CSSetShader(_cptr_find_changed_GCFPT_ID_CS.Get(), nullptr, NULL);
+  cptr_context->CSSetShader(_cptr_find_changed_GCFP_ID_CS.Get(), nullptr, NULL);
 
   const auto num_group_x = static_cast<UINT>(std::ceil(_common_CB_data.num_particle / 1024.0f));
   cptr_context->Dispatch(num_group_x, 1, 1);
@@ -300,9 +265,9 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_fp_index_buffer_UAV.Get(),
-    _cptr_GCFP_count_buffer_UAV.Get(),
-    _cptr_GCFP_ID_buffer_UAV.Get(),
+    _fp_index_RWBS.cptr_UAV.Get(),
+    _GCFP_count_RWBS.cptr_UAV.Get(),
+    _GCFP_ID_RWBS.cptr_UAV.Get(),
     _cptr_changed_GCFPT_ID_AC_UAV.Get(),
   };
 
@@ -324,9 +289,9 @@ void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_fp_index_buffer_UAV.Get(),
-    _cptr_GCFP_count_buffer_UAV.Get(),
-    _cptr_GCFP_ID_buffer_UAV.Get(),
+    _fp_index_RWBS.cptr_UAV.Get(),
+    _GCFP_count_RWBS.cptr_UAV.Get(),
+    _GCFP_ID_RWBS.cptr_UAV.Get(),
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -340,7 +305,7 @@ void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
   _DM_ptr->CS_barrier();
 }
 
-void Neighborhood_Uniform_Grid_GPU::update_nfp(void)
+void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
@@ -350,16 +315,16 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(void)
     _cptr_common_CB.Get()};
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _cptr_fp_pos_buffer_SRV.Get(),
-    _cptr_fp_index_buffer_SRV.Get(),
-    _cptr_GCFP_count_buffer_SRV.Get(),
-    _cptr_GCFP_ID_buffer_SRV.Get(),
-    _cptr_ngc_index_buffer_SRV.Get(),
-    _cptr_ngc_count_buffer_SRV.Get()};
+    fluid_v_pos_RBS.cptr_SRV.Get(),
+    _fp_index_RWBS.cptr_SRV.Get(),
+    _GCFP_count_RWBS.cptr_SRV.Get(),
+    _GCFP_ID_RWBS.cptr_SRV.Get(),
+    _ngc_index_RBS.cptr_SRV.Get(),
+    _ngc_count_RBS.cptr_SRV.Get()};
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_nfp_info_buffer_UAV.Get(),
-    _cptr_nfp_count_buffer_UAV.Get()};
+    _ninfo_RWBS.cptr_UAV.Get(),
+    _ncount_RWBS.cptr_UAV.Get()};
 
   const auto cptr_context = _DM_ptr->context_cptr();
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
@@ -371,34 +336,6 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
-}
-
-void Neighborhood_Uniform_Grid_GPU::copy_to_ninfos(void)
-{
-  auto nfp_info  = _DM_ptr->read<Neighbor_Information>(_cptr_nfp_info_staging_buffer, _cptr_nfp_info_buffer);
-  auto nfp_count = _DM_ptr->read<UINT>(_cptr_nfp_count_staging_buffer, _cptr_nfp_count_buffer);
-
-  for (UINT i = 0; i < _common_CB_data.num_particle; ++i)
-  {
-    size_t index = i * _common_CB_data.estimated_num_nfp;
-
-    auto& ninfos = _ninfoss[i];
-
-    const UINT nn = nfp_count[i];
-
-    ninfos.indexes.resize(nn);
-    ninfos.translate_vectors.resize(nn);
-    ninfos.distances.resize(nn);
-
-    for (UINT j = 0; j < nn; ++j)
-    {
-      const auto& ninfo = nfp_info[index + j];
-
-      ninfos.indexes[j]           = ninfo.fp_index;
-      ninfos.translate_vectors[j] = ninfo.translate_vector;
-      ninfos.distances[j]         = ninfo.distance;
-    }
-  }
 }
 
 } // namespace ms

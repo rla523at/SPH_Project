@@ -20,7 +20,7 @@ void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
 
   _DM_ptr = &DM;
 
-  _cptr_uint_CB = _DM_ptr->create_CB(16);
+  _cptr_uint_CB = _DM_ptr->create_CONB(16);
 
   // if (_cptr_find_max_value_float_CS == nullptr) // DM이 사라졌을 때 문제가 된다. DM이 바뀌면 컴파일도 다시해야되는듯..?
   _cptr_find_max_value_float_CS = _DM_ptr->create_CS(L"hlsl/find_max_value_CS.hlsl");
@@ -36,7 +36,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> va
 {
   constexpr UINT num_thread = 256;
 
-  const auto intermediate_buffer = _DM_ptr->create_structured_buffer<float>(Utility::ceil(num_value, num_thread));
+  const auto intermediate_buffer = _DM_ptr->create_STRB<float>(Utility::ceil(num_value, num_thread));
   
   return Utility::find_max_value_float_opt(value_buffer, intermediate_buffer, num_value);
 
@@ -133,7 +133,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float(
   const auto cptr_input_index_buffer = cptr_index_buffer;
 
   const auto num_output_index         = Utility::ceil(num_input_index, num_thread);
-  const auto cptr_output_index_buffer = _DM_ptr->create_structured_buffer<UINT>(num_output_index);
+  const auto cptr_output_index_buffer = _DM_ptr->create_STRB<UINT>(num_output_index);
 
   _DM_ptr->context_cptr()->CSSetShader(_cptr_find_max_index_float_CS.Get(), nullptr, NULL);
 
@@ -156,7 +156,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
   const auto input_SRV = _DM_ptr->create_SRV(float_value_buffer);
 
   const auto num_output    = Utility::ceil(num_value, num_thread);
-  auto       output_buffer = _DM_ptr->create_structured_buffer<UINT>(num_output);
+  auto       output_buffer = _DM_ptr->create_STRB<UINT>(num_output);
   const auto output_UAV    = _DM_ptr->create_UAV(output_buffer);
 
   const auto cptr_context = _DM_ptr->context_cptr();

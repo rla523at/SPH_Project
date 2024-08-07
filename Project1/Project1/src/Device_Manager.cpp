@@ -321,7 +321,7 @@ void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cp
   REQUIRE(!FAILED(result), "texture like back buffer creation should succeed");
 }
 
-ComPtr<ID3D11Buffer> Device_Manager::create_CB(const UINT data_size) const
+ComPtr<ID3D11Buffer> Device_Manager::create_CONB(const UINT data_size) const
 {
   D3D11_BUFFER_DESC desc   = {};
   desc.ByteWidth           = data_size;
@@ -453,7 +453,7 @@ void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_text
 
 void Device_Manager::CS_barrier(void) const
 {
-  constexpr size_t num_max_view = 7;
+  constexpr UINT num_max_view = 7;
 
   ID3D11Buffer*              null_constant_buffer[num_max_view] = {nullptr};
   ID3D11ShaderResourceView*  nullSRV[num_max_view]              = {nullptr};
