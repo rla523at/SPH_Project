@@ -134,8 +134,6 @@ PCISPH_GPU::PCISPH_GPU(
   _fluid_number_density_RWBS = _DM_ptr->create_STRB_RWBS<float>(_num_FP);
   _scailing_factor_RWBS      = _DM_ptr->create_STRB_RWBS<float>(1);
 
-  _cptr_fluid_density_error_intermediate_buffer = _DM_ptr->create_STRB<float>(_num_FP);
-
   const float h = smooth_length_param * IC.particle_spacing; //smoothing length
 
   // kernel
@@ -163,8 +161,8 @@ PCISPH_GPU::PCISPH_GPU(
   _cptr_update_number_density_CS = _DM_ptr->create_CS(L"hlsl/update_number_density_CS.hlsl");
   {
     Cal_Number_Density_CS_CB_Data CB_data;
-    CB_data.estimated_num_nfp         = g_estimated_num_nfp;
-    CB_data.num_fluid_particle        = _num_FP;
+    CB_data.estimated_num_nfp           = g_estimated_num_nfp;
+    CB_data.num_fluid_particle          = _num_FP;
     _cptr_update_number_density_CS_CONB = _DM_ptr->create_ICONB(&CB_data);
   }
 
@@ -257,11 +255,10 @@ PCISPH_GPU::PCISPH_GPU(
     _cptr_apply_BC_CS_CONB = _DM_ptr->create_ICONB(&data);
   }
 
-  //temporary
-  _fluid_particles.position_vectors.resize(_num_FP);
-  _fluid_particles.velocity_vectors.resize(_num_FP);
-  _fluid_particles.densities.resize(_num_FP, rho0);
-  //temporary
+  //opt
+  _cptr_fluid_density_error_intermediate_buffer = _DM_ptr->create_STRB<float>(_num_FP);
+  _cptr_max_density_error_STGB                  = _DM_ptr->create_STGB_read(sizeof(float));
+  //opt
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
@@ -300,11 +297,6 @@ void PCISPH_GPU::update(void)
   this->apply_BC();
 
   _time += _dt;
-
-  // temporary
-  _DM_ptr->read(_fluid_particles.position_vectors.data(), _fluid_v_pos_RWBS.cptr_buffer);
-  _DM_ptr->read(_fluid_particles.velocity_vectors.data(), _fluid_v_vel_RWBS.cptr_buffer);
-  // temporary
 }
 
 float PCISPH_GPU::particle_radius(void) const
@@ -314,7 +306,7 @@ float PCISPH_GPU::particle_radius(void) const
 
 size_t PCISPH_GPU::num_fluid_particle(void) const
 {
-  return _fluid_particles.num_particles();
+  return _num_FP;
 }
 
 const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_v_pos_BS(void) const
@@ -425,25 +417,13 @@ void PCISPH_GPU::predict_velocity_and_position(void)
 
 void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 {
-  ////debug
-  //struct debug_struct
-  //{
-  //  UINT    nfp_index;
-  //  Vector3 v_xj;
-  //  float   distance;
-  //};
-
-  //const auto num_debug_struct = _num_fluid_particle * g_estimated_num_nfp;
-  //const auto debug_buffer_set = _DM_ptr->create_structured_BS<debug_struct>(num_debug_struct);
-  ////debug
-
   const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_BS();
   const auto& ncount_BS = _uptr_neighborhood->get_ncount_BS();
 
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 2;
   constexpr UINT num_SRV    = 4;
-  constexpr UINT num_UAV    = 4; //debug
+  constexpr UINT num_UAV    = 3;
 
   ID3D11Buffer* CBs[num_CB] = {
     _cptr_cubic_spline_kerenel_CONB.Get(),
@@ -461,7 +441,6 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
     _fluid_density_RWBS.cptr_UAV.Get(),
     _fluid_pressure_RWBS.cptr_UAV.Get(),
     _fluid_density_error_RWBS.cptr_UAV.Get(),
-    //debug_buffer_set.cptr_UAV.Get(),//debug
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -475,75 +454,36 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 
   _DM_ptr->CS_barrier();
 
-  ////debug
-  //auto debug_density = _DM_ptr->read<float>(_fluid_density_BS.cptr_buffer);
-  //auto debug_pos      = _DM_ptr->read<Vector3>(_fluid_v_pos_BS.cptr_buffer);
-  //auto debug_nfp_count = _DM_ptr->read<UINT>(ncount_BS.cptr_buffer);
-
-  //for (UINT i = 0; i < _num_fluid_particle; ++i)
-  //{
-  //  if (debug_density[i] == 0.0f)
-  //  {
-  //    auto debug_debug_buffer = _DM_ptr->read<debug_struct>(debug_buffer_set.cptr_buffer);
-  //    auto debug_nfp_info = _DM_ptr->read<Neighbor_Information>(ninfo_BS.cptr_buffer);
-
-  //    const UINT debug_index = i * 200;
-  //    //for (UINT j=0; j<200; ++j)
-  //    //{
-  //    //  if (is_nan(debug_debug_buffer[debug_index + j].coeff))
-  //    //    const auto stop = 0;
-
-  //    //  if (is_nan(debug_debug_buffer[debug_index + j].v_grad_pressure))
-  //    //    const auto stop = 0;
-  //    //}
-
-  //    //for (UINT j = 0; j < _num_fluid_particle; ++j)
-  //    //{
-  //    //  if (debug_density[j] == 0.0f)
-  //    //  {
-  //    //    const auto stop = 0; //density가 0이 나오는게 NaN이 뜨는 이유이다.
-  //    //  }
-
-  //    //  if (is_nan(debug_pressure[j]))
-  //    //  {
-  //    //    const auto stop = 0;
-  //    //  }
-
-  //    //  if (is_nan(debug_pos[j]))
-  //    //  {
-  //    //    const auto stop = 0;
-  //    //  }
-  //    //}
-
-  //    const auto stop = 0;
-  //  }
-  //}
-  ////debug
+  //debug
+  const auto debug_density = _DM_ptr->read<float>(_fluid_density_RWBS.cptr_buffer);
+  for (UINT i = 0; i < _num_FP; ++i)
+  {
+    if (debug_density[i] == 0.0)
+    {
+      const auto  debug_ninfo   = _DM_ptr->read<Neighbor_Information>(ninfo_BS.cptr_buffer);
+      const auto  debug_ncounts = _DM_ptr->read<UINT>(ncount_BS.cptr_buffer); //neighbor가 없다고 나오네 이거해결하자!
+      const auto* debug_ptr1    = debug_ncounts.data() + i;
+      const auto  stop          = 0;
+    }
+  }
+  //debug
 }
 
 float PCISPH_GPU::cal_max_density_error(void)
 {
   const auto max_value_buffer = ms::Utility::find_max_value_float_opt(_fluid_density_error_RWBS.cptr_buffer, _cptr_fluid_density_error_intermediate_buffer, _num_FP);
-  return _DM_ptr->read_front<float>(max_value_buffer); // read front 하는게 CPU를 다잡아먹음
+  return _DM_ptr->read_front<float>(max_value_buffer);
+
+  //_DM_ptr->copy_front(max_value_buffer, _cptr_max_density_error_STGB, sizeof(float));
+  //return _DM_ptr->read_front_STGB<float>(_cptr_max_density_error_STGB);
 }
 
 void PCISPH_GPU::update_a_pressure(void)
 {
-  ////debug
-  //struct debug_struct
-  //{
-  //  float   coeff;
-  //  Vector3 v_grad_pressure;
-  //};
-
-  //const auto num_debug_struct = _num_fluid_particle * g_estimated_num_nfp;
-  //const auto debug_buffer_set = _DM_ptr->create_structured_BS<debug_struct>(num_debug_struct);
-  ////debug
-
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 2;
   constexpr UINT num_SRV    = 5;
-  constexpr UINT num_UAV    = 2; //debug
+  constexpr UINT num_UAV    = 1;
 
   ID3D11Buffer* CBs[num_CB] = {
     _cptr_cubic_spline_kerenel_CONB.Get(),
@@ -560,7 +500,6 @@ void PCISPH_GPU::update_a_pressure(void)
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
     _fluid_v_a_pressure_RWBS.cptr_UAV.Get(),
-    //debug_buffer_set.cptr_UAV.Get(),//debug
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -574,48 +513,31 @@ void PCISPH_GPU::update_a_pressure(void)
 
   _DM_ptr->CS_barrier();
 
-  ////debug
-  //auto debug_p_accel      = _DM_ptr->read<Vector3>(_fluid_v_a_pressure_BS.cptr_buffer);
-  ////auto debug_debug_buffer = _DM_ptr->read<debug_struct>(debug_buffer_set.cptr_buffer);
-  //auto debug_pos      = _DM_ptr->read<Vector3>(_fluid_v_pos_BS.cptr_buffer);
-  //auto debug_density  = _DM_ptr->read<float>(_fluid_density_BS.cptr_buffer);
-  //auto debug_pressure = _DM_ptr->read<float>(_fluid_density_BS.cptr_buffer);
-  //for (UINT i = 0; i < _num_fluid_particle; ++i)
-  //{
-  //  if (is_nan(debug_p_accel[i]))
-  //  {
-  //    //const UINT debug_index = i * 200;
-  //    //for (UINT j=0; j<200; ++j)
-  //    //{
-  //    //  if (is_nan(debug_debug_buffer[debug_index + j].coeff))
-  //    //    const auto stop = 0;
+  //debug
+  const auto debug_v_a_pressure = _DM_ptr->read<Vector3>(_fluid_v_a_pressure_RWBS.cptr_buffer);
+  for (UINT i = 0; i < _num_FP; ++i)
+  {
+    if (is_nan(debug_v_a_pressure[i]))
+    {
+      const auto debug_v_pos   = _DM_ptr->read<Vector3>(_fluid_v_pos_RWBS.cptr_buffer);
+      const auto debug_density = _DM_ptr->read<float>(_fluid_density_RWBS.cptr_buffer);
 
-  //    //  if (is_nan(debug_debug_buffer[debug_index + j].v_grad_pressure))
-  //    //    const auto stop = 0;
-  //    //}
+      for (UINT j = 0; j < _num_FP; ++j)
+      {
+        if (is_nan(debug_v_pos[j]))
+          const auto stop = 0;
+      }
 
-  //    for (UINT j = 0; j < _num_fluid_particle; ++j)
-  //    {
-  //      if (debug_density[j] == 0.0f)
-  //      {
-  //        const auto stop = 0; //density가 0이 나오는게 NaN이 뜨는 이유이다.
-  //      }
+      for (UINT j = 0; j < _num_FP; ++j)
+      {
+        if (debug_density[j] == 0.0) //31250 이후로 전부 밀도가 0
+          const auto stop = 0;
+      }
 
-  //      if (is_nan(debug_pressure[j]))
-  //      {
-  //        const auto stop = 0;
-  //      }
-
-  //      if (is_nan(debug_pos[j]))
-  //      {
-  //        const auto stop = 0;
-  //      }
-  //    }
-
-  //    const auto stop = 0; //density pressure pos 어떤것도 nan이 아니지만 nan이 뜬다
-  //  }
-  //}
-  ////debug
+      const auto stop = 0;
+    }
+  }
+  //debug
 }
 
 void PCISPH_GPU::apply_BC(void)

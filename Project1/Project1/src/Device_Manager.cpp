@@ -110,6 +110,31 @@ std::pair<int, int> Device_Manager::render_size(void) const
   return {_num_pixel_width, _num_pixel_height};
 }
 
+void Device_Manager::copy_front(
+  const ComPtr<ID3D11Buffer>& cptr_src_buffer,
+  const ComPtr<ID3D11Buffer>& cptr_dest_buffer,
+  const UINT                  copy_byte) const
+{
+  D3D11_BOX srcBox;
+  srcBox.left   = 0;
+  srcBox.top    = 0;
+  srcBox.front  = 0;
+  srcBox.right  = copy_byte;
+  srcBox.bottom = 1;
+  srcBox.back   = 1;
+
+  _cptr_context->CopySubresourceRegion(
+    cptr_dest_buffer.Get(), // 대상 버퍼
+    0,                      // 대상 서브 리소스 인덱스
+    0,                      // 대상 X 좌표 (바이트 오프셋)
+    0,                      // 대상 Y 좌표 (사용하지 않음)
+    0,                      // 대상 Z 좌표 (사용하지 않음)
+    cptr_src_buffer.Get(),  // 원본 버퍼
+    0,                      // 원본 서브 리소스 인덱스
+    &srcBox                 // 복사할 영역
+  );
+}
+
 void Device_Manager::create_VS_and_IL(
   const wchar_t*                               file_name,
   ComPtr<ID3D11VertexShader>&                  cptr_VS,
@@ -339,13 +364,10 @@ ComPtr<ID3D11Buffer> Device_Manager::create_CONB(const UINT data_size) const
   return cptr_constant_buffer;
 }
 
-ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+ComPtr<ID3D11Buffer> Device_Manager::create_STGB_read(const UINT data_size) const
 {
-  D3D11_BUFFER_DESC target_desc;
-  cptr_target_buffer->GetDesc(&target_desc);
-
   D3D11_BUFFER_DESC desc   = {};
-  desc.ByteWidth           = target_desc.ByteWidth;
+  desc.ByteWidth           = data_size;
   desc.Usage               = D3D11_USAGE_STAGING;
   desc.BindFlags           = NULL;
   desc.CPUAccessFlags      = D3D11_CPU_ACCESS_READ;
@@ -360,7 +382,15 @@ ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_read(const ComPtr<ID3
   return cptr_staging_buffer;
 }
 
-ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+ComPtr<ID3D11Buffer> Device_Manager::create_STGB_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
+{
+  D3D11_BUFFER_DESC target_desc;
+  cptr_target_buffer->GetDesc(&target_desc);
+
+  return this->create_STGB_read(target_desc.ByteWidth);
+}
+
+ComPtr<ID3D11Buffer> Device_Manager::create_STGB_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const
 {
   D3D11_BUFFER_DESC target_desc;
   cptr_target_buffer->GetDesc(&target_desc);
@@ -469,7 +499,7 @@ void Device_Manager::init_device_device_context(void)
 #if defined(_DEBUG)
   constexpr auto flags = D3D11_CREATE_DEVICE_DEBUG;
 #else
-  constexpr auto flags = NULL;
+  constexpr auto flags        = NULL;
 #endif
 
   constexpr D3D_FEATURE_LEVEL featureLevels[2] = {

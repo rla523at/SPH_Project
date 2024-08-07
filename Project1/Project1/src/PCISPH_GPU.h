@@ -52,9 +52,6 @@ private:
   void  update_a_pressure(void);
 
 private:
-  Fluid_Particles _fluid_particles;
-
-  //////////////////////////////////////////////////////////////////////////
   float  _dt                  = 0.0f;
   float  _allow_density_error = 0.0f;
   float  _particle_radius     = 0.0f;
@@ -83,6 +80,7 @@ private:
 
   // for optimization
   ComPtr<ID3D11Buffer> _cptr_fluid_density_error_intermediate_buffer;
+  ComPtr<ID3D11Buffer> _cptr_max_density_error_STGB;
 
   //cubic spline kernel
   ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CONB;

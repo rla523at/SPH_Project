@@ -17,19 +17,30 @@ namespace ms
 SPH::SPH(const Device_Manager& device_manager)
 {
   Domain solution_domain;
-  solution_domain.x_start = -2.0f;
-  solution_domain.x_end   = 2.0f;
+  
+  ////dam breaking
+  //solution_domain.x_start = -2.0f;
+  //solution_domain.x_end   = 2.0f;
+  //solution_domain.y_start = 0.0f;
+  //solution_domain.y_end   = 6.0f;
+  //solution_domain.z_start = -0.3f;
+  //solution_domain.z_end   = 0.3f;
+
+  //// double dam
+  //solution_domain.x_start = -2.0f;
+  //solution_domain.x_end   = 2.0f;
+  //solution_domain.y_start = 0.0f;
+  //solution_domain.y_end   = 6.0f;
+  //solution_domain.z_start = -2.0f;
+  //solution_domain.z_end   = 2.0f;
+
+    // double dam
+  solution_domain.x_start = -1.5f;
+  solution_domain.x_end   = 1.5f;
   solution_domain.y_start = 0.0f;
   solution_domain.y_end   = 6.0f;
-  solution_domain.z_start = -0.3f;
-  solution_domain.z_end   = 0.3f;
-
-  //solution_domain.x_start = 2.4f;
-  //solution_domain.x_end   = 2.5f;
-  //solution_domain.y_start = 0.1f;
-  //solution_domain.y_end   = 0.2f;
-  //solution_domain.z_start = 0.9f;
-  //solution_domain.z_end   = 1.0f;
+  solution_domain.z_start = -1.5f;
+  solution_domain.z_end   = 1.5f;
 
   std::vector<Domain> init_cond_domains;
 
@@ -62,48 +73,53 @@ SPH::SPH(const Device_Manager& device_manager)
   //constexpr float eta         = 0.01f; // Tait's equation parameter
   //const float     square_cvel = 100.0f;
 
-  //Dam breaking
-  Domain init_cond_domain;
-  init_cond_domain.x_start = -1.9f;
-  init_cond_domain.x_end   = -0.9f;
-  init_cond_domain.y_start = 0.2f;
-  init_cond_domain.y_end   = 2.2f;
-  init_cond_domain.z_start = -0.2f;
-  init_cond_domain.z_end   = 0.2f;
+  ////Dam breaking
+  //Domain init_cond_domain;
+  //init_cond_domain.x_start = -1.9f;
+  //init_cond_domain.x_end   = -0.9f;
+  //init_cond_domain.y_start = 0.2f;
+  //init_cond_domain.y_end   = 2.2f;
+  //init_cond_domain.z_start = -0.2f;
+  //init_cond_domain.z_end   = 0.2f;
 
-  init_cond_domains.push_back(init_cond_domain);
-
-  constexpr float eta         = 0.01f; // Tait's equation parameter
-  const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
-
-  //// Double Dam breaking
-  //Domain dam1;
-  //dam1.x_start = -1.4f;
-  //dam1.x_end   = -0.4f;
-  //dam1.y_start = 1.1f;
-  //dam1.y_end   = 5.1f;
-  //dam1.z_start = -1.4f;
-  //dam1.z_end   = -0.4f;
-
-  //Domain dam2;
-  //dam2.x_start = 0.4f;
-  //dam2.x_end   = 1.4f;
-  //dam2.y_start = 1.1f;
-  //dam2.y_end   = 5.1f;
-  //dam2.z_start = 0.4f;
-  //dam2.z_end   = 1.4f;
-
-  //init_cond_domains.push_back(dam1);
-  //init_cond_domains.push_back(dam2);
+  //init_cond_domains.push_back(init_cond_domain);
 
   //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
+
+  // Double Dam breaking
+  // X : 0.4 0.45  
+  // O : 0.46 0.47 0.48 0.49 0.5  
+  // start가 1.4에서 바뀌면 안되던게 또 됨 장난하나...
+
+  Domain dam1;
+  dam1.x_start = -1.4f;
+  dam1.x_end   = -0.45f;
+  dam1.y_start = 0.1f;
+  dam1.y_end   = 2.1f;
+  dam1.z_start = -1.4f;
+  dam1.z_end   = -0.45f;
+
+  Domain dam2;
+  dam2.x_start = 0.45f;
+  dam2.x_end   = 1.4f;
+  dam2.y_start = 0.1f;
+  dam2.y_end   = 2.1f;
+  dam2.z_start = 0.45f;
+  dam2.z_end   = 1.4f;
+
+  init_cond_domains.push_back(dam1);
+  init_cond_domains.push_back(dam2);
+
+  constexpr float eta         = 0.01f; // Tait's equation parameter
   //const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
+  const float     square_cvel = 100.0f;
 
   // IC END
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains          = init_cond_domains;
-  init_cond.particle_spacing = 0.04f;
+  init_cond.particle_spacing = 0.05f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter

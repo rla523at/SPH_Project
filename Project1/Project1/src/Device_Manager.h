@@ -15,6 +15,7 @@
     ICONB   : Immutable Constant Buffer
     STRB    : Structured Buffer
     ISTRB   : Immtuable Structured Buffer
+    STGB    : Staging Buffer
 
     RWBS    : Read/Write Buffer Set
     RBS     : Read Buffer Set
@@ -70,6 +71,9 @@ public:
   void read(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_buffer, const UINT num_read_data = -1) const;
 
   template <typename T>
+  void read_STGB(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_STGB, const UINT num_read_data) const;
+
+  template <typename T>
   std::vector<T> read(const ComPtr<ID3D11Buffer> cptr_buffer) const;
 
   template <typename T>
@@ -89,6 +93,9 @@ public:
   T read_front(const ComPtr<ID3D11Buffer> cptr_buffer) const;
 
   template <typename T>
+  T read_front_STGB(const ComPtr<ID3D11Buffer> cptr_STGB) const;
+
+  template <typename T>
   void write(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_staging_buffer) const;
 
   template <typename T>
@@ -98,6 +105,8 @@ public:
     const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
 
 public:
+  void copy_front(const ComPtr<ID3D11Buffer>& cptr_src_buffer, const ComPtr<ID3D11Buffer>& cptr_dest_buffer, const UINT copy_byte) const;
+
   void create_VS_and_IL(
     const wchar_t*                               file_name,
     ComPtr<ID3D11VertexShader>&                  cptr_VS,
@@ -114,8 +123,9 @@ public:
   ComPtr<ID3D11UnorderedAccessView> create_AC_UAV(ID3D11Resource* resource_ptr, const UINT num_data) const;
 
   ComPtr<ID3D11Buffer>    create_CONB(const UINT data_size) const;
-  ComPtr<ID3D11Buffer>    create_staging_buffer_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
-  ComPtr<ID3D11Buffer>    create_staging_buffer_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+  ComPtr<ID3D11Buffer>    create_STGB_read(const UINT data_size) const;
+  ComPtr<ID3D11Buffer>    create_STGB_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
+  ComPtr<ID3D11Buffer>    create_STGB_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Texture2D> create_staging_texture_read(const ComPtr<ID3D11Texture2D> cptr_target_buffer) const;
 
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
@@ -267,10 +277,10 @@ ComPtr<ID3D11Buffer> Device_Manager::create_ISTRB(const UINT num_data, const T* 
 template <typename T>
 Read_Write_Buffer_Set Device_Manager::create_STRB_RWBS(const UINT num_data, const T* init_data_ptr) const
 {
-  Read_Write_Buffer_Set result  = {};
-  result.cptr_buffer = this->create_STRB<T>(num_data, init_data_ptr);
-  result.cptr_SRV    = this->create_SRV(result.cptr_buffer);
-  result.cptr_UAV    = this->create_UAV(result.cptr_buffer);
+  Read_Write_Buffer_Set result = {};
+  result.cptr_buffer           = this->create_STRB<T>(num_data, init_data_ptr);
+  result.cptr_SRV              = this->create_SRV(result.cptr_buffer);
+  result.cptr_UAV              = this->create_UAV(result.cptr_buffer);
 
   return result;
 }
@@ -279,8 +289,8 @@ template <typename T>
 inline Read_Buffer_Set Device_Manager::create_ISTRB_RBS(const UINT num_data, const T* init_data_ptr) const
 {
   Read_Buffer_Set result = {};
-  result.cptr_buffer = this->create_ISTRB(num_data, init_data_ptr);
-  result.cptr_SRV    = this->create_SRV(result.cptr_buffer);
+  result.cptr_buffer     = this->create_ISTRB(num_data, init_data_ptr);
+  result.cptr_SRV        = this->create_SRV(result.cptr_buffer);
 
   return result;
 }
@@ -369,7 +379,7 @@ void Device_Manager::read(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_buffer, c
   ComPtr<ID3D11Buffer> cptr_staging_buffer = cptr_buffer;
   if (desc.Usage != D3D11_USAGE_STAGING)
   {
-    cptr_staging_buffer = this->create_staging_buffer_read(cptr_buffer);
+    cptr_staging_buffer = this->create_STGB_read(cptr_buffer);
     _cptr_context->CopyResource(cptr_staging_buffer.Get(), cptr_buffer.Get());
   }
 
@@ -377,6 +387,17 @@ void Device_Manager::read(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_buffer, c
   _cptr_context->Map(cptr_staging_buffer.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
   memcpy(dest_ptr, ms.pData, num_data * data_size);
   _cptr_context->Unmap(cptr_staging_buffer.Get(), NULL);
+}
+
+template <typename T>
+inline void Device_Manager::read_STGB(T* dest_ptr, const ComPtr<ID3D11Buffer> cptr_STGB, const UINT num_read_data) const
+{
+  constexpr UINT data_size = sizeof(T);
+
+  D3D11_MAPPED_SUBRESOURCE ms;
+  _cptr_context->Map(cptr_STGB.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
+ㅈ  memcpy(dest_ptr, ms.pData, num_read_data * data_size);
+  _cptr_context->Unmap(cptr_STGB.Get(), NULL);
 }
 
 template <typename T>
@@ -434,6 +455,14 @@ inline T Device_Manager::read_front(const ComPtr<ID3D11Buffer> cptr_buffer) cons
 }
 
 template <typename T>
+inline T Device_Manager::read_front_STGB(const ComPtr<ID3D11Buffer> cptr_STGB) const
+{
+  T data = {};
+  read_STGB(&data, cptr_STGB, 1);
+  return data;
+}
+
+template <typename T>
 std::vector<T> Device_Manager::read(
   const ComPtr<ID3D11Buffer> cptr_staging_buffer,
   const ComPtr<ID3D11Buffer> cptr_target_buffer) const
@@ -463,7 +492,7 @@ void Device_Manager::write(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_bu
   auto map_type             = D3D11_MAP_WRITE;
 
   if (is_not_writable)
-    cptr_writable_buffer = this->create_staging_buffer_write(cptr_buffer);
+    cptr_writable_buffer = this->create_STGB_write(cptr_buffer);
   else
   {
     if (desc.Usage == D3D11_USAGE_DYNAMIC)
