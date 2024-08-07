@@ -1,3 +1,20 @@
+# 2024.08.06
+## PCISPH CPU >> GPU
+PCISPH는 다음 단계로 이루어져 있다.
+
+1. scailing factor를 계산한다.
+2. pressure을 제외한 acceleration을 계산한다.
+3. Pressure acceleration 계산을 위한 Iteration을 돈다.
+   1. velocity와 position을 예측한다.
+   2. density와 density error를 계산하고 pressure을 업데이트 한다.
+   3. pressure acceleration을 계산한다.
+4. velocity와 position을 업데이트한다.
+
+**[진행사항]**
+
+* 4 단계(velocity와 position을 업데이트한다)까지 GPU 코드 작성 완료
+* GPU 코드 디버깅 중
+
 # 2024.08.05
 ## PCISPH CPU >> GPU
 PCISPH는 다음 단계로 이루어져 있다.
