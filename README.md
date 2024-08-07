@@ -15,6 +15,8 @@ PCISPH는 다음 단계로 이루어져 있다.
 * 4 단계(velocity와 position을 업데이트한다)까지 GPU 코드 작성 완료
 * GPU 코드 디버깅 중
 
+</br></br></br>
+
 # 2024.08.05
 ## PCISPH CPU >> GPU
 PCISPH는 다음 단계로 이루어져 있다.
