@@ -69,8 +69,8 @@ SPH::SPH(const Device_Manager& device_manager)
   //Domain init_cond_domain;
   //init_cond_domain.x_start = -1.9f;
   //init_cond_domain.x_end   = -0.9f;
-  //init_cond_domain.y_start = 0.2f;
-  //init_cond_domain.y_end   = 2.2f;
+  //init_cond_domain.y_start = 0.1f;
+  //init_cond_domain.y_end   = 2.1f;
   //init_cond_domain.z_start = -0.2f;
   //init_cond_domain.z_end   = 0.2f;
 
