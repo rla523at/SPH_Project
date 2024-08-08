@@ -127,9 +127,12 @@ public:
   ComPtr<ID3D11Buffer>    create_STGB_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Buffer>    create_STGB_write(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
   ComPtr<ID3D11Texture2D> create_staging_texture_read(const ComPtr<ID3D11Texture2D> cptr_target_buffer) const;
+  ComPtr<ID3D11Query>     create_time_stamp_query(void) const;
+  ComPtr<ID3D11Query>     create_time_stamp_disjoint_query(void) const;
+
+
 
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
-
   void bind_OM_RTV_and_DSV(void) const;
   void bind_back_buffer_to_CS_UAV(void) const;
 

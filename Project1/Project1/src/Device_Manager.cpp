@@ -436,6 +436,32 @@ ComPtr<ID3D11Texture2D> Device_Manager::create_staging_texture_read(const ComPtr
   return cptr_texutre_2D;
 }
 
+ComPtr<ID3D11Query> Device_Manager::create_time_stamp_query(void) const
+{
+  D3D11_QUERY_DESC desc = {};
+  desc.Query            = D3D11_QUERY_TIMESTAMP;
+
+  ComPtr<ID3D11Query> time_stamp_query;
+
+  const auto result = _cptr_device->CreateQuery(&desc, time_stamp_query.GetAddressOf());
+  REQUIRE(!FAILED(result), "time stamp query creation should succeed");
+
+  return time_stamp_query;
+}
+
+ComPtr<ID3D11Query> Device_Manager::create_time_stamp_disjoint_query(void) const
+{
+  D3D11_QUERY_DESC desc = {};
+  desc.Query            = D3D11_QUERY_TIMESTAMP_DISJOINT;
+
+  ComPtr<ID3D11Query> time_stamp_query_disjoint;
+
+  const auto result = _cptr_device->CreateQuery(&desc, time_stamp_query_disjoint.GetAddressOf());
+  REQUIRE(!FAILED(result), "time stamp disjoint query creation should succeed");
+
+  return time_stamp_query_disjoint;
+}
+
 ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_count(void) const
 {
   D3D11_BUFFER_DESC desc   = {};

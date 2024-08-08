@@ -2,6 +2,7 @@
 
 #include "Debugger.h"
 #include "Device_Manager.h"
+#include "Utility.h"
 
 #include <array>
 
@@ -201,10 +202,14 @@ ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_count_buffer
 
 void Neighborhood_Uniform_Grid_GPU::update(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
+  //////////////////////////////////////////////////////////////////////////
+
   this->find_changed_GCFPT_ID(fluid_v_pos_RBS);
   this->update_GCFP_buffer();
   this->rearrange_GCFP();
   this->update_nfp(fluid_v_pos_RBS);
+
+  //////////////////////////////////////////////////////////////////////////
 }
 
 const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ninfo_BS(void) const

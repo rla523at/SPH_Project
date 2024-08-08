@@ -106,7 +106,7 @@ SPH::SPH(const Device_Manager& device_manager)
 
   Initial_Condition_Cubes init_cond;
   init_cond.domains          = init_cond_domains;
-  init_cond.particle_spacing = 0.04f;
+  init_cond.particle_spacing = 0.05f;
 
   constexpr float rest_density = 1.0e3f;
   constexpr float gamma        = 7.0f; // Tait's equation parameter
@@ -141,7 +141,7 @@ SPH::~SPH(void) = default;
 
 void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  static bool stop_update = false;
+  static bool stop_update = true;
 
   if (Window_Manager::is_space_key_pressed())
     stop_update = true;

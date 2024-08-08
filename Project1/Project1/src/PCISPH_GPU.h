@@ -119,6 +119,9 @@ private:
   // Apply BC
   ComPtr<ID3D11ComputeShader> _cptr_apply_BC_CS;
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
+
+  // performance analysis
+  float _dt_update; //duration time
 };
 
 } // namespace ms

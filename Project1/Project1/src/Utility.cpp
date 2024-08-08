@@ -30,6 +30,9 @@ void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
 
   // if (_cptr_find_max_index_float_256_CS == nullptr)
   _cptr_find_max_index_float_256_CS = _DM_ptr->create_CS(L"hlsl/find_max_index_256_CS.hlsl");
+
+  //timer
+  _cptr_disjoint_query = _DM_ptr->create_time_stamp_disjoint_query();
 }
 
 ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value)
@@ -37,42 +40,8 @@ ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> va
   constexpr UINT num_thread = 256;
 
   const auto intermediate_buffer = _DM_ptr->create_STRB<float>(Utility::ceil(num_value, num_thread));
-  
+
   return Utility::find_max_value_float_opt(value_buffer, intermediate_buffer, num_value);
-
-  //constexpr UINT num_thread = 256;
-
-  //auto num_input     = num_value;
-  //auto input_buffer  = value_buffer;
-  //auto output_buffer = _DM_ptr->create_structured_buffer<float>(Utility::ceil(num_value, num_thread));
-
-  //while (true)
-  //{
-  //  _DM_ptr->write(&num_input, _cptr_uint_CB);
-
-  //  const auto input_SRV = _DM_ptr->create_SRV(input_buffer.Get());
-
-  //  const auto output_UAV = _DM_ptr->create_UAV(output_buffer.Get());
-
-  //  const auto cptr_context = _DM_ptr->context_cptr();
-  //  cptr_context->CSSetConstantBuffers(0, 1, _cptr_uint_CB.GetAddressOf());
-  //  cptr_context->CSSetShaderResources(0, 1, input_SRV.GetAddressOf());
-  //  cptr_context->CSSetUnorderedAccessViews(0, 1, output_UAV.GetAddressOf(), nullptr);
-  //  cptr_context->CSSetShader(_cptr_find_max_value_float_CS.Get(), nullptr, NULL);
-
-  //  const auto num_output = Utility::ceil(num_input, num_thread);
-  //  cptr_context->Dispatch(num_output, 1, 1);
-
-  //  _DM_ptr->CS_barrier();
-
-  //  if (num_output == 1)
-  //    break;
-
-  //  num_input = num_output;
-  //  std::swap(input_buffer, output_buffer);
-  //}
-
-  //return output_buffer;
 }
 
 ComPtr<ID3D11Buffer> Utility::find_max_value_float_opt(
@@ -170,6 +139,77 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
   _DM_ptr->CS_barrier();
 
   return output_buffer;
+}
+
+void Utility::init_GPU_timer(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  cptr_context->Begin(_cptr_disjoint_query.Get());
+}
+
+void Utility::set_time_point(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  _cptr_start_querys.push_back(_DM_ptr->create_time_stamp_query());
+
+  cptr_context->End(_cptr_start_querys.back().Get());
+}
+
+GPU_DT_Info Utility::make_GPU_dt_info(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  GPU_DT_Info result;
+
+  result.start_point = _cptr_start_querys.back();
+  _cptr_start_querys.pop_back();
+
+  result.end_point = _DM_ptr->create_time_stamp_query();
+  cptr_context->End(result.end_point.Get());
+
+  return result;
+}
+
+void Utility::finialize_GPU_timer(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  cptr_context->End(_cptr_disjoint_query.Get());
+
+  D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
+  while (cptr_context->GetData(_cptr_disjoint_query.Get(), &disjoint_data, sizeof(disjoint_data), 0) != S_OK)
+  {
+  };
+
+  if (disjoint_data.Disjoint)
+  {
+    std::cout << "GPU Timer has an error.\n";
+    _GPU_frequency = 0.0f;
+    return;
+  }
+
+  _GPU_frequency = static_cast<float>(disjoint_data.Frequency);
+}
+
+float Utility::cal_dt(const GPU_DT_Info& info)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  UINT64 start_time = 0;
+  while (cptr_context->GetData(info.start_point.Get(), &start_time, sizeof(start_time), 0) != S_OK)
+  {
+  };
+
+  UINT64 end_time = 0;
+  while (cptr_context->GetData(info.end_point.Get(), &end_time, sizeof(end_time), 0) != S_OK)
+  {
+  };
+
+  const auto delta = end_time - start_time;
+
+  return (delta / _GPU_frequency) * 1000.0f; //millisecond Ãâ·Â
 }
 
 bool Utility::is_initialized(void)

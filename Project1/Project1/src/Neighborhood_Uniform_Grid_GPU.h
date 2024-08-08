@@ -151,6 +151,9 @@ private:
 
   // update nfp
   ComPtr<ID3D11ComputeShader> _cptr_update_nfp_CS;
+
+  // performance analysis
+  float _dt_update; //duration time
 };
 
 } // namespace ms

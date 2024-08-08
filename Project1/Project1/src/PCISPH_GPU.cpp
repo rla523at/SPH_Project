@@ -265,23 +265,27 @@ PCISPH_GPU::~PCISPH_GPU() = default;
 
 void PCISPH_GPU::update(void)
 {
+  ms::Utility::init_GPU_timer();
+  ms::Utility::set_time_point();
+
+  //////////////////////////////////////////////////////////////////////////
+
   _uptr_neighborhood->update(_fluid_v_pos_RWBS);
 
   this->update_scailing_factor();
   this->init_fluid_acceleration();
   this->init_pressure_and_a_pressure();
 
-  float  density_error = 1000.0f;
-  size_t num_iter      = 0;
-
   const auto cptr_context = _DM_ptr->context_cptr();
   cptr_context->CopyResource(_fluid_v_cur_pos_RWBS.cptr_buffer.Get(), _fluid_v_pos_RWBS.cptr_buffer.Get());
   cptr_context->CopyResource(_fluid_v_cur_vel_RWBS.cptr_buffer.Get(), _fluid_v_vel_RWBS.cptr_buffer.Get());
 
+  float  density_error = 1000.0f;
+  size_t num_iter      = 0;
+
   while (_allow_density_error < density_error || num_iter < _min_iter)
   {
     this->predict_velocity_and_position();
-    //this->apply_boundary_condition();
     this->predict_density_error_and_update_pressure();
     density_error = this->cal_max_density_error();
     this->update_a_pressure();
@@ -297,6 +301,10 @@ void PCISPH_GPU::update(void)
   this->apply_BC();
 
   _time += _dt;
+
+  //////////////////////////////////////////////////////////////////////////
+
+   
 }
 
 float PCISPH_GPU::particle_radius(void) const
@@ -528,6 +536,10 @@ void PCISPH_GPU::apply_BC(void)
 
 void PCISPH_GPU::update_scailing_factor(void)
 {
+  ms::Utility::set_time_point();
+
+  //////////////////////////////////////////////////////////////////////////
+
   this->update_number_density();
   const auto cptr_max_index_buffer     = Utility::find_max_index_float(_fluid_number_density_RWBS.cptr_buffer, _num_FP);
   const auto cptr_max_index_buffer_SRV = _DM_ptr->create_SRV(cptr_max_index_buffer);
@@ -562,6 +574,10 @@ void PCISPH_GPU::update_scailing_factor(void)
   cptr_context->Dispatch(1, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  //////////////////////////////////////////////////////////////////////////
+  
+
 }
 
 void PCISPH_GPU::update_number_density(void)
