@@ -3,16 +3,6 @@
 #include "cubic_spline_kernel.hlsli"
 #include "uniform_grid_output.hlsli"
 
-//debug
-  struct debug_struct
-  {
-    uint    nfp_index;
-    float3 v_xj;
-    float   distance;
-  };
-
-//debug
-
 cbuffer CB : register(b1)
 {
   float g_rho0;
@@ -29,7 +19,6 @@ StructuredBuffer<uint>                  ncount_buffer           : register(t3);
 RWStructuredBuffer<float> density_buffer        : register(u0);
 RWStructuredBuffer<float> pressure_buffer       : register(u1);
 RWStructuredBuffer<float> density_error_buffer  : register(u2);
-RWStructuredBuffer<debug_struct> debug_buffer : register(u3);//debug
 
 
 [numthreads(NUM_THREAD,1,1)]
@@ -55,10 +44,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const float   distance  = length(v_xi-v_xj);
 
     rho += W(distance);
-
-    //debug_buffer[ninfo_index].nfp_index = nfp_index;//debug
-    //debug_buffer[ninfo_index].v_xj = v_xj;//debug
-    //debug_buffer[ninfo_index].distance = distance;//debug
   }
 
   rho *= g_m0;

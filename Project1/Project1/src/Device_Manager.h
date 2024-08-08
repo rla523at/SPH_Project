@@ -396,7 +396,7 @@ inline void Device_Manager::read_STGB(T* dest_ptr, const ComPtr<ID3D11Buffer> cp
 
   D3D11_MAPPED_SUBRESOURCE ms;
   _cptr_context->Map(cptr_STGB.Get(), NULL, D3D11_MAP_READ, NULL, &ms);
-ㅈ  memcpy(dest_ptr, ms.pData, num_read_data * data_size);
+  memcpy(dest_ptr, ms.pData, num_read_data * data_size);
   _cptr_context->Unmap(cptr_STGB.Get(), NULL);
 }
 

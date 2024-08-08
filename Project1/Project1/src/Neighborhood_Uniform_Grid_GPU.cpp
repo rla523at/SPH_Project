@@ -57,7 +57,6 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
 {
   // make inital data
   constexpr long long delta[3]          = {-1, 0, 1};
-  constexpr UINT      estimated_num_ngc = 27;
 
   const auto num_cell          = _common_CB_data.num_cell;
   const auto num_x_cell        = _common_CB_data.num_x_cell;
@@ -65,7 +64,7 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
   const auto num_z_cell        = _common_CB_data.num_z_cell;
   const auto estiamted_num_ngc = _common_CB_data.estimated_num_ngc;
 
-  std::vector<UINT> ngc_indexes(num_cell * estimated_num_ngc, -1);
+  std::vector<UINT> ngc_indexes(num_cell * g_estimated_num_ngc, -1);
   std::vector<UINT> ngc_counts(num_cell);
 
   for (size_t i = 0; i < num_x_cell; ++i)
@@ -106,7 +105,7 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
     }
   }
 
-  _ngc_index_RBS = _DM_ptr->create_ISTRB_RBS(num_cell * estimated_num_ngc, ngc_indexes.data());
+  _ngc_index_RBS = _DM_ptr->create_ISTRB_RBS(num_cell * g_estimated_num_ngc, ngc_indexes.data());
   _ngc_count_RBS = _DM_ptr->create_ISTRB_RBS(num_cell, ngc_counts.data());
 }
 
@@ -320,11 +319,13 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
     _GCFP_count_RWBS.cptr_SRV.Get(),
     _GCFP_ID_RWBS.cptr_SRV.Get(),
     _ngc_index_RBS.cptr_SRV.Get(),
-    _ngc_count_RBS.cptr_SRV.Get()};
+    _ngc_count_RBS.cptr_SRV.Get(),
+  };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
     _ninfo_RWBS.cptr_UAV.Get(),
-    _ncount_RWBS.cptr_UAV.Get()};
+    _ncount_RWBS.cptr_UAV.Get(),
+  };
 
   const auto cptr_context = _DM_ptr->context_cptr();
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);

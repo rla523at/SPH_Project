@@ -10,14 +10,6 @@ cbuffer CB : register(b1)
   uint  g_estimated_num_nfp;
 };
 
-////debug
-//  struct debug_struct
-//  {
-//    float   coeff;
-//    float3 v_grad_pressure;
-//  };
-////debug
-
 StructuredBuffer<float>                 density_buffer  : register(t0);
 StructuredBuffer<float>                 pressure_buffer : register(t1);
 StructuredBuffer<float3>                v_pos_buffer    : register(t2);
@@ -25,7 +17,6 @@ StructuredBuffer<Neighbor_Information>  ninfo_buffer    : register(t3);
 StructuredBuffer<uint>                  ncount_buffer   : register(t4);
 
 RWStructuredBuffer<float3> v_a_pressure_buffer : register(u0);
-//RWStructuredBuffer<debug_struct> debug_buffer : register(u1);//debug
 
 [numthreads(NUM_THREAD,1,1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -61,9 +52,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     if (distance == 0.0)
       continue;
 
-    //neighbor update를 iteration에 한번만 하니까, 밀도가 0인 애들이 생겼다.
-    //어 왜 자기 자신이 neighbor list에 없지?
-
     const float3 v_grad_q       = 1.0f / (g_h * distance) * v_xij;
     const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
 
@@ -71,9 +59,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const float3  v_grad_pressure = coeff * v_grad_kernel;
 
     v_a_pressure += v_grad_pressure;
-
-    //debug_buffer[ninfo_index].coeff = coeff;//debug
-    //debug_buffer[ninfo_index].v_grad_pressure = v_grad_pressure;//debug
   }
 
   v_a_pressure *= -g_m0;

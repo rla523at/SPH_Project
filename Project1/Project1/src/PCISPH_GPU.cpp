@@ -453,20 +453,6 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
-
-  //debug
-  const auto debug_density = _DM_ptr->read<float>(_fluid_density_RWBS.cptr_buffer);
-  for (UINT i = 0; i < _num_FP; ++i)
-  {
-    if (debug_density[i] == 0.0)
-    {
-      const auto  debug_ninfo   = _DM_ptr->read<Neighbor_Information>(ninfo_BS.cptr_buffer);
-      const auto  debug_ncounts = _DM_ptr->read<UINT>(ncount_BS.cptr_buffer); //neighbor가 없다고 나오네 이거해결하자!
-      const auto* debug_ptr1    = debug_ncounts.data() + i;
-      const auto  stop          = 0;
-    }
-  }
-  //debug
 }
 
 float PCISPH_GPU::cal_max_density_error(void)
@@ -512,32 +498,6 @@ void PCISPH_GPU::update_a_pressure(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
-
-  //debug
-  const auto debug_v_a_pressure = _DM_ptr->read<Vector3>(_fluid_v_a_pressure_RWBS.cptr_buffer);
-  for (UINT i = 0; i < _num_FP; ++i)
-  {
-    if (is_nan(debug_v_a_pressure[i]))
-    {
-      const auto debug_v_pos   = _DM_ptr->read<Vector3>(_fluid_v_pos_RWBS.cptr_buffer);
-      const auto debug_density = _DM_ptr->read<float>(_fluid_density_RWBS.cptr_buffer);
-
-      for (UINT j = 0; j < _num_FP; ++j)
-      {
-        if (is_nan(debug_v_pos[j]))
-          const auto stop = 0;
-      }
-
-      for (UINT j = 0; j < _num_FP; ++j)
-      {
-        if (debug_density[j] == 0.0) //31250 이후로 전부 밀도가 0
-          const auto stop = 0;
-      }
-
-      const auto stop = 0;
-    }
-  }
-  //debug
 }
 
 void PCISPH_GPU::apply_BC(void)
