@@ -1,11 +1,11 @@
 # 2024.08.07
 ## PCISPH CPU >> GPU
 
-**[진행사항]**
+### [진행사항]
 
 * GPU 코드 검증 완료
 
-**[결과]**
+### [결과]
 
 **Dam Breaking Simulation**
 
@@ -15,13 +15,13 @@
 |Inital Water Box Domain(XYZ)|1 X 2 X 0.4 (m)|
 |intial spacing|0.04 (m)|
 |#particle|~15000(14586)|
-|dt|0.01|
+|dt|0.01 (s)|
 |FPS|300-350|
 |Simulation Time / Computation Time  | 3.0 - 3.5 |
 
 CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 
-[결과]
+![2024-08-08105609DamBreaking300-350FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/3bda5960-8947-419a-bd83-e9a3f9cc946a)
 
 **Double Dam Breaking Simulation1**
 
@@ -31,11 +31,11 @@ CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 |Inital Water Box Domain(XYZ)|1 X 2 X 0.4 (m)|
 |intial spacing|0.04 (m)|
 |#particle|~70000(68952)|
-|dt|0.01|
+|dt|0.01 (s)|
 |FPS|40-50|
 |Simulation Time / Computation Time  | 0.4 - 0.5 |
 
-[결과]
+![2024-08-08111022DoulbeDam0 0440-50FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/43745a37-9708-4a7a-8ece-55732d532b16)
 
 **Double Dam Breaking Simulation2**
 
@@ -45,26 +45,60 @@ CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 |Inital Water Box Domain(XYZ)|1 X 2 X 0.4 (m)|
 |intial spacing|0.05 (m)|
 |#particle|~35000(35280)|
-|dt|0.01|
+|dt|0.01 (s)|
 |FPS|100-110|
 |Simulation Time / Computation Time  | 1.0 - 1.1 |
 
-[결과]
+![2024-08-08111117DoubleDam0 05100-110FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/80b3edcc-abcd-4364-98d0-bcef9275a70f)
 
-**[문제]**
-
+### [문제]
 
 GPU 코드 최적화
 * CPU 코드는 visual studio에서 제공하는 성능 프로파일링을 사용하여 CPU 사용량을 체크해 어떤 함수의 어떤 부분을 개선해야 하는지 파악할 수 있었다.
-* GPU 코드의 경우 어떻게 성능 프로파일링을 하여 어떤 함수의 어떤 부분에서 computation cost가 얼마나 드는지를 파악할 수 있는지 잘 모르겠다.
-* 인터넷 검색 중...
+* GPU 코드의 경우 어떻게 성능 프로파일링을 하여 어떤 함수의 어떤 부분에서 computation cost가 얼마나 드는지를 파악할 수 있는지 잘 모르겠다...
+* GPU 코드의 hot zone을 먼저 파악하고, 그 부분부터 성능 개선을 시도할 예정
 
 Iteration 코드
 * CPU 코드로 iteration loop를 돌고, iteration 내부에서 필요한 계산들은 GPU 코드로 되어있다.
 * CPU에서 iteration 종료 조건을 판단하기 위해, float 1개 이기는 하지만 GPU -> CPU 메모리 복사가 매 iteration 마다 한번씩 발생한다.
+* Iteration 자체를 GPU 코드로 만들 수는 없는지 고민중...
+
+```cpp
+void PCISPH_GPU::update(void)
+{
+  _uptr_neighborhood->update(_fluid_v_pos_RWBS);
+
+  this->update_scailing_factor();
+  this->init_fluid_acceleration();
+  this->init_pressure_and_a_pressure();
+
+  float  density_error = 1000.0f;
+  size_t num_iter      = 0;
+
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CopyResource(_fluid_v_cur_pos_RWBS.cptr_buffer.Get(), _fluid_v_pos_RWBS.cptr_buffer.Get());
+  cptr_context->CopyResource(_fluid_v_cur_vel_RWBS.cptr_buffer.Get(), _fluid_v_vel_RWBS.cptr_buffer.Get());
+
+  while (_allow_density_error < density_error || num_iter < _min_iter)
+  {
+    this->predict_velocity_and_position();
+    this->predict_density_error_and_update_pressure();
+    density_error = this->cal_max_density_error();
+    this->update_a_pressure();
+
+    ++num_iter;
+
+    if (_max_iter < num_iter)
+      break;
+  }
+
+  this->predict_velocity_and_position();
+  this->apply_BC();
+}
+```
 
 ## 향후 진행 
-
+* GPU 코드 최적화
 * water rendering
 * interaction with rigid body
 
