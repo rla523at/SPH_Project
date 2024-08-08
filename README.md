@@ -21,7 +21,8 @@
 
 CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 
-![2024-08-08105609DamBreaking300-350FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/3bda5960-8947-419a-bd83-e9a3f9cc946a)
+![DamBreaking-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/ba77e52f-b39a-4d07-b57c-4b1ba45d2905)
+
 
 **Double Dam Breaking Simulation1**
 
@@ -35,7 +36,8 @@ CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 |FPS|40-50|
 |Simulation Time / Computation Time  | 0.4 - 0.5 |
 
-![2024-08-08111022DoulbeDam0 0440-50FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/43745a37-9708-4a7a-8ece-55732d532b16)
+![DoubleDamBreaking0 04-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/08a617a9-d4cc-479d-a3c3-922026fbdee1)
+
 
 **Double Dam Breaking Simulation2**
 
@@ -49,7 +51,8 @@ CPU 병렬화 코드 대비 FPS가 7-8배 정도 증가 되었다.
 |FPS|100-110|
 |Simulation Time / Computation Time  | 1.0 - 1.1 |
 
-![2024-08-08111117DoubleDam0 05100-110FPS-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/80b3edcc-abcd-4364-98d0-bcef9275a70f)
+![DoubleDamBreaking0 05-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/53c1e83b-9471-4b23-b83b-a35a692140f5)
+
 
 ### [문제]
 
