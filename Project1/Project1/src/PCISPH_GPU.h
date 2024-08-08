@@ -121,7 +121,14 @@ private:
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
 
   // performance analysis
-  float _dt_update; //duration time
+  GPU_DT_Info _dt_info_update;
+  GPU_DT_Info _dt_info_scailing_factor;
+  GPU_DT_Info _dt_info_init_fluid_accel;
+  GPU_DT_Info _dt_info_init_pressure_and_a_pressre;
+  GPU_DT_Info _dt_info_predict_vel_and_pos;
+  GPU_DT_Info _dt_info_predict_density_error_and_update_pressure;
+  GPU_DT_Info _dt_info_cal_max_density_error;
+  GPU_DT_Info _dt_info_update
 };
 
 } // namespace ms
