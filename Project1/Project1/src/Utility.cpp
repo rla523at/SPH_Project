@@ -32,7 +32,9 @@ void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
   _cptr_find_max_index_float_256_CS = _DM_ptr->create_CS(L"hlsl/find_max_index_256_CS.hlsl");
 
   //timer
-  _cptr_disjoint_query = _DM_ptr->create_time_stamp_disjoint_query();
+  _cptr_start_query2    = _DM_ptr->create_time_stamp_query();
+  _cptr_end_query2      = _DM_ptr->create_time_stamp_query();
+  _cptr_disjoint_query2 = _DM_ptr->create_time_stamp_disjoint_query();
 }
 
 ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value)
@@ -141,75 +143,89 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
   return output_buffer;
 }
 
-void Utility::init_GPU_timer(void)
-{
-  const auto cptr_context = _DM_ptr->context_cptr();
-
-  cptr_context->Begin(_cptr_disjoint_query.Get());
-}
-
 void Utility::set_time_point(void)
 {
   const auto cptr_context = _DM_ptr->context_cptr();
 
+  _cptr_disjoint_querys.push_back(_DM_ptr->create_time_stamp_disjoint_query());
   _cptr_start_querys.push_back(_DM_ptr->create_time_stamp_query());
 
+  cptr_context->Begin(_cptr_disjoint_querys.back().Get());
   cptr_context->End(_cptr_start_querys.back().Get());
 }
 
-GPU_DT_Info Utility::make_GPU_dt_info(void)
+float Utility::cal_dt(void)
 {
   const auto cptr_context = _DM_ptr->context_cptr();
 
-  GPU_DT_Info result;
-
-  result.start_point = _cptr_start_querys.back();
+  const auto cptr_start_query = _cptr_start_querys.back();
   _cptr_start_querys.pop_back();
 
-  result.end_point = _DM_ptr->create_time_stamp_query();
-  cptr_context->End(result.end_point.Get());
+  const auto cptr_disjoint_query = _cptr_disjoint_querys.back();
+  _cptr_disjoint_querys.pop_back();
 
-  return result;
-}
+  cptr_context->End(_cptr_end_query2.Get());
+  cptr_context->End(cptr_disjoint_query.Get());
 
-void Utility::finialize_GPU_timer(void)
-{
-  const auto cptr_context = _DM_ptr->context_cptr();
-
-  cptr_context->End(_cptr_disjoint_query.Get());
+  // Wait for data to be available
+  while (cptr_context->GetData(cptr_disjoint_query.Get(), NULL, 0, 0) == S_FALSE)
+    ;
 
   D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
-  while (cptr_context->GetData(_cptr_disjoint_query.Get(), &disjoint_data, sizeof(disjoint_data), 0) != S_OK)
-  {
-  };
+  cptr_context->GetData(cptr_disjoint_query.Get(), &disjoint_data, sizeof(disjoint_data), 0);
 
   if (disjoint_data.Disjoint)
   {
     std::cout << "GPU Timer has an error.\n";
-    _GPU_frequency = 0.0f;
-    return;
+    return -1.0f;
   }
 
-  _GPU_frequency = static_cast<float>(disjoint_data.Frequency);
+  UINT64 start_time = 0;
+  UINT64 end_time   = 0;
+  cptr_context->GetData(cptr_start_query.Get(), &start_time, sizeof(start_time), 0);
+  cptr_context->GetData(_cptr_end_query2.Get(), &end_time, sizeof(end_time), 0);
+
+  const auto delta     = end_time - start_time;
+  const auto frequency = static_cast<float>(disjoint_data.Frequency);
+  return (delta / frequency) * 1000.0f; //millisecond 출력
 }
 
-float Utility::cal_dt(const GPU_DT_Info& info)
+void Utility::set_time_point2(void)
 {
   const auto cptr_context = _DM_ptr->context_cptr();
 
+  cptr_context->Begin(_cptr_disjoint_query2.Get());
+  cptr_context->End(_cptr_start_query2.Get());
+}
+
+float Utility::cal_dt2(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  cptr_context->End(_cptr_end_query2.Get());
+  cptr_context->End(_cptr_disjoint_query2.Get());
+
+  // Wait for data to be available
+  while (cptr_context->GetData(_cptr_disjoint_query2.Get(), NULL, 0, 0) == S_FALSE)
+    ;
+
+  D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
+  cptr_context->GetData(_cptr_disjoint_query2.Get(), &disjoint_data, sizeof(disjoint_data), 0);
+
+  if (disjoint_data.Disjoint)
+  {
+    std::cout << "GPU Timer has an error.\n";
+    return -1.0f;
+  }
+
   UINT64 start_time = 0;
-  while (cptr_context->GetData(info.start_point.Get(), &start_time, sizeof(start_time), 0) != S_OK)
-  {
-  };
+  UINT64 end_time   = 0;
+  cptr_context->GetData(_cptr_start_query2.Get(), &start_time, sizeof(start_time), 0);
+  cptr_context->GetData(_cptr_end_query2.Get(), &end_time, sizeof(end_time), 0);
 
-  UINT64 end_time = 0;
-  while (cptr_context->GetData(info.end_point.Get(), &end_time, sizeof(end_time), 0) != S_OK)
-  {
-  };
-
-  const auto delta = end_time - start_time;
-
-  return (delta / _GPU_frequency) * 1000.0f; //millisecond 출력
+  const auto delta     = end_time - start_time;
+  const auto frequency = static_cast<float>(disjoint_data.Frequency);
+  return (delta / frequency) * 1000.0f; //millisecond 출력
 }
 
 bool Utility::is_initialized(void)

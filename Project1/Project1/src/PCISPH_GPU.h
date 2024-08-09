@@ -34,8 +34,8 @@ public:
   void update(void) override;
 
 public:
-  float             particle_radius(void) const override;
-  size_t            num_fluid_particle(void) const override;
+  float                        particle_radius(void) const override;
+  size_t                       num_fluid_particle(void) const override;
   const Read_Write_Buffer_Set& get_fluid_v_pos_BS(void) const override;
   const Read_Write_Buffer_Set& get_fluid_density_BS(void) const override;
 
@@ -43,6 +43,7 @@ private:
   void  apply_BC(void);
   float cal_mass(const float rho0);
   float cal_max_density_error(void);
+  void  copy_cur_pos_and_vel(void);
   void  init_fluid_acceleration(void); // it doesn't consider acceleration by pressure
   void  init_pressure_and_a_pressure(void);
   void  predict_velocity_and_position(void);
@@ -50,6 +51,7 @@ private:
   void  update_number_density(void);
   void  update_scailing_factor(void);
   void  update_a_pressure(void);
+  void  update_neighborhood(void);
 
 private:
   float  _dt                  = 0.0f;
@@ -121,14 +123,28 @@ private:
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
 
   // performance analysis
-  GPU_DT_Info _dt_info_update;
-  GPU_DT_Info _dt_info_scailing_factor;
-  GPU_DT_Info _dt_info_init_fluid_accel;
-  GPU_DT_Info _dt_info_init_pressure_and_a_pressre;
-  GPU_DT_Info _dt_info_predict_vel_and_pos;
-  GPU_DT_Info _dt_info_predict_density_error_and_update_pressure;
-  GPU_DT_Info _dt_info_cal_max_density_error;
-  GPU_DT_Info _dt_info_update
+  void print_performance_analysis_result(void);
+
+  float _dt_sum_update                                    = 0.0f;
+  float _dt_sum_update_neighborhood                       = 0.0f;
+  float _dt_sum_update_scailing_factor                    = 0.0f;
+  float _dt_sum_init_fluid_acceleration                   = 0.0f;
+  float _dt_sum_init_pressure_and_a_pressure              = 0.0f;
+  float _dt_sum_copy_cur_pos_and_vel                      = 0.0f;
+  float _dt_sum_predict_velocity_and_position             = 0.0f;
+  float _dt_sum_predict_density_error_and_update_pressure = 0.0f;
+  float _dt_sum_cal_max_density_error                     = 0.0f;
+  float _dt_sum_update_a_pressure                         = 0.0f;
+  float _dt_sum_apply_BC                                  = 0.0f;
+
+  //GPU_DT_Info _dt_info_update;
+  //GPU_DT_Info _dt_info_scailing_factor;
+  //GPU_DT_Info _dt_info_init_fluid_accel;
+  //GPU_DT_Info _dt_info_init_pressure_and_a_pressre;
+  //GPU_DT_Info _dt_info_predict_vel_and_pos;
+  //GPU_DT_Info _dt_info_predict_density_error_and_update_pressure;
+  //GPU_DT_Info _dt_info_cal_max_density_error;
+  //GPU_DT_Info _dt_info_update
 };
 
 } // namespace ms

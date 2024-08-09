@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <numbers>
 #include <omp.h>
 
@@ -265,20 +266,15 @@ PCISPH_GPU::~PCISPH_GPU() = default;
 
 void PCISPH_GPU::update(void)
 {
-  ms::Utility::init_GPU_timer();
-  ms::Utility::set_time_point();
-
+  //////////////////////////////////////////////////////////////////////////
+  Utility::set_time_point();
   //////////////////////////////////////////////////////////////////////////
 
-  _uptr_neighborhood->update(_fluid_v_pos_RWBS);
-
+  this->update_neighborhood();
   this->update_scailing_factor();
   this->init_fluid_acceleration();
   this->init_pressure_and_a_pressure();
-
-  const auto cptr_context = _DM_ptr->context_cptr();
-  cptr_context->CopyResource(_fluid_v_cur_pos_RWBS.cptr_buffer.Get(), _fluid_v_pos_RWBS.cptr_buffer.Get());
-  cptr_context->CopyResource(_fluid_v_cur_vel_RWBS.cptr_buffer.Get(), _fluid_v_vel_RWBS.cptr_buffer.Get());
+  this->copy_cur_pos_and_vel();
 
   float  density_error = 1000.0f;
   size_t num_iter      = 0;
@@ -296,15 +292,21 @@ void PCISPH_GPU::update(void)
       break;
   }
 
-  // 마지막으로 update된 pressure에 의한 accleration을 반영
   this->predict_velocity_and_position();
   this->apply_BC();
 
   _time += _dt;
 
   //////////////////////////////////////////////////////////////////////////
+  const auto dt = Utility::cal_dt();
+  _dt_sum_update += dt;
 
-   
+  if (_time > 4.0)
+  {
+    print_performance_analysis_result();
+    exit(523);
+  }
+  //////////////////////////////////////////////////////////////////////////
 }
 
 float PCISPH_GPU::particle_radius(void) const
@@ -327,8 +329,27 @@ const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_density_BS(void) const
   return _fluid_density_RWBS;
 }
 
+void PCISPH_GPU::update_neighborhood(void)
+{
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
+  _uptr_neighborhood->update(_fluid_v_pos_RWBS);
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_update_neighborhood += dt;
+  //////////////////////////////////////////////////////////////////////////
+}
+
 void PCISPH_GPU::init_fluid_acceleration(void)
 {
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 2;
   constexpr UINT num_SRV    = 4;
@@ -360,10 +381,20 @@ void PCISPH_GPU::init_fluid_acceleration(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_init_fluid_acceleration += dt;
+  //////////////////////////////////////////////////////////////////////////
 }
 
 void PCISPH_GPU::init_pressure_and_a_pressure(void)
 {
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 1;
   constexpr UINT num_UAV    = 2;
@@ -386,10 +417,37 @@ void PCISPH_GPU::init_pressure_and_a_pressure(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_init_pressure_and_a_pressure += dt;
+  //////////////////////////////////////////////////////////////////////////
+}
+
+void PCISPH_GPU::copy_cur_pos_and_vel(void)
+{
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
+  const auto cptr_context = _DM_ptr->context_cptr();
+  cptr_context->CopyResource(_fluid_v_cur_pos_RWBS.cptr_buffer.Get(), _fluid_v_pos_RWBS.cptr_buffer.Get());
+  cptr_context->CopyResource(_fluid_v_cur_vel_RWBS.cptr_buffer.Get(), _fluid_v_vel_RWBS.cptr_buffer.Get());
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_copy_cur_pos_and_vel += dt;
+  //////////////////////////////////////////////////////////////////////////
 }
 
 void PCISPH_GPU::predict_velocity_and_position(void)
 {
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 1;
   constexpr UINT num_SRV    = 4;
@@ -421,10 +479,19 @@ void PCISPH_GPU::predict_velocity_and_position(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_predict_velocity_and_position += dt;
+  //////////////////////////////////////////////////////////////////////////
 }
 
 void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 {
+  ms::Utility::set_time_point();
+
+  //////////////////////////////////////////////////////////////////////////
   const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_BS();
   const auto& ncount_BS = _uptr_neighborhood->get_ncount_BS();
 
@@ -461,12 +528,30 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+  //////////////////////////////////////////////////////////////////////////
+
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+
+  _dt_sum_predict_density_error_and_update_pressure += dt;
 }
 
 float PCISPH_GPU::cal_max_density_error(void)
 {
-  const auto max_value_buffer = ms::Utility::find_max_value_float_opt(_fluid_density_error_RWBS.cptr_buffer, _cptr_fluid_density_error_intermediate_buffer, _num_FP);
-  return _DM_ptr->read_front<float>(max_value_buffer);
+  //////////////////////////////////////////////////////////////////////////
+  ms::Utility::set_time_point();
+  //////////////////////////////////////////////////////////////////////////
+
+  const auto max_value_buffer  = ms::Utility::find_max_value_float_opt(_fluid_density_error_RWBS.cptr_buffer, _cptr_fluid_density_error_intermediate_buffer, _num_FP);
+  const auto max_density_error = _DM_ptr->read_front<float>(max_value_buffer);
+
+  //////////////////////////////////////////////////////////////////////////
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+  _dt_sum_cal_max_density_error += dt;
+  //////////////////////////////////////////////////////////////////////////
+
+  return max_density_error;
 
   //_DM_ptr->copy_front(max_value_buffer, _cptr_max_density_error_STGB, sizeof(float));
   //return _DM_ptr->read_front_STGB<float>(_cptr_max_density_error_STGB);
@@ -474,6 +559,9 @@ float PCISPH_GPU::cal_max_density_error(void)
 
 void PCISPH_GPU::update_a_pressure(void)
 {
+  ms::Utility::set_time_point();
+
+  //////////////////////////////////////////////////////////////////////////
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 2;
   constexpr UINT num_SRV    = 5;
@@ -506,10 +594,19 @@ void PCISPH_GPU::update_a_pressure(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+  //////////////////////////////////////////////////////////////////////////
+
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+
+  _dt_sum_update_a_pressure += dt;
 }
 
 void PCISPH_GPU::apply_BC(void)
 {
+  ms::Utility::set_time_point();
+
+  //////////////////////////////////////////////////////////////////////////
   constexpr UINT num_thread = 256;
   constexpr UINT num_CB     = 1;
   constexpr UINT num_UAV    = 2;
@@ -532,6 +629,12 @@ void PCISPH_GPU::apply_BC(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+  //////////////////////////////////////////////////////////////////////////
+
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+
+  _dt_sum_apply_BC += dt;
 }
 
 void PCISPH_GPU::update_scailing_factor(void)
@@ -576,8 +679,11 @@ void PCISPH_GPU::update_scailing_factor(void)
   _DM_ptr->CS_barrier();
 
   //////////////////////////////////////////////////////////////////////////
-  
 
+  const float dt = ms::Utility::cal_dt();
+  //std::cout << std::setw(60) << __FUNCTION__ << dt << "ms\n";
+
+  _dt_sum_update_scailing_factor += dt;
 }
 
 void PCISPH_GPU::update_number_density(void)
@@ -622,6 +728,26 @@ float PCISPH_GPU::cal_mass(const float rho0)
   const auto max_value_buffer   = Utility::find_max_value_float(_fluid_number_density_RWBS.cptr_buffer, _num_FP);
   const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);
   return rho0 / max_number_density;
+}
+
+void PCISPH_GPU::print_performance_analysis_result(void)
+{
+  std::cout << std::left;
+  std::cout << "PCISPH_GPU Performance Analysis Result \n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_sum_update" << _dt_sum_update << " ms\n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_sum_update_neighborhood" << _dt_sum_update_neighborhood << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_scailing_factor" << _dt_sum_update_scailing_factor << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_init_fluid_acceleration" << _dt_sum_init_fluid_acceleration << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_init_pressure_and_a_pressure" << _dt_sum_init_pressure_and_a_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_copy_cur_pos_and_vel" << _dt_sum_copy_cur_pos_and_vel << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_predict_velocity_and_position" << _dt_sum_predict_velocity_and_position << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_predict_density_error_and_update_pressure" << _dt_sum_predict_density_error_and_update_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_cal_max_density_error" << _dt_sum_cal_max_density_error << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_a_pressure" << _dt_sum_update_a_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_apply_BC" << _dt_sum_apply_BC << " ms\n";
+  std::cout << "======================================================================\n";
 }
 
 } // namespace ms

@@ -1,3 +1,101 @@
+# 2024.08.08
+## GPU 코드 최적화
+
+### [진행사항]
+
+성능 측정 코드를 작성하고, PCISPH 업데이트 함수의 각 부분별로 성능을 측정하였다.
+
+성능 측정 코드는 다음과 같이 작성하였다.
+
+```cpp
+std::vector<ComPtr<ID3D11Query>> _cptr_start_querys;
+std::vector<ComPtr<ID3D11Query>> _cptr_disjoint_querys;
+ComPtr<ID3D11Query> _cptr_end_query2;
+```
+
+```cpp
+void Utility::set_time_point2(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  _cptr_disjoint_querys.push_back(_DM_ptr->create_time_stamp_disjoint_query());
+  _cptr_start_querys.push_back(_DM_ptr->create_time_stamp_query());
+
+  cptr_context->Begin(_cptr_disjoint_querys.back().Get());
+  cptr_context->End(_cptr_start_querys.back().Get());
+}
+```
+
+```cpp
+float Utility::cal_dt2(void)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  const auto cptr_start_query = _cptr_start_querys.back();
+  _cptr_start_querys.pop_back();
+
+  const auto cptr_disjoint_query = _cptr_disjoint_querys.back();
+  _cptr_disjoint_querys.pop_back();
+
+  cptr_context->End(_cptr_end_query2.Get());
+  cptr_context->End(cptr_disjoint_query.Get());
+
+  // Wait for data to be available
+  while (cptr_context->GetData(cptr_disjoint_query.Get(), NULL, 0, 0) == S_FALSE)
+    ;
+
+  D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
+  cptr_context->GetData(cptr_disjoint_query.Get(), &disjoint_data, sizeof(disjoint_data), 0);
+
+  REQUIRE_ALWAYS(!disjoint_data.Disjoint, "GPU Timer has an error.\n");
+
+  UINT64 start_time = 0;
+  UINT64 end_time   = 0;
+  cptr_context->GetData(cptr_start_query.Get(), &start_time, sizeof(start_time), 0);
+  cptr_context->GetData(_cptr_end_query2.Get(), &end_time, sizeof(end_time), 0);
+
+  const auto delta     = end_time - start_time;
+  const auto frequency = static_cast<float>(disjoint_data.Frequency);
+  return (delta / frequency) * 1000.0f; //millisecond 출력
+}
+```
+
+### [결과]
+
+```
+PCISPH_GPU Performance Analysis Result
+======================================================================
+_dt_sum_update                                              4154.15 ms
+======================================================================
+_dt_sum_update_neighborhood                                 1450.77 ms
+_dt_sum_update_scailing_factor                              139.718 ms
+_dt_sum_init_fluid_acceleration                             602.5 ms
+_dt_sum_init_pressure_and_a_pressure                        2.04115 ms
+_dt_sum_copy_cur_pos_and_vel                                7.46986 ms
+_dt_sum_predict_velocity_and_position                       19.9418 ms
+_dt_sum_predict_density_error_and_update_pressure           354.673 ms
+_dt_sum_cal_max_density_error                               123.229 ms
+_dt_sum_update_a_pressure                                   834.01 ms
+_dt_sum_apply_BC                                            2.35636 ms
+======================================================================
+```
+
+### [문제]
+update 함수 전체의 cost를 측정한 결과와 update 내부의 함수들의 cost를 측정한 결과의 합이 차이가 많이 난다.
+
+* 4154.15 ms (update 함수의 cost)
+* 3536.70917ms (내부 함수들의 cost sum)
+
+성능 측정 방식이 잘못 된것은 아닌지 고민중.
+
+## 향후 진행
+* GPU performance analaysis 결과를 바탕으로 시간이 가장 오래걸린 순서로 최적화 시도
+* water rendering
+* interaction with rigid body
+
+
+</br></br></br>
+
 # 2024.08.07
 ## PCISPH CPU >> GPU
 

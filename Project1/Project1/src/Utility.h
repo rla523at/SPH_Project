@@ -39,11 +39,10 @@ public:
   static ComPtr<ID3D11Buffer> find_max_index_float_256(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value);
 
   // GPU performance
-  static void        init_GPU_timer(void);
-  static void        set_time_point(void);
-  static GPU_DT_Info make_GPU_dt_info(void);
-  static void        finialize_GPU_timer(void);
-  static float       cal_dt(const GPU_DT_Info& info);
+  static void  set_time_point(void);
+  static float cal_dt(void);
+  static void  set_time_point2(void);
+  static float cal_dt2(void);
 
 private:
   static bool is_initialized(void);
@@ -64,8 +63,15 @@ private:
 
   //time stamp
   static inline std::vector<ComPtr<ID3D11Query>> _cptr_start_querys;
-  static inline ComPtr<ID3D11Query>              _cptr_disjoint_query;
-  static inline float                            _GPU_frequency;
+  static inline std::vector<ComPtr<ID3D11Query>> _cptr_disjoint_querys;
+
+  //time stamp2
+  static inline ComPtr<ID3D11Query> _cptr_start_query2;
+  static inline ComPtr<ID3D11Query> _cptr_end_query2;
+  static inline ComPtr<ID3D11Query> _cptr_disjoint_query2;
+
+  //static inline std::vector<ComPtr<ID3D11Query>> _cptr_start_querys2;
+  //static inline std::vector<ComPtr<ID3D11Query>> _cptr_disjoint_querys2;
 };
 
 } // namespace ms
