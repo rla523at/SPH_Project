@@ -1,3 +1,98 @@
+# 2024.08.09
+## GPU 코드 최적화
+
+### Update 최적화
+
+#### [문제]
+현재 Update 함수의 핵심 부분은 다음과 같다.
+```cpp
+//...
+  while (_allow_density_error < density_error || num_iter < _min_iter)
+  {
+    this->predict_velocity_and_position();
+    this->predict_density_error_and_update_pressure();
+    density_error = this->cal_max_density_error();
+    this->update_a_pressure();
+
+    ++num_iter;
+
+    if (_max_iter < num_iter)
+      break;
+  }
+//...
+```
+
+이 떄, `cal_max_density_error`만 GPU에서 계산한 결과를 CPU로 받아오는 과정이 포함되어 있으며, 나머지는 전부 Compute Shader를 이용해 GPU로 계산만 하는 함수이다.
+
+이를 간략화 하면 다음과 같다.
+
+[그림]
+
+이 때, GPU에서 CPU로 data를 읽어오는 과정 때문에 다음과 같은 비효율이 발생한다.
+* CPU는 Produce Work 후에도 Read Data나 다음 Produce Work를 수행하지 못하고 GPU의 Consume Work을 기다려야 한다.
+* GPU는 Consume Work 후에도, CPU가 Read Data와 Produce Work를 수행하는 동안 기다려야 한다.
+
+#### [해결]
+
+결론적으로, GPU->CPU data를 읽어오는 과정은 iteration 수를 결정하기 위함임으로 고정된 수만큼 iteration하면 GPU->CPU data를 읽어오는 과정이 필요 없어진다.
+
+그러면 CPU는 Produce Work를 GPU는 Consume Work를 비동기적으로 수행할 수 있다.
+
+[그림]
+
+이를 위해 코드를 다음과 같이 수정하였다.
+
+```cpp
+//...
+  for (UINT i=0; i<_max_iter; ++i)
+  {
+    this->predict_velocity_and_position();
+    this->predict_density_error_and_update_pressure();
+    this->update_a_pressure();  
+  }
+//...
+```
+
+`_min_iter=1`, `_max_iter=3`인 상황에서 성능 분석 결과는 다음과 같다.
+
+```
+                                                            Before         After    
+====================================================     ==========     ===========
+_dt_sum_predict_velocity_and_position                    20.0431 ms      15.7366  ms
+_dt_sum_predict_density_error_and_update_pressure        352.638 ms      269.75   ms 
+_dt_sum_cal_max_density_error                            128.067 ms      0        ms      
+_dt_sum_update_a_pressure                                804.587 ms      621.542  ms
+====================================================     ==========     ===========
+                                                         1305.3351 ms    907.0286 ms
+```
+
+Iteration과 관련된 부분만 비교를 해보면 약 400ms가 줄어서 약 30%의 성능 개선 효과가 있었다.
+
+$$ \frac{400}{1305} \times 100 \sim 30\% $$
+
+성능 개선 효과가 두드러졌던 이유를 생각해보면 _min_iter와 _max_iter 차이가 적고 기존에도 _max_iter만큼 iteration이 되는 경우가 많았기 때문에 iteration을 비동기적으로 _max_iter만큼 수행하는게 동기화 과정을 포함하여 iteration 수를 줄이는 것보다 더 높은 성능을 보였던것 같다.
+
+### Num Thread
+단일 함수중 가장 cost가 큰 update_a_pressure의 경우 Group당 Thread개수에 따라 성능 차이가 발생하였다.
+
+warp 단위를 만족하는 숫자중 128, 256, 512, 1024를 테스트 해보았고 결과는 다음과 같다.
+
+| #thread |average (ms)|
+|------|:---:|
+|128|831|
+|256|830|
+|512|806|
+|1024|910|
+
+1024 thread를 사용했을 떄와, 512 thread를 사용했을 떄를 비교해보면 104ms가 줄어서 약 11%의 성능 개선 효과가 있었다.
+
+$$ \frac{104}{910} \times 100 \sim 11\% $$
+
+
+
+
+</br></br></br>
+
 # 2024.08.08
 ## GPU 코드 최적화
 

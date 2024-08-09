@@ -1,4 +1,4 @@
-#define NUM_THREAD 256
+#define NUM_THREAD 512
 
 #include "cubic_spline_kernel.hlsli"
 #include "uniform_grid_output.hlsli"

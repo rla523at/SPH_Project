@@ -285,17 +285,24 @@ void PCISPH_GPU::update(void)
   float  density_error = 1000.0f;
   size_t num_iter      = 0;
 
-  while (_allow_density_error < density_error || num_iter < _min_iter)
+  //while (_allow_density_error < density_error || num_iter < _min_iter)
+  //{
+  //  this->predict_velocity_and_position();
+  //  this->predict_density_error_and_update_pressure();
+  //  density_error = this->cal_max_density_error();
+  //  this->update_a_pressure();
+
+  //  ++num_iter;
+
+  //  if (_max_iter < num_iter)
+  //    break;
+  //}
+
+  for (UINT i = 0; i < _max_iter; ++i)
   {
     this->predict_velocity_and_position();
     this->predict_density_error_and_update_pressure();
-    density_error = this->cal_max_density_error();
     this->update_a_pressure();
-
-    ++num_iter;
-
-    if (_max_iter < num_iter)
-      break;
   }
 
   this->predict_velocity_and_position();
@@ -526,7 +533,7 @@ void PCISPH_GPU::update_a_pressure(void)
 {
   PERFORMANCE_ANALYSIS_START;
 
-  constexpr UINT num_thread = 256;
+  constexpr UINT num_thread = 512;
   constexpr UINT num_CB     = 2;
   constexpr UINT num_SRV    = 5;
   constexpr UINT num_UAV    = 1;
@@ -686,16 +693,16 @@ void PCISPH_GPU::print_performance_analysis_result(void)
   std::cout << "======================================================================\n";
   std::cout << std::setw(60) << "_dt_sum_update" << _dt_sum_update << " ms\n";
   std::cout << "======================================================================\n";
-  //std::cout << std::setw(60) << "_dt_sum_update_neighborhood" << _dt_sum_update_neighborhood << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_update_scailing_factor" << _dt_sum_update_scailing_factor << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_init_fluid_acceleration" << _dt_sum_init_fluid_acceleration << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_init_pressure_and_a_pressure" << _dt_sum_init_pressure_and_a_pressure << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_copy_cur_pos_and_vel" << _dt_sum_copy_cur_pos_and_vel << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_predict_velocity_and_position" << _dt_sum_predict_velocity_and_position << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_predict_density_error_and_update_pressure" << _dt_sum_predict_density_error_and_update_pressure << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_cal_max_density_error" << _dt_sum_cal_max_density_error << " ms\n";
-  std::cout << std::setw(60) << "_dt_sum_update_a_pressure" << _dt_sum_update_a_pressure << " ms\n";
-  //std::cout << std::setw(60) << "_dt_sum_apply_BC" << _dt_sum_apply_BC << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_neighborhood" << std::setw(8) << _dt_sum_update_neighborhood << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_scailing_factor" << std::setw(8) << _dt_sum_update_scailing_factor << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_init_fluid_acceleration" << std::setw(8) << _dt_sum_init_fluid_acceleration << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_init_pressure_and_a_pressure" << std::setw(8) << _dt_sum_init_pressure_and_a_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_copy_cur_pos_and_vel" << std::setw(8) << _dt_sum_copy_cur_pos_and_vel << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_predict_velocity_and_position" << std::setw(8) << _dt_sum_predict_velocity_and_position << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_predict_density_error_and_update_pressure" << std::setw(8) << _dt_sum_predict_density_error_and_update_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_cal_max_density_error" << std::setw(8) << _dt_sum_cal_max_density_error << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_a_pressure" << std::setw(8) << _dt_sum_update_a_pressure << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_apply_BC" << std::setw(8) << _dt_sum_apply_BC << " ms\n";
   std::cout << "======================================================================\n";
 #endif
 }

@@ -24,7 +24,7 @@ inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 100;
 inline constexpr UINT g_estimated_num_nfp  = 200;
 
-//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
 
 namespace ms
 {
@@ -98,7 +98,7 @@ private:
   bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
 
   void find_changed_GCFPT_ID(const Read_Buffer_Set& fluid_v_pos_RBS);
-  void update_GCFP_buffer(void);
+  void update_GCFP(void);
   void rearrange_GCFP(void);
   void update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS);
 
@@ -162,7 +162,7 @@ public:
 private:
   static inline float _dt_sum_update                = 0.0f;
   static inline float _dt_sum_find_changed_GCFPT_ID = 0.0f;
-  static inline float _dt_sum_update_GCFP_buffer    = 0.0f;
+  static inline float _dt_sum_update_GCFP    = 0.0f;
   static inline float _dt_sum_rearrange_GCFP        = 0.0f;
   static inline float _dt_sum_update_nfp            = 0.0f;
 };

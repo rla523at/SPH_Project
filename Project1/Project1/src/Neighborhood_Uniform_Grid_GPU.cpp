@@ -214,7 +214,7 @@ void Neighborhood_Uniform_Grid_GPU::update(const Read_Buffer_Set& fluid_v_pos_RB
   PERFORMANCE_ANALYSIS_START;
 
   this->find_changed_GCFPT_ID(fluid_v_pos_RBS);
-  this->update_GCFP_buffer();
+  this->update_GCFP();
   this->rearrange_GCFP();
   this->update_nfp(fluid_v_pos_RBS);
 
@@ -266,7 +266,7 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(const Read_Buffer_Set&
   PERFORMANCE_ANALYSIS_END(find_changed_GCFPT_ID);
 }
 
-void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
+void Neighborhood_Uniform_Grid_GPU::update_GCFP(void)
 {
   PERFORMANCE_ANALYSIS_START;
 
@@ -297,7 +297,7 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
 
   _DM_ptr->CS_barrier();
 
-  PERFORMANCE_ANALYSIS_END(update_GCFP_buffer);
+  PERFORMANCE_ANALYSIS_END(update_GCFP);
 }
 
 void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
@@ -377,10 +377,10 @@ void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
   std::cout << "======================================================================\n";
   std::cout << std::setw(60) << "_dt_sum_update" << _dt_sum_update << " ms\n";
   std::cout << "======================================================================\n";
-  std::cout << std::setw(60) << "_dt_sum_find_changed_GCFPT_ID" << std::setw(6) << _dt_sum_find_changed_GCFPT_ID << " ms\n";
-  std::cout << std::setw(60) << "_dt_sum_update_GCFP_buffer" << std::setw(6) << _dt_sum_update_GCFP_buffer << " ms\n";
-  std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(6) << _dt_sum_rearrange_GCFP << " ms\n";
-  std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(6) << _dt_sum_update_nfp << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_find_changed_GCFPT_ID" << std::setw(8) << _dt_sum_find_changed_GCFPT_ID << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_GCFP" << std::setw(8) << _dt_sum_update_GCFP << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(8) << _dt_sum_update_nfp << " ms\n";
   std::cout << "======================================================================\n\n";
 #endif
 }
