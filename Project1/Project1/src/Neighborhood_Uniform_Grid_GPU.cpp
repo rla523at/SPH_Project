@@ -5,6 +5,15 @@
 #include "Utility.h"
 
 #include <array>
+#include <iomanip>
+
+#ifdef UNIFORM_GRID_PERFORMANCE_ANALYSIS
+#define PERFORMANCE_ANALYSIS_START Utility::set_time_point()
+#define PERFORMANCE_ANALYSIS_END(func_name) _dt_sum_##func_name += Utility::cal_dt()
+#else
+#define PERFORMANCE_ANALYSIS_START
+#define PERFORMANCE_ANALYSIS_END(sum_dt)
+#endif
 
 namespace ms
 {
@@ -57,7 +66,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
 void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
 {
   // make inital data
-  constexpr long long delta[3]          = {-1, 0, 1};
+  constexpr long long delta[3] = {-1, 0, 1};
 
   const auto num_cell          = _common_CB_data.num_cell;
   const auto num_x_cell        = _common_CB_data.num_x_cell;
@@ -202,14 +211,14 @@ ComPtr<ID3D11ShaderResourceView> Neighborhood_Uniform_Grid_GPU::nfp_count_buffer
 
 void Neighborhood_Uniform_Grid_GPU::update(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
-  //////////////////////////////////////////////////////////////////////////
+  PERFORMANCE_ANALYSIS_START;
 
   this->find_changed_GCFPT_ID(fluid_v_pos_RBS);
   this->update_GCFP_buffer();
   this->rearrange_GCFP();
   this->update_nfp(fluid_v_pos_RBS);
 
-  //////////////////////////////////////////////////////////////////////////
+  PERFORMANCE_ANALYSIS_END(update);
 }
 
 const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ninfo_BS(void) const
@@ -224,6 +233,8 @@ const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ncount_BS(void) 
 
 void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
+  PERFORMANCE_ANALYSIS_START;
+
   constexpr size_t num_constant_buffer = 1;
   constexpr size_t num_SRV             = 2;
   constexpr size_t num_UAV             = 1;
@@ -251,10 +262,14 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(const Read_Buffer_Set&
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  PERFORMANCE_ANALYSIS_END(find_changed_GCFPT_ID);
 }
 
 void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
 {
+  PERFORMANCE_ANALYSIS_START;
+
   const auto& device_manager = *_DM_ptr;
   const auto  cptr_context   = _DM_ptr->context_cptr();
 
@@ -281,10 +296,14 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP_buffer(void)
   cptr_context->Dispatch(1, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  PERFORMANCE_ANALYSIS_END(update_GCFP_buffer);
 }
 
 void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
 {
+  PERFORMANCE_ANALYSIS_START;
+
   constexpr UINT num_constant_buffer = 1;
   constexpr UINT num_UAV             = 3;
 
@@ -307,10 +326,14 @@ void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  PERFORMANCE_ANALYSIS_END(rearrange_GCFP);
 }
 
 void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
+  PERFORMANCE_ANALYSIS_START;
+
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
   constexpr auto num_UAV             = 2;
@@ -342,6 +365,24 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
+
+  PERFORMANCE_ANALYSIS_END(update_nfp);
+}
+
+void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
+{
+#ifdef UNIFORM_GRID_PERFORMANCE_ANALYSIS
+  std::cout << std::left;
+  std::cout << "Neighborhood_Uniform_Grid_GPU Performance Analysis Result \n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_sum_update" << _dt_sum_update << " ms\n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_sum_find_changed_GCFPT_ID" << std::setw(6) << _dt_sum_find_changed_GCFPT_ID << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_GCFP_buffer" << std::setw(6) << _dt_sum_update_GCFP_buffer << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(6) << _dt_sum_rearrange_GCFP << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(6) << _dt_sum_update_nfp << " ms\n";
+  std::cout << "======================================================================\n\n";
+#endif
 }
 
 } // namespace ms

@@ -11,6 +11,8 @@
     FP  : Fluid Particle
 */
 
+#define PCISPH_GPU_PERFORMANCE_ANALYSIS
+
 // Forward Declaration
 namespace ms
 {
@@ -136,15 +138,6 @@ private:
   float _dt_sum_cal_max_density_error                     = 0.0f;
   float _dt_sum_update_a_pressure                         = 0.0f;
   float _dt_sum_apply_BC                                  = 0.0f;
-
-  //GPU_DT_Info _dt_info_update;
-  //GPU_DT_Info _dt_info_scailing_factor;
-  //GPU_DT_Info _dt_info_init_fluid_accel;
-  //GPU_DT_Info _dt_info_init_pressure_and_a_pressre;
-  //GPU_DT_Info _dt_info_predict_vel_and_pos;
-  //GPU_DT_Info _dt_info_predict_density_error_and_update_pressure;
-  //GPU_DT_Info _dt_info_cal_max_density_error;
-  //GPU_DT_Info _dt_info_update
 };
 
 } // namespace ms

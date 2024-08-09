@@ -7,11 +7,6 @@
 #include <d3d11.h>
 #include <vector>
 
-namespace ms
-{
-class Device_Manager;
-}
-
 /* Abbreviation
 
 pid	  : particle id
@@ -28,6 +23,13 @@ GCFP  : Geometry Cell Fluid Particle(fluid particle in the geometry cell)
 inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 100;
 inline constexpr UINT g_estimated_num_nfp  = 200;
+
+//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+
+namespace ms
+{
+class Device_Manager;
+}
 
 // data structure
 namespace ms
@@ -153,7 +155,16 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_update_nfp_CS;
 
   // performance analysis
-  float _dt_update; //duration time
+
+public:
+  static void print_performance_analysis_result(void);
+
+private:
+  static inline float _dt_sum_update                = 0.0f;
+  static inline float _dt_sum_find_changed_GCFPT_ID = 0.0f;
+  static inline float _dt_sum_update_GCFP_buffer    = 0.0f;
+  static inline float _dt_sum_rearrange_GCFP        = 0.0f;
+  static inline float _dt_sum_update_nfp            = 0.0f;
 };
 
 } // namespace ms
