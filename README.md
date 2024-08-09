@@ -14,7 +14,7 @@ ComPtr<ID3D11Query> _cptr_end_query2;
 ```
 
 ```cpp
-void Utility::set_time_point2(void)
+void Utility::set_time_point(void)
 {
   const auto cptr_context = _DM_ptr->context_cptr();
 
@@ -27,7 +27,7 @@ void Utility::set_time_point2(void)
 ```
 
 ```cpp
-float Utility::cal_dt2(void)
+float Utility::cal_dt(void)
 {
   const auto cptr_context = _DM_ptr->context_cptr();
 
