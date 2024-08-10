@@ -4,6 +4,18 @@
 
 #include "../../_lib/_header/msexception/Exception.h"
 
+// Data Struct
+namespace ms
+{
+
+struct UINT2
+{
+  UINT val1 = 0;
+  UINT val2 = 0;
+};
+
+} // namespace ms
+
 namespace ms
 {
 
@@ -12,7 +24,7 @@ UINT Utility::ceil(const UINT numerator, const UINT denominator)
   return (numerator + denominator - 1) / denominator;
 }
 
-void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
+void Utility::init_for_utility_using_GPU(Device_Manager& DM)
 {
   // Test시 DM이 사라졌을 떄 문제가 된다..
   // if (Utility::is_initialized())
@@ -20,7 +32,9 @@ void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
 
   _DM_ptr = &DM;
 
-  _cptr_uint_CB = _DM_ptr->create_CONB(16);
+  _cptr_uint4_CONB = _DM_ptr->create_CONB(16);
+
+  _dispatch_indirect_args_RWBS = _DM_ptr->create_DIAB_RWBS();
 
   // if (_cptr_find_max_value_float_CS == nullptr) // DM이 사라졌을 때 문제가 된다. DM이 바뀌면 컴파일도 다시해야되는듯..?
   _cptr_find_max_value_float_CS = _DM_ptr->create_CS(L"hlsl/find_max_value_CS.hlsl");
@@ -31,10 +45,34 @@ void Utility::init_for_utility_using_GPU(const Device_Manager& DM)
   // if (_cptr_find_max_index_float_256_CS == nullptr)
   _cptr_find_max_index_float_256_CS = _DM_ptr->create_CS(L"hlsl/find_max_index_256_CS.hlsl");
 
-  //timer
+  _cptr_update_indirect_args_from_structure_count_CS = _DM_ptr->create_CS(L"hlsl/create_indirect_args_from_structure_count_CS.hlsl");
+
+  // timer
   _cptr_start_query2    = _DM_ptr->create_time_stamp_query();
   _cptr_end_query2      = _DM_ptr->create_time_stamp_query();
   _cptr_disjoint_query2 = _DM_ptr->create_time_stamp_disjoint_query();
+}
+
+const Read_Write_Buffer_Set& Utility::get_indirect_args_from_struct_count(
+  const ComPtr<ID3D11UnorderedAccessView>& cptr_ACB_UAV,
+  const UINT                        num_thread)
+{
+  const auto cptr_context = _DM_ptr->context_cptr();
+
+  _DM_ptr->write(&num_thread, _cptr_uint4_CONB);
+  cptr_context->CopyStructureCount(_cptr_uint4_CONB.Get(), 4, cptr_ACB_UAV.Get());
+
+  _DM_ptr->set_CONB(0, _cptr_uint4_CONB);
+  _DM_ptr->set_UAV(0, _dispatch_indirect_args_RWBS.cptr_UAV);
+
+  _DM_ptr->bind_CONBs_to_CS(0, 1);
+  _DM_ptr->bind_UAVs_to_CS(0, 1);
+
+  _DM_ptr->set_shader_CS(_cptr_update_indirect_args_from_structure_count_CS);
+
+  _DM_ptr->dispatch(1, 1, 1);
+
+  return _dispatch_indirect_args_RWBS;
 }
 
 ComPtr<ID3D11Buffer> Utility::find_max_value_float(const ComPtr<ID3D11Buffer> value_buffer, const UINT num_value)
@@ -59,14 +97,14 @@ ComPtr<ID3D11Buffer> Utility::find_max_value_float_opt(
 
   while (true)
   {
-    _DM_ptr->write(&num_input, _cptr_uint_CB);
+    _DM_ptr->write(&num_input, _cptr_uint4_CONB);
 
     const auto input_SRV = _DM_ptr->create_SRV(input_buffer.Get());
 
     const auto output_UAV = _DM_ptr->create_UAV(output_buffer.Get());
 
     const auto cptr_context = _DM_ptr->context_cptr();
-    cptr_context->CSSetConstantBuffers(0, 1, _cptr_uint_CB.GetAddressOf());
+    cptr_context->CSSetConstantBuffers(0, 1, _cptr_uint4_CONB.GetAddressOf());
     cptr_context->CSSetShaderResources(0, 1, input_SRV.GetAddressOf());
     cptr_context->CSSetUnorderedAccessViews(0, 1, output_UAV.GetAddressOf(), nullptr);
     cptr_context->CSSetShader(_cptr_find_max_value_float_CS.Get(), nullptr, NULL);
@@ -122,7 +160,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
 
   constexpr UINT num_thread = 256;
 
-  _DM_ptr->write(&num_value, _cptr_uint_CB);
+  _DM_ptr->write(&num_value, _cptr_uint4_CONB);
 
   const auto input_SRV = _DM_ptr->create_SRV(float_value_buffer);
 
@@ -131,7 +169,7 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float_256(const ComPtr<ID3D11Buffer
   const auto output_UAV    = _DM_ptr->create_UAV(output_buffer);
 
   const auto cptr_context = _DM_ptr->context_cptr();
-  cptr_context->CSSetConstantBuffers(0, 1, _cptr_uint_CB.GetAddressOf());
+  cptr_context->CSSetConstantBuffers(0, 1, _cptr_uint4_CONB.GetAddressOf());
   cptr_context->CSSetShaderResources(0, 1, input_SRV.GetAddressOf());
   cptr_context->CSSetUnorderedAccessViews(0, 1, output_UAV.GetAddressOf(), nullptr);
   cptr_context->CSSetShader(_cptr_find_max_index_float_256_CS.Get(), nullptr, NULL);
@@ -174,11 +212,7 @@ float Utility::cal_dt(void)
   D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
   cptr_context->GetData(cptr_disjoint_query.Get(), &disjoint_data, sizeof(disjoint_data), 0);
 
-  if (disjoint_data.Disjoint)
-  {
-    std::cout << "GPU Timer has an error.\n";
-    return -1.0f;
-  }
+  REQUIRE_ALWAYS(!disjoint_data.Disjoint, "GPU Timer has an error.\n");
 
   UINT64 start_time = 0;
   UINT64 end_time   = 0;
@@ -187,7 +221,7 @@ float Utility::cal_dt(void)
 
   const auto delta     = end_time - start_time;
   const auto frequency = static_cast<float>(disjoint_data.Frequency);
-  return (delta / frequency) * 1000.0f; //millisecond 출력
+  return (delta / frequency) * 1000.0f; // millisecond 출력
 }
 
 void Utility::set_time_point2(void)
@@ -225,7 +259,7 @@ float Utility::cal_dt2(void)
 
   const auto delta     = end_time - start_time;
   const auto frequency = static_cast<float>(disjoint_data.Frequency);
-  return (delta / frequency) * 1000.0f; //millisecond 출력
+  return (delta / frequency) * 1000.0f; // millisecond 출력
 }
 
 bool Utility::is_initialized(void)
@@ -246,14 +280,14 @@ ComPtr<ID3D11Buffer> Utility::find_max_index_float(
   constexpr UINT num_SRV    = 2;
   constexpr UINT num_UAV    = 1;
 
-  _DM_ptr->write(&num_input_index, _cptr_uint_CB);
+  _DM_ptr->write(&num_input_index, _cptr_uint4_CONB);
 
   const auto value_SRV       = _DM_ptr->create_SRV(value_buffer);
   const auto input_index_SRV = _DM_ptr->create_SRV(input_index_buffer);
   const auto output_UAV      = _DM_ptr->create_UAV(output_index_buffer);
 
   ID3D11Buffer* CBs[num_CB] = {
-    _cptr_uint_CB.Get(),
+    _cptr_uint4_CONB.Get(),
   };
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {

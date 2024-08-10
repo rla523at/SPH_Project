@@ -46,6 +46,26 @@ void Device_Manager::bind_back_buffer_to_CS_UAV(void) const
   _cptr_context->CSSetUnorderedAccessViews(0, 1, _cptr_back_buffer_UAV.GetAddressOf(), NULL);
 }
 
+void Device_Manager::bind_CONBs_to_CS(const UINT start_slot, const UINT num_CONB) const
+{
+  _cptr_context->CSSetConstantBuffers(start_slot, num_CONB, _CONBs);
+}
+
+void Device_Manager::bind_SRVs_to_CS(const UINT start_slot, const UINT num_SRV) const
+{
+  _cptr_context->CSSetShaderResources(start_slot, num_SRV, _SRVs);
+}
+
+void Device_Manager::bind_UAVs_to_CS(const UINT start_slot, const UINT num_UAV) const
+{
+  _cptr_context->CSSetUnorderedAccessViews(start_slot, num_UAV, _UAVs, nullptr);
+}
+
+void Device_Manager::set_shader_CS(const ComPtr<ID3D11ComputeShader>& cptr_CS) const
+{
+  _cptr_context->CSSetShader(cptr_CS.Get(), nullptr, NULL);
+}
+
 void Device_Manager::unbind_OM_RTV_and_DSV(void) const
 {
   ID3D11RenderTargetView* null_RTV = nullptr;
@@ -133,6 +153,11 @@ void Device_Manager::copy_front(
     0,                      // 원본 서브 리소스 인덱스
     &srcBox                 // 복사할 영역
   );
+}
+
+void Device_Manager::copy_struct_count(const ComPtr<ID3D11Buffer>& cptr_src_buffer, const ComPtr<ID3D11UnorderedAccessView>& cptr_ACB_UAV) const
+{
+  _cptr_context->CopyStructureCount(cptr_src_buffer.Get(), 0, cptr_ACB_UAV.Get());
 }
 
 void Device_Manager::create_VS_and_IL(
@@ -346,6 +371,60 @@ void Device_Manager::create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cp
   REQUIRE(!FAILED(result), "texture like back buffer creation should succeed");
 }
 
+Read_Write_Buffer_Set Device_Manager::create_DIAB_RWBS(void) const
+{
+  ComPtr<ID3D11Buffer> cptr_buffer;
+  {
+    D3D11_BUFFER_DESC desc   = {};
+    desc.ByteWidth           = 12;
+    desc.Usage               = D3D11_USAGE_DEFAULT;
+    desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    desc.CPUAccessFlags      = NULL;
+    desc.MiscFlags           = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+    desc.StructureByteStride = 4;
+
+    const auto result = _cptr_device->CreateBuffer(&desc, nullptr, cptr_buffer.GetAddressOf());
+    REQUIRE(!FAILED(result), "dispatch indriect argument buffer creation should succeed");
+  }
+
+  // Read_Write_Buffer_Set result;
+  // result.cptr_buffer = cptr_buffer;
+  // result.cptr_SRV    = this->create_SRV(cptr_buffer);
+  // result.cptr_UAV    = this->create_UAV(cptr_buffer);
+  // return result;
+
+  ComPtr<ID3D11ShaderResourceView> cptr_SRV;
+  {
+    D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
+    desc.Format                          = DXGI_FORMAT_R32_UINT;
+    desc.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
+    desc.Buffer.FirstElement             = 0;
+    desc.Buffer.NumElements              = 3;
+
+    const auto result = _cptr_device->CreateShaderResourceView(cptr_buffer.Get(), &desc, cptr_SRV.GetAddressOf());
+    REQUIRE(!FAILED(result), "append consum unordered access view creation should succeed");
+  }
+
+  ComPtr<ID3D11UnorderedAccessView> cptr_UAV;
+  {
+    D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+    desc.Format                           = DXGI_FORMAT_R32_UINT;
+    desc.ViewDimension                    = D3D11_UAV_DIMENSION_BUFFER;
+    desc.Buffer.FirstElement              = 0;
+    desc.Buffer.NumElements               = 3;
+    desc.Buffer.Flags                     = NULL;
+
+    const auto result = _cptr_device->CreateUnorderedAccessView(cptr_buffer.Get(), &desc, cptr_UAV.GetAddressOf());
+    REQUIRE(!FAILED(result), "append consum unordered access view creation should succeed");
+  }
+
+  Read_Write_Buffer_Set result;
+  result.cptr_buffer = cptr_buffer;
+  result.cptr_SRV    = cptr_SRV;
+  result.cptr_UAV    = cptr_UAV;
+  return result;
+}
+
 ComPtr<ID3D11Buffer> Device_Manager::create_CONB(const UINT data_size) const
 {
   D3D11_BUFFER_DESC desc   = {};
@@ -462,6 +541,28 @@ ComPtr<ID3D11Query> Device_Manager::create_time_stamp_disjoint_query(void) const
   return time_stamp_query_disjoint;
 }
 
+void Device_Manager::clear_SRVs_VS(void)
+{
+  std::fill(_SRVs, _SRVs + g_num_max_view, nullptr);
+
+  _cptr_context->VSSetShaderResources(0, g_num_max_view, _SRVs);
+}
+
+void Device_Manager::set_CONB(const UINT slot, const ComPtr<ID3D11Buffer>& cptr_CONB)
+{
+  _CONBs[slot] = cptr_CONB.Get();
+}
+
+void Device_Manager::set_SRV(const UINT slot, const ComPtr<ID3D11ShaderResourceView>& cptr_SRV)
+{
+  _SRVs[slot] = cptr_SRV.Get();
+}
+
+void Device_Manager::set_UAV(const UINT slot, const ComPtr<ID3D11UnorderedAccessView>& cptr_UAV)
+{
+  _UAVs[slot] = cptr_UAV.Get();
+}
+
 ComPtr<ID3D11Buffer> Device_Manager::create_staging_buffer_count(void) const
 {
   D3D11_BUFFER_DESC desc   = {};
@@ -509,15 +610,20 @@ void Device_Manager::copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_text
 
 void Device_Manager::CS_barrier(void) const
 {
-  constexpr UINT num_max_view = 7;
 
-  ID3D11Buffer*              null_constant_buffer[num_max_view] = {nullptr};
-  ID3D11ShaderResourceView*  nullSRV[num_max_view]              = {nullptr};
-  ID3D11UnorderedAccessView* nullUAV[num_max_view]              = {nullptr};
+  ID3D11Buffer*              null_constant_buffer[g_num_max_view] = {nullptr};
+  ID3D11ShaderResourceView*  nullSRV[g_num_max_view]              = {nullptr};
+  ID3D11UnorderedAccessView* nullUAV[g_num_max_view]              = {nullptr};
 
-  _cptr_context->CSSetConstantBuffers(0, num_max_view, null_constant_buffer);
-  _cptr_context->CSSetShaderResources(0, num_max_view, nullSRV);
-  _cptr_context->CSSetUnorderedAccessViews(0, num_max_view, nullUAV, NULL);
+  _cptr_context->CSSetConstantBuffers(0, g_num_max_view, null_constant_buffer);
+  _cptr_context->CSSetShaderResources(0, g_num_max_view, nullSRV);
+  _cptr_context->CSSetUnorderedAccessViews(0, g_num_max_view, nullUAV, NULL);
+}
+
+void Device_Manager::dispatch(const UINT num_group_x, const UINT num_group_y, const UINT num_group_z) const
+{
+  _cptr_context->Dispatch(num_group_x, 1, 1);
+  this->CS_barrier();
 }
 
 void Device_Manager::init_device_device_context(void)
@@ -525,7 +631,7 @@ void Device_Manager::init_device_device_context(void)
 #if defined(_DEBUG)
   constexpr auto flags = D3D11_CREATE_DEVICE_DEBUG;
 #else
-  constexpr auto flags        = NULL;
+  constexpr auto flags = NULL;
 #endif
 
   constexpr D3D_FEATURE_LEVEL featureLevels[2] = {

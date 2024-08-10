@@ -121,9 +121,9 @@ void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
 
 void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
-  //temporary
+  // temporary
   const auto fp_pos_vectors = _DM_ptr->read<Vector3>(fluid_v_pos_RBS.cptr_buffer);
-  //temporary
+  // temporary
 
   // make initial data
   const auto num_cell           = _common_CB_data.num_cell;
@@ -149,15 +149,10 @@ void Neighborhood_Uniform_Grid_GPU::init_GCFP_buffer(const Read_Buffer_Set& flui
     GCFP_IDs[i] = id;
   }
 
-  const auto& dm                        = *_DM_ptr;
-  const auto  estimated_num_update_data = _common_CB_data.num_particle;
-
-  _fp_index_RWBS   = _DM_ptr->create_STRB_RWBS(num_cell * estimated_num_gcfp, GCFP_indexes.data());
-  _GCFP_count_RWBS = _DM_ptr->create_STRB_RWBS(num_cell, GCFP_counts.data());
-  _GCFP_ID_RWBS    = _DM_ptr->create_STRB_RWBS(num_particle, GCFP_IDs.data());
-
-  _cptr_changed_GCFP_ID_buffer  = dm.create_STRB<Changed_GCFPT_ID_Data>(estimated_num_update_data);
-  _cptr_changed_GCFPT_ID_AC_UAV = dm.create_AC_UAV(_cptr_changed_GCFP_ID_buffer.Get(), estimated_num_update_data);
+  _fp_index_RWBS        = _DM_ptr->create_STRB_RWBS(num_cell * estimated_num_gcfp, GCFP_indexes.data());
+  _GCFP_count_RWBS      = _DM_ptr->create_STRB_RWBS(num_cell, GCFP_counts.data());
+  _GCFP_ID_RWBS         = _DM_ptr->create_STRB_RWBS(num_particle, GCFP_IDs.data());
+  _changed_GCFP_ID_ACBS = _DM_ptr->create_ACBS<Changed_GCFPT_ID_Data>(num_particle);
 }
 
 Grid_Cell_ID Neighborhood_Uniform_Grid_GPU::grid_cell_id(const Vector3& v_pos) const
@@ -249,7 +244,7 @@ void Neighborhood_Uniform_Grid_GPU::find_changed_GCFPT_ID(const Read_Buffer_Set&
   };
 
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _cptr_changed_GCFPT_ID_AC_UAV.Get(),
+    _changed_GCFP_ID_ACBS.cptr_UAV.Get(),
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -270,10 +265,13 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP(void)
 {
   PERFORMANCE_ANALYSIS_START;
 
-  const auto& device_manager = *_DM_ptr;
+  constexpr UINT num_threads = 1024;
+
   const auto  cptr_context   = _DM_ptr->context_cptr();
 
-  cptr_context->CopyStructureCount(_cptr_update_GCFP_CS_CB.Get(), 0, _cptr_changed_GCFPT_ID_AC_UAV.Get());
+  cptr_context->CopyStructureCount(_cptr_update_GCFP_CS_CB.Get(), 0, _changed_GCFP_ID_ACBS.cptr_UAV.Get());
+
+  const auto& arg_RWBS = ms::Utility::get_indirect_args_from_struct_count(_changed_GCFP_ID_ACBS.cptr_UAV, num_threads);
 
   constexpr size_t num_constant_buffer = 2;
   constexpr size_t num_UAV             = 4;
@@ -287,13 +285,17 @@ void Neighborhood_Uniform_Grid_GPU::update_GCFP(void)
     _fp_index_RWBS.cptr_UAV.Get(),
     _GCFP_count_RWBS.cptr_UAV.Get(),
     _GCFP_ID_RWBS.cptr_UAV.Get(),
-    _cptr_changed_GCFPT_ID_AC_UAV.Get(),
+    _changed_GCFP_ID_ACBS.cptr_UAV.Get(),
   };
 
   cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  
   cptr_context->CSSetShader(_cptr_update_GCFP_CS.Get(), nullptr, NULL);
-  cptr_context->Dispatch(1, 1, 1);
+    
+  cptr_context->DispatchIndirect(arg_RWBS.cptr_buffer.Get(), NULL);
+
+  //cptr_context->Dispatch(1, 1, 1);
 
   _DM_ptr->CS_barrier();
 

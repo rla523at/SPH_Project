@@ -104,7 +104,7 @@ namespace ms
 PCISPH_GPU::PCISPH_GPU(
   const Initial_Condition_Cubes& initial_condition,
   const Domain&                  solution_domain,
-  const Device_Manager&          device_manager)
+  Device_Manager&          device_manager)
 {
   constexpr float dt                        = 1.0e-2f;
   constexpr float viscosity                 = 1.0e-2f;
@@ -281,22 +281,6 @@ void PCISPH_GPU::update(void)
   this->init_fluid_acceleration();
   this->init_pressure_and_a_pressure();
   this->copy_cur_pos_and_vel();
-
-  float  density_error = 1000.0f;
-  size_t num_iter      = 0;
-
-  //while (_allow_density_error < density_error || num_iter < _min_iter)
-  //{
-  //  this->predict_velocity_and_position();
-  //  this->predict_density_error_and_update_pressure();
-  //  density_error = this->cal_max_density_error();
-  //  this->update_a_pressure();
-
-  //  ++num_iter;
-
-  //  if (_max_iter < num_iter)
-  //    break;
-  //}
 
   for (UINT i = 0; i < _max_iter; ++i)
   {

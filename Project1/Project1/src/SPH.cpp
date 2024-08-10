@@ -14,8 +14,10 @@
 namespace ms
 {
 
-SPH::SPH(const Device_Manager& device_manager)
+SPH::SPH(Device_Manager& device_manager)
 {
+  _DM_ptr = &device_manager;
+
   Domain solution_domain;
   
   ////dam breaking
@@ -366,7 +368,7 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
   cptr_context->IASetVertexBuffers(0, 0, nullptr, &stride, &offset);
   cptr_context->IASetInputLayout(nullptr);
   cptr_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
-  cptr_context->VSSetShaderResources(0, 0, nullptr);
+  _DM_ptr->clear_SRVs_VS();
   cptr_context->VSSetShader(nullptr, nullptr, 0);
   cptr_context->GSSetConstantBuffers(0, 0, nullptr);
   cptr_context->GSSetShader(nullptr, nullptr, 0);

@@ -8,21 +8,26 @@
 #include <vector>
 
 /*  Abbreviation
-    
+
     DM      : Device Manager
 
+    ACB`    : Append Consume Buffer
     CONB    : Constant Buffer
     ICONB   : Immutable Constant Buffer
     STRB    : Structured Buffer
     ISTRB   : Immtuable Structured Buffer
     STGB    : Staging Buffer
+    DIAB    : Dispatch Indirect Argument Buffer
 
     RWBS    : Read/Write Buffer Set
     RBS     : Read Buffer Set
+    ACBS    : Append Consume Buffer Set
 
     SRV     : Shader Resource View
     UAV     : Unordered Acess View
 */
+
+inline constexpr UINT g_num_max_view = 7;
 
 namespace ms
 {
@@ -39,13 +44,16 @@ public:
 
 public:
   template <typename T>
+  Append_Conssume_Buffer_Set create_ACBS(const UINT num_data) const;
+
+  template <typename T>
   ComPtr<ID3D11Buffer> create_ICONB(T* init_data_ptr) const;
 
   template <typename T>
-  ComPtr<ID3D11Buffer> create_STRB(const UINT num_data, const T* init_data_ptr = nullptr) const;
+  ComPtr<ID3D11Buffer> create_ISTRB(const UINT num_data, const T* init_data_ptr) const;
 
   template <typename T>
-  ComPtr<ID3D11Buffer> create_ISTRB(const UINT num_data, const T* init_data_ptr) const;
+  ComPtr<ID3D11Buffer> create_STRB(const UINT num_data, const T* init_data_ptr = nullptr) const;
 
   template <typename T>
   Read_Write_Buffer_Set create_STRB_RWBS(const UINT num_data, const T* init_data_ptr = nullptr) const;
@@ -106,6 +114,7 @@ public:
 
 public:
   void copy_front(const ComPtr<ID3D11Buffer>& cptr_src_buffer, const ComPtr<ID3D11Buffer>& cptr_dest_buffer, const UINT copy_byte) const;
+  void copy_struct_count(const ComPtr<ID3D11Buffer>& cptr_src_buffer, const ComPtr<ID3D11UnorderedAccessView>& cptr_ACB_UAV) const;
 
   void create_VS_and_IL(
     const wchar_t*                               file_name,
@@ -122,6 +131,7 @@ public:
   ComPtr<ID3D11UnorderedAccessView> create_UAV(const ComPtr<ID3D11Buffer> cptr_buffer) const;
   ComPtr<ID3D11UnorderedAccessView> create_AC_UAV(ID3D11Resource* resource_ptr, const UINT num_data) const;
 
+  Read_Write_Buffer_Set   create_DIAB_RWBS(void) const;
   ComPtr<ID3D11Buffer>    create_CONB(const UINT data_size) const;
   ComPtr<ID3D11Buffer>    create_STGB_read(const UINT data_size) const;
   ComPtr<ID3D11Buffer>    create_STGB_read(const ComPtr<ID3D11Buffer> cptr_target_buffer) const;
@@ -130,17 +140,29 @@ public:
   ComPtr<ID3D11Query>     create_time_stamp_query(void) const;
   ComPtr<ID3D11Query>     create_time_stamp_disjoint_query(void) const;
 
+public:
+  void clear_SRVs_VS(void);
+  
+  void set_CONB(const UINT slot, const ComPtr<ID3D11Buffer>& cptr_CONB);
+  void set_SRV(const UINT slot, const ComPtr<ID3D11ShaderResourceView>& cptr_SRV);
+  void set_UAV(const UINT slot, const ComPtr<ID3D11UnorderedAccessView>& cptr_UAV);
 
-
-  void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
+public:
   void bind_OM_RTV_and_DSV(void) const;
   void bind_back_buffer_to_CS_UAV(void) const;
+  void bind_CONBs_to_CS(const UINT start_slot, const UINT num_CONB) const;
+  void bind_SRVs_to_CS(const UINT start_slot, const UINT num_SRV) const;
+  void bind_UAVs_to_CS(const UINT start_slot, const UINT num_UAV) const;
+  void copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const;
+  void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
+  void CS_barrier(void) const;
+  void dispatch(const UINT num_group_x, const UINT num_group_y, const UINT num_group_z) const;
+
+  void set_shader_CS(const ComPtr<ID3D11ComputeShader>& cptr_CS) const;
 
   void unbind_OM_RTV_and_DSV(void) const;
   void unbind_CS_UAV(void) const;
 
-  void copy_back_buffer(const ComPtr<ID3D11Texture2D> cptr_2D_texture) const;
-  void CS_barrier(void) const;
   UINT read_count(const ComPtr<ID3D11UnorderedAccessView> UAV) const;
 
   UINT num_data(const ComPtr<ID3D11Buffer> cptr_buffer, const UINT data_size) const;
@@ -186,6 +208,10 @@ protected:
   ComPtr<ID3D11Texture2D>         _cptr_depth_stencil_buffer;
   ComPtr<ID3D11DepthStencilView>  _cptr_depth_stencil_view;
   ComPtr<ID3D11DepthStencilState> _cptr_depth_stencil_state;
+
+  ID3D11Buffer*              _CONBs[g_num_max_view];
+  ID3D11ShaderResourceView*  _SRVs[g_num_max_view];
+  ID3D11UnorderedAccessView* _UAVs[g_num_max_view];
 };
 
 } // namespace ms
@@ -193,6 +219,17 @@ protected:
 // template definition
 namespace ms
 {
+
+template <typename T>
+inline Append_Conssume_Buffer_Set Device_Manager::create_ACBS(const UINT num_data) const
+{
+  Append_Conssume_Buffer_Set result = {};
+
+  result.cptr_buffer = this->create_STRB<T>(num_data);
+  result.cptr_UAV    = this->create_AC_UAV(result.cptr_buffer.Get(), num_data);
+
+  return result;
+}
 
 template <typename T>
 ComPtr<ID3D11Buffer> Device_Manager::create_ICONB(T* init_data_ptr) const
@@ -506,6 +543,8 @@ void Device_Manager::write(const T* data_ptr, const ComPtr<ID3D11Buffer> cptr_bu
 
   const auto result = _cptr_context->Map(cptr_writable_buffer.Get(), NULL, map_type, NULL, &ms);
   REQUIRE(!FAILED(result), "Map should be succeed");
+
+  BYTE* dest_ptr = reinterpret_cast<BYTE*>(ms.pData);
 
   memcpy(ms.pData, data_ptr, desc.ByteWidth);
   _cptr_context->Unmap(cptr_writable_buffer.Get(), NULL);

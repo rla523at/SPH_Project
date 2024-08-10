@@ -24,7 +24,7 @@ inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 100;
 inline constexpr UINT g_estimated_num_nfp  = 200;
 
-#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
 
 namespace ms
 {
@@ -134,9 +134,10 @@ private:
   // fluid particle 마다 neighbor fluid particle의 개수를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _ncount_RWBS;
 
-  // 이번 프레임에 바뀐 GCFPT ID를 저장한 Buffer
-  ComPtr<ID3D11Buffer>              _cptr_changed_GCFP_ID_buffer;
-  ComPtr<ID3D11UnorderedAccessView> _cptr_changed_GCFPT_ID_AC_UAV;
+  // 이번 프레임에 바뀐 GCFPT ID를 저장한 ACBS
+  Append_Conssume_Buffer_Set _changed_GCFP_ID_ACBS;
+
+
 
   //////////////////////////////////////////////////////////////////////
 
@@ -154,8 +155,8 @@ private:
   // update nfp
   ComPtr<ID3D11ComputeShader> _cptr_update_nfp_CS;
 
-  // performance analysis
 
+  // performance analysis
 public:
   static void print_performance_analysis_result(void);
 

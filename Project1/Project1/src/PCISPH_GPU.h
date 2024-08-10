@@ -29,7 +29,7 @@ class PCISPH_GPU : public SPH_Scheme
 public:
   PCISPH_GPU(const Initial_Condition_Cubes& initial_condition,
              const Domain&                  solution_domain,
-             const Device_Manager&          device_manager);
+             Device_Manager&          device_manager);
   ~PCISPH_GPU();
 
 public:
@@ -63,7 +63,7 @@ private:
   size_t _max_iter            = 0;
   UINT   _num_FP              = 0;
 
-  const Device_Manager* _DM_ptr = nullptr;
+  Device_Manager* _DM_ptr = nullptr;
 
   float _time = 0.0f;
 

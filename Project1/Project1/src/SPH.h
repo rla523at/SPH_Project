@@ -34,7 +34,7 @@ namespace ms
 class SPH : public Mesh
 {
 public:
-  SPH(const Device_Manager& device_manager);
+  SPH(Device_Manager& device_manager);
   ~SPH(void);
 
 public:
@@ -61,6 +61,8 @@ private:
   void reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context);
 
 private:
+  Device_Manager* _DM_ptr;
+  
   //common
   std::unique_ptr<SPH_Scheme> _uptr_SPH_Scheme;
 
