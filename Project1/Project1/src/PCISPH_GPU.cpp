@@ -97,6 +97,24 @@ struct Apply_BC_CS_CB_Data
   UINT  num_fp       = 0;
 };
 
+struct Update_Ninfo_CS_CB_Data
+{
+  UINT  estimated_num_ngc  = 0;
+  UINT  estimated_num_gcfp = 0;
+  UINT  estimated_num_nfp  = 0;
+  UINT  num_particle       = 0;
+  float support_radius     = 0.0f;
+};
+
+struct Neighbor_Information
+{
+  UINT    nbr_fp_index   = 0;  // neighbor의 fluid particle index
+  UINT    neighbor_index = 0;  // this가 neighbor한테 몇번째 neighbor인지 나타내는 index
+  Vector3 v_xij          = {}; // neighbor to this vector
+  float   distance       = 0.0f;
+  float   distnace2      = 0.0f; // distance square
+};
+
 } // namespace ms
 
 namespace ms
@@ -104,7 +122,7 @@ namespace ms
 PCISPH_GPU::PCISPH_GPU(
   const Initial_Condition_Cubes& initial_condition,
   const Domain&                  solution_domain,
-  Device_Manager&          device_manager)
+  Device_Manager&                device_manager)
 {
   constexpr float dt                        = 1.0e-2f;
   constexpr float viscosity                 = 1.0e-2f;
@@ -112,7 +130,7 @@ PCISPH_GPU::PCISPH_GPU(
   constexpr UINT  max_iter                  = 3;
   constexpr float smooth_length_param       = 1.2f;
   constexpr float allow_density_error_param = 4.0e-2f;
-  constexpr float rho0                      = 1000.0f; //rest density
+  constexpr float rho0                      = 1000.0f; // rest density
   constexpr float pi                        = std::numbers::pi_v<float>;
 
   ms::Utility::init_for_utility_using_GPU(device_manager);
@@ -143,7 +161,9 @@ PCISPH_GPU::PCISPH_GPU(
   _fluid_number_density_RWBS = _DM_ptr->create_STRB_RWBS<float>(_num_FP);
   _scailing_factor_RWBS      = _DM_ptr->create_STRB_RWBS<float>(1);
 
-  const float h = smooth_length_param * IC.particle_spacing; //smoothing length
+  _ninfo_RWBS = _DM_ptr->create_STRB_RWBS<Neighbor_Information>(_num_FP * g_estimated_num_nfp);
+
+  const float h = smooth_length_param * IC.particle_spacing; // smoothing length
 
   // kernel
   {
@@ -155,7 +175,7 @@ PCISPH_GPU::PCISPH_GPU(
     _cptr_cubic_spline_kerenel_CONB = _DM_ptr->create_ICONB(&CB_data);
   }
 
-  //Neighborhoood Search - Uniform Grid
+  // Neighborhoood Search - Uniform Grid
   const float support_radius = 2.0f * h; // cubic spline kernel
   const float divide_length  = support_radius;
 
@@ -264,10 +284,24 @@ PCISPH_GPU::PCISPH_GPU(
     _cptr_apply_BC_CS_CONB = _DM_ptr->create_ICONB(&data);
   }
 
-  //opt
+  // update ninfo
+  _cptr_update_ninfo_CS = _DM_ptr->create_CS(L"hlsl/update_ninfo_CS.hlsl");
+  {
+    Update_Ninfo_CS_CB_Data data = {};
+
+    data.estimated_num_ngc  = g_estimated_num_ngc;
+    data.estimated_num_gcfp = g_estimated_num_gcfp;
+    data.estimated_num_nfp  = g_estimated_num_nfp;
+    data.num_particle       = _num_FP;
+    data.support_radius     = support_radius;
+
+    _cptr_update_ninfo_CS_CONB = _DM_ptr->create_ICONB(&data);
+  }
+
+  // opt
   _cptr_fluid_density_error_intermediate_buffer = _DM_ptr->create_STRB<float>(_num_FP);
   _cptr_max_density_error_STGB                  = _DM_ptr->create_STGB_read(sizeof(float));
-  //opt
+  // opt
 }
 
 PCISPH_GPU::~PCISPH_GPU() = default;
@@ -333,6 +367,37 @@ void PCISPH_GPU::update_neighborhood(void)
   _uptr_neighborhood->update(_fluid_v_pos_RWBS);
 
   PERFORMANCE_ANALYSIS_END(update_neighborhood);
+}
+
+void PCISPH_GPU::update_ninfo(void)
+{
+  PERFORMANCE_ANALYSIS_START;
+
+  constexpr UINT num_thread = 256;
+
+  const auto& nh_info = _uptr_neighborhood->get_neighborhood_info();
+
+  _DM_ptr->set_CONB(0, _cptr_update_ninfo_CS_CONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 1);
+
+  _DM_ptr->set_SRV(0, nh_info.fp_index_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, nh_info.GCFP_count_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(2, nh_info.GCFP_ID_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(3, nh_info.ngc_index_RBS.cptr_SRV);
+  _DM_ptr->set_SRV(4, nh_info.ngc_count_RBS.cptr_SRV);
+  _DM_ptr->set_SRV(5, _fluid_v_pos_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 6);
+
+  _DM_ptr->set_UAV(0, _ninfo_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(1, _ncount_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 2);
+
+  _DM_ptr->set_shader_CS(_cptr_update_ninfo_CS);
+
+  const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
+  _DM_ptr->dispatch(num_group_x, 1, 1);
+
+  PERFORMANCE_ANALYSIS_END(update_ninfo);
 }
 
 void PCISPH_GPU::init_fluid_acceleration(void)
@@ -510,7 +575,7 @@ float PCISPH_GPU::cal_max_density_error(void)
   return max_density_error;
 
   //_DM_ptr->copy_front(max_value_buffer, _cptr_max_density_error_STGB, sizeof(float));
-  //return _DM_ptr->read_front_STGB<float>(_cptr_max_density_error_STGB);
+  // return _DM_ptr->read_front_STGB<float>(_cptr_max_density_error_STGB);
 }
 
 void PCISPH_GPU::update_a_pressure(void)

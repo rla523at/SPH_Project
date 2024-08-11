@@ -127,7 +127,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="hlsl\update_nfp_CS.hlsl">
+    <FxCompile Include="hlsl\update_ninfo_CS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
@@ -138,7 +138,6 @@
     <None Include="hlsl\cubic_spline_kernel.hlsli" />
     <None Include="hlsl\PCISPH_common.hlsli" />
     <None Include="hlsl\uniform_grid_common.hlsli" />
-    <None Include="hlsl\uniform_grid_output.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Camera.cpp" />

@@ -24,7 +24,7 @@ inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 100;
 inline constexpr UINT g_estimated_num_nfp  = 200;
 
-//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+// #define UNIFORM_GRID_PERFORMANCE_ANALYSIS
 
 namespace ms
 {
@@ -50,23 +50,13 @@ struct Uniform_Grid_Common_CB_Data
   float divide_length      = 0.0f;
 };
 
-struct GCFP_ID
+struct Neighborhood_Information
 {
-  UINT gc_index   = 0;
-  UINT gcfp_index = 0;
-};
-
-struct Changed_GCFPT_ID_Data
-{
-  GCFP_ID prev_id;
-  UINT    cur_gc_index = 0;
-};
-
-struct Neighbor_Information
-{
-  UINT    fp_index = 0;
-  Vector3 translate_vector;
-  float   distance = 0.0f;
+  Read_Buffer_Set       ngc_index_RBS;   // geometry cell * estimated ngc마다 ngc index을 저장한 ISTRB의 RBS
+  Read_Buffer_Set       ngc_count_RBS;   // geometry cell마다 neighbor grid cell의 개수를 저장한 ISTRB의 RBS
+  Read_Write_Buffer_Set fp_index_RWBS;   // geometry cell * estimated gcfp마다 fp index를 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set GCFP_count_RWBS; // geometry cell마다 속해있는 fluid particle의 개수를 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set GCFP_ID_RWBS;    // fluid particle마다 GCFP ID를 저장한 STRB의 RWBS
 };
 
 } // namespace ms
@@ -75,6 +65,9 @@ namespace ms
 {
 class Neighborhood_Uniform_Grid_GPU
 {
+public:
+  static void print_performance_analysis_result(void);
+
 public:
   Neighborhood_Uniform_Grid_GPU(
     const Domain&          domain,
@@ -86,11 +79,7 @@ public:
 public:
   void update(const Read_Buffer_Set& fluid_v_pos_RBS);
 
-  const Read_Write_Buffer_Set& get_ninfo_BS(void) const;
-  const Read_Write_Buffer_Set& get_ncount_BS(void) const;
-
-  ComPtr<ID3D11ShaderResourceView> nfp_info_buffer_SRV_cptr(void) const;
-  ComPtr<ID3D11ShaderResourceView> nfp_count_buffer_SRV_cptr(void) const;
+  const Neighborhood_Information get_neighborhood_info(void) const;
 
 private:
   Grid_Cell_ID grid_cell_id(const Vector3& v_pos) const;
@@ -100,7 +89,6 @@ private:
   void find_changed_GCFPT_ID(const Read_Buffer_Set& fluid_v_pos_RBS);
   void update_GCFP(void);
   void rearrange_GCFP(void);
-  void update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS);
 
   void init_ngc_index_buffer(void);
   void init_GCFP_buffer(const Read_Buffer_Set& fluid_v_pos_RBS);
@@ -110,36 +98,8 @@ private:
 
   Uniform_Grid_Common_CB_Data _common_CB_data;
   ComPtr<ID3D11Buffer>        _cptr_common_CB;
-
-  //////////////////////////////////////////////////////////////////////
-
-  // geometry cell * estimated ngc만큼 ngc index을 저장한 ISTRB의 RBS
-  Read_Buffer_Set _ngc_index_RBS;
-
-  // geometry cell마다 neighbor grid cell의 개수를 저장한 ISTRB의 RBS
-  Read_Buffer_Set _ngc_count_RBS;
-
-  // geometry cell * estimated gcfp만큼 fp index를 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _fp_index_RWBS;
-
-  // geometry cell마다 속해있는 fluid particle의 개수를 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _GCFP_count_RWBS;
-
-  // fluid particle마다 GCFP ID를 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _GCFP_ID_RWBS;
-
-  // fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _ninfo_RWBS;
-
-  // fluid particle 마다 neighbor fluid particle의 개수를 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _ncount_RWBS;
-
-  // 이번 프레임에 바뀐 GCFPT ID를 저장한 ACBS
-  Append_Conssume_Buffer_Set _changed_GCFP_ID_ACBS;
-
-
-
-  //////////////////////////////////////////////////////////////////////
+  Append_Conssume_Buffer_Set  _changed_GCFP_ID_ACBS; // 이번 프레임에 바뀐 GCFPT ID를 저장한 ACBS
+  Neighborhood_Information    _info;
 
   // find_changed_GCFPT_ID_CS
   ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFP_ID_CS;
@@ -149,21 +109,13 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFP_CS;
   ComPtr<ID3D11Buffer>        _cptr_update_GCFP_CS_CB;
 
-  //rearrange GCFP
+  // rearrange GCFP
   ComPtr<ID3D11ComputeShader> _cptr_rearrange_GCFP_CS;
 
-  // update nfp
-  ComPtr<ID3D11ComputeShader> _cptr_update_nfp_CS;
-
-
   // performance analysis
-public:
-  static void print_performance_analysis_result(void);
-
-private:
   static inline float _dt_sum_update                = 0.0f;
   static inline float _dt_sum_find_changed_GCFPT_ID = 0.0f;
-  static inline float _dt_sum_update_GCFP    = 0.0f;
+  static inline float _dt_sum_update_GCFP           = 0.0f;
   static inline float _dt_sum_rearrange_GCFP        = 0.0f;
   static inline float _dt_sum_update_nfp            = 0.0f;
 };

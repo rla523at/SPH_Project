@@ -11,7 +11,7 @@
     FP  : Fluid Particle
 */
 
-//#define PCISPH_GPU_PERFORMANCE_ANALYSIS
+// #define PCISPH_GPU_PERFORMANCE_ANALYSIS
 
 // Forward Declaration
 namespace ms
@@ -29,7 +29,7 @@ class PCISPH_GPU : public SPH_Scheme
 public:
   PCISPH_GPU(const Initial_Condition_Cubes& initial_condition,
              const Domain&                  solution_domain,
-             Device_Manager&          device_manager);
+             Device_Manager&                device_manager);
   ~PCISPH_GPU();
 
 public:
@@ -54,6 +54,7 @@ private:
   void  update_scailing_factor(void);
   void  update_a_pressure(void);
   void  update_neighborhood(void);
+  void  update_ninfo(void);
 
 private:
   float  _dt                  = 0.0f;
@@ -73,11 +74,14 @@ private:
   Read_Write_Buffer_Set _fluid_v_vel_RWBS;
   Read_Write_Buffer_Set _fluid_v_cur_vel_RWBS;
   Read_Write_Buffer_Set _fluid_v_accel_RWBS;
-  Read_Write_Buffer_Set _fluid_v_a_pressure_RWBS; //acceleration vector by pressure
+  Read_Write_Buffer_Set _fluid_v_a_pressure_RWBS; // acceleration vector by pressure
   Read_Write_Buffer_Set _fluid_density_RWBS;
   Read_Write_Buffer_Set _fluid_pressure_RWBS;
   Read_Write_Buffer_Set _fluid_number_density_RWBS;
   Read_Write_Buffer_Set _fluid_density_error_RWBS;
+
+  Read_Write_Buffer_Set _ninfo_RWBS;  // fluid particle * estimated_num_nfp만큼 neighbor information을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _ncount_RWBS; // fluid particle만큼 neighbor의 수를 저장한 STRB의 RWBS
 
   // scailing factor를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _scailing_factor_RWBS;
@@ -86,10 +90,10 @@ private:
   ComPtr<ID3D11Buffer> _cptr_fluid_density_error_intermediate_buffer;
   ComPtr<ID3D11Buffer> _cptr_max_density_error_STGB;
 
-  //cubic spline kernel
+  // cubic spline kernel
   ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CONB;
 
-  //neighborhood search
+  // neighborhood search
   std::unique_ptr<Neighborhood_Uniform_Grid_GPU> _uptr_neighborhood;
 
   // update number density
@@ -120,6 +124,10 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_update_a_pressure_CS;
   ComPtr<ID3D11Buffer>        _cptr_update_a_pressure_CS_CONB;
 
+  // update ninfo
+  ComPtr<ID3D11ComputeShader> _cptr_update_ninfo_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_ninfo_CS_CONB;
+
   // Apply BC
   ComPtr<ID3D11ComputeShader> _cptr_apply_BC_CS;
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
@@ -130,6 +138,7 @@ private:
   float _dt_sum_update                                    = 0.0f;
   float _dt_sum_update_neighborhood                       = 0.0f;
   float _dt_sum_update_scailing_factor                    = 0.0f;
+  float _dt_sum_update_ninfo                              = 0.0f;
   float _dt_sum_init_fluid_acceleration                   = 0.0f;
   float _dt_sum_init_pressure_and_a_pressure              = 0.0f;
   float _dt_sum_copy_cur_pos_and_vel                      = 0.0f;
