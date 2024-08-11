@@ -95,6 +95,15 @@
     <FxCompile Include="hlsl\update_ninfo_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
+    <FxCompile Include="hlsl\update_W_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\update_grad_W.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\update_laplacian_vel_coeff.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="hlsl\uniform_grid_common.hlsli">
@@ -104,6 +113,9 @@
       <Filter>HLSL\PCISPH</Filter>
     </None>
     <None Include="hlsl\cubic_spline_kernel.hlsli">
+      <Filter>HLSL\PCISPH</Filter>
+    </None>
+    <None Include="hlsl\Neighbor_Information.hlsli">
       <Filter>HLSL\PCISPH</Filter>
     </None>
   </ItemGroup>

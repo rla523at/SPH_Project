@@ -106,6 +106,25 @@ struct Update_Ninfo_CS_CB_Data
   float support_radius     = 0.0f;
 };
 
+struct Update_W_CS_CB_Data
+{
+  UINT estimated_num_nfp = 0;
+  UINT num_particle      = 0;
+};
+
+struct Update_grad_W_CS_CB_Data
+{
+  UINT estimated_num_nfp = 0;
+  UINT num_particle      = 0;
+};
+
+struct Update_Laplacian_Vel_Coeff_CS_CB_Data
+{
+  UINT  estimated_num_nfp   = 0;
+  UINT  num_particle        = 0;
+  float regularization_term = 0.0f;
+};
+
 struct Neighbor_Information
 {
   UINT    nbr_fp_index   = 0;  // neighborÀÇ fluid particle index
@@ -161,7 +180,11 @@ PCISPH_GPU::PCISPH_GPU(
   _fluid_number_density_RWBS = _DM_ptr->create_STRB_RWBS<float>(_num_FP);
   _scailing_factor_RWBS      = _DM_ptr->create_STRB_RWBS<float>(1);
 
-  _ninfo_RWBS = _DM_ptr->create_STRB_RWBS<Neighbor_Information>(_num_FP * g_estimated_num_nfp);
+  _ninfo_RWBS               = _DM_ptr->create_STRB_RWBS<Neighbor_Information>(_num_FP * g_estimated_num_nfp);
+  _ncount_RWBS              = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
+  _W_RWBS                   = _DM_ptr->create_STRB_RWBS<float>(_num_FP * g_estimated_num_nfp);
+  _grad_W_RWBS              = _DM_ptr->create_STRB_RWBS<Vector3>(_num_FP * g_estimated_num_nfp);
+  _laplacian_vel_coeff_RWBS = _DM_ptr->create_STRB_RWBS<float>(_num_FP * g_estimated_num_nfp);
 
   const float h = smooth_length_param * IC.particle_spacing; // smoothing length
 
@@ -172,7 +195,7 @@ PCISPH_GPU::PCISPH_GPU(
     CB_data.h           = h;
     CB_data.coefficient = 3.0f / (2.0f * pi * h * h * h);
 
-    _cptr_cubic_spline_kerenel_CONB = _DM_ptr->create_ICONB(&CB_data);
+    _cptr_cubic_spline_kerenel_ICONB = _DM_ptr->create_ICONB(&CB_data);
   }
 
   // Neighborhoood Search - Uniform Grid
@@ -216,7 +239,6 @@ PCISPH_GPU::PCISPH_GPU(
     CB_data.v_a_gravity                        = Vector3(0.0f, -9.8f, 0.0f);
     CB_data.m0                                 = m0;
     CB_data.viscosity_constant                 = 10.0f * m0 * viscosity;
-    CB_data.regularization_term                = 0.01f * h * h;
     CB_data.num_fluid_particle                 = _num_FP;
     CB_data.estimated_num_nfp                  = g_estimated_num_nfp;
 
@@ -267,6 +289,54 @@ PCISPH_GPU::PCISPH_GPU(
     _cptr_update_a_pressure_CS_CONB = _DM_ptr->create_ICONB(&data);
   }
 
+  // update ninfo
+  _cptr_update_ninfo_CS = _DM_ptr->create_CS(L"hlsl/update_ninfo_CS.hlsl");
+  {
+    Update_Ninfo_CS_CB_Data data = {};
+
+    data.estimated_num_ngc  = g_estimated_num_ngc;
+    data.estimated_num_gcfp = g_estimated_num_gcfp;
+    data.estimated_num_nfp  = g_estimated_num_nfp;
+    data.num_particle       = _num_FP;
+    data.support_radius     = support_radius;
+
+    _cptr_update_ninfo_CS_ICONB = _DM_ptr->create_ICONB(&data);
+  }
+
+  // update W
+  _cptr_update_W_CS = _DM_ptr->create_CS(L"hlsl/update_W_CS.hlsl");
+  {
+    Update_W_CS_CB_Data data = {};
+
+    data.estimated_num_nfp = g_estimated_num_nfp;
+    data.num_particle      = _num_FP;
+
+    _cptr_update_W_CS_ICONB = _DM_ptr->create_ICONB(&data);
+  }
+
+  // update grad W
+  _cptr_update_grad_W_CS = _DM_ptr->create_CS(L"hlsl/update_grad_W_CS.hlsl");
+  {
+    Update_grad_W_CS_CB_Data data = {};
+
+    data.estimated_num_nfp = g_estimated_num_nfp;
+    data.num_particle      = _num_FP;
+
+    _cptr_update_grad_W_CS_ICONB = _DM_ptr->create_ICONB(&data);
+  }
+
+  // update laplacian vel coeff
+  _cptr_update_laplacian_vel_coeff_CS = _DM_ptr->create_CS(L"hlsl/update_laplacian_vel_coeff_CS.hlsl");
+  {
+    Update_Laplacian_Vel_Coeff_CS_CB_Data data = {};
+
+    data.estimated_num_nfp   = g_estimated_num_nfp;
+    data.num_particle        = _num_FP;
+    data.regularization_term = 0.01f * h * h;
+
+    _cptr_update_laplacian_vel_coeff_CS_ICONB = _DM_ptr->create_ICONB(&data);
+  }
+
   // aply BC
   _cptr_apply_BC_CS = _DM_ptr->create_CS(L"hlsl/apply_BC_CS.hlsl");
   {
@@ -282,20 +352,6 @@ PCISPH_GPU::PCISPH_GPU(
     data.num_fp       = _num_FP;
 
     _cptr_apply_BC_CS_CONB = _DM_ptr->create_ICONB(&data);
-  }
-
-  // update ninfo
-  _cptr_update_ninfo_CS = _DM_ptr->create_CS(L"hlsl/update_ninfo_CS.hlsl");
-  {
-    Update_Ninfo_CS_CB_Data data = {};
-
-    data.estimated_num_ngc  = g_estimated_num_ngc;
-    data.estimated_num_gcfp = g_estimated_num_gcfp;
-    data.estimated_num_nfp  = g_estimated_num_nfp;
-    data.num_particle       = _num_FP;
-    data.support_radius     = support_radius;
-
-    _cptr_update_ninfo_CS_CONB = _DM_ptr->create_ICONB(&data);
   }
 
   // opt
@@ -319,6 +375,8 @@ void PCISPH_GPU::update(void)
   for (UINT i = 0; i < _max_iter; ++i)
   {
     this->predict_velocity_and_position();
+    this->update_ninfo();
+    this->update_W();
     this->predict_density_error_and_update_pressure();
     this->update_a_pressure();
   }
@@ -377,7 +435,7 @@ void PCISPH_GPU::update_ninfo(void)
 
   const auto& nh_info = _uptr_neighborhood->get_neighborhood_info();
 
-  _DM_ptr->set_CONB(0, _cptr_update_ninfo_CS_CONB);
+  _DM_ptr->set_CONB(0, _cptr_update_ninfo_CS_ICONB);
   _DM_ptr->bind_CONBs_to_CS(0, 1);
 
   _DM_ptr->set_SRV(0, nh_info.fp_index_RWBS.cptr_SRV);
@@ -400,6 +458,81 @@ void PCISPH_GPU::update_ninfo(void)
   PERFORMANCE_ANALYSIS_END(update_ninfo);
 }
 
+void PCISPH_GPU::update_W(void)
+{
+  PERFORMANCE_ANALYSIS_START;
+
+  constexpr UINT num_thread = 256;
+
+  _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_ICONB);
+  _DM_ptr->set_CONB(1, _cptr_update_W_CS_ICONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 2);
+
+  _DM_ptr->set_SRV(0, _ninfo_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _ncount_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 2);
+
+  _DM_ptr->set_UAV(0, _W_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 1);
+
+  _DM_ptr->set_shader_CS(_cptr_update_W_CS);
+
+  const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
+  _DM_ptr->dispatch(num_group_x, 1, 1);
+
+  PERFORMANCE_ANALYSIS_END(update_W);
+}
+
+void PCISPH_GPU::update_grad_W(void)
+{
+  PERFORMANCE_ANALYSIS_START;
+
+  constexpr UINT num_thread = 256;
+
+  _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_ICONB);
+  _DM_ptr->set_CONB(1, _cptr_update_grad_W_CS_ICONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 2);
+
+  _DM_ptr->set_SRV(0, _ninfo_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _ncount_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 2);
+
+  _DM_ptr->set_UAV(0, _grad_W_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 1);
+
+  _DM_ptr->set_shader_CS(_cptr_update_grad_W_CS);
+
+  const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
+  _DM_ptr->dispatch(num_group_x, 1, 1);
+
+  PERFORMANCE_ANALYSIS_END(update_W);
+}
+
+void PCISPH_GPU::update_laplacian_vel_coeff(void)
+{
+  PERFORMANCE_ANALYSIS_START;
+
+  constexpr UINT num_thread = 256;
+
+  _DM_ptr->set_CONB(0, _cptr_update_laplacian_vel_coeff_CS_ICONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 1);
+
+  _DM_ptr->set_SRV(0, _ninfo_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _ncount_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(2, _fluid_v_vel_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 3);
+
+  _DM_ptr->set_UAV(0, _laplacian_vel_coeff_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 1);
+
+  _DM_ptr->set_shader_CS(_cptr_update_laplacian_vel_coeff_CS);
+
+  const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
+  _DM_ptr->dispatch(num_group_x, 1, 1);
+
+  PERFORMANCE_ANALYSIS_END(update_W);
+}
+
 void PCISPH_GPU::init_fluid_acceleration(void)
 {
   PERFORMANCE_ANALYSIS_START;
@@ -410,7 +543,7 @@ void PCISPH_GPU::init_fluid_acceleration(void)
   constexpr UINT num_UAV    = 1;
 
   ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
+    _cptr_cubic_spline_kerenel_ICONB.Get(),
     _cptr_init_fluid_acceleration_CS_CONB.Get(),
   };
 
@@ -523,42 +656,26 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 {
   PERFORMANCE_ANALYSIS_START;
 
-  const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_BS();
-  const auto& ncount_BS = _uptr_neighborhood->get_ncount_BS();
-
   constexpr UINT num_thread = 256;
-  constexpr UINT num_CB     = 2;
-  constexpr UINT num_SRV    = 4;
-  constexpr UINT num_UAV    = 3;
 
-  ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
-    _cptr_predict_density_error_and_update_pressure_CS_CONB.Get(),
-  };
+  _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_ICONB);
+  _DM_ptr->set_CONB(1, _cptr_predict_density_error_and_update_pressure_CS_CONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 2);
 
-  ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _fluid_v_pos_RWBS.cptr_SRV.Get(),
-    _scailing_factor_RWBS.cptr_SRV.Get(),
-    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
-    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
-  };
+  _DM_ptr->set_SRV(0, _ncount_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _W_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(2, _scailing_factor_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 3);
 
-  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _fluid_density_RWBS.cptr_UAV.Get(),
-    _fluid_pressure_RWBS.cptr_UAV.Get(),
-    _fluid_density_error_RWBS.cptr_UAV.Get(),
-  };
+  _DM_ptr->set_UAV(0, _fluid_density_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(1, _fluid_pressure_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(2, _fluid_density_error_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 3);
 
-  const auto cptr_context = _DM_ptr->context_cptr();
-  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
-  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
-  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  cptr_context->CSSetShader(_cptr_predict_density_error_and_update_pressure_CS.Get(), nullptr, NULL);
+  _DM_ptr->set_shader_CS(_cptr_predict_density_error_and_update_pressure_CS);
 
   const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
-  cptr_context->Dispatch(num_group_x, 1, 1);
-
-  _DM_ptr->CS_barrier();
+  _DM_ptr->dispatch(num_group_x, 1, 1);
 
   PERFORMANCE_ANALYSIS_END(predict_density_error_and_update_pressure);
 }
@@ -588,7 +705,7 @@ void PCISPH_GPU::update_a_pressure(void)
   constexpr UINT num_UAV    = 1;
 
   ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
+    _cptr_cubic_spline_kerenel_ICONB.Get(),
     _cptr_update_a_pressure_CS_CONB.Get(),
   };
 
@@ -663,7 +780,7 @@ void PCISPH_GPU::update_scailing_factor(void)
   constexpr UINT num_UAV = 1;
 
   ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
+    _cptr_cubic_spline_kerenel_ICONB.Get(),
     _cptr_cal_scailing_factor_CS_CONB.Get(),
   };
 
@@ -701,7 +818,7 @@ void PCISPH_GPU::update_number_density(void)
   constexpr UINT   num_thread = 256;
 
   ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
+    _cptr_cubic_spline_kerenel_ICONB.Get(),
     _cptr_update_number_density_CS_CONB.Get(),
   };
 

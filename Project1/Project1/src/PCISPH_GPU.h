@@ -55,6 +55,9 @@ private:
   void  update_a_pressure(void);
   void  update_neighborhood(void);
   void  update_ninfo(void);
+  void  update_W(void);
+  void  update_grad_W(void);
+  void  update_laplacian_vel_coeff(void);
 
 private:
   float  _dt                  = 0.0f;
@@ -80,8 +83,11 @@ private:
   Read_Write_Buffer_Set _fluid_number_density_RWBS;
   Read_Write_Buffer_Set _fluid_density_error_RWBS;
 
-  Read_Write_Buffer_Set _ninfo_RWBS;  // fluid particle * estimated_num_nfp만큼 neighbor information을 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _ncount_RWBS; // fluid particle만큼 neighbor의 수를 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _ninfo_RWBS;               // fluid particle * estimated_num_nfp만큼 neighbor information을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _ncount_RWBS;              // fluid particle만큼 neighbor의 수를 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _W_RWBS;                   // fluid particle * estimated_num_nfp만큼 Kernel 함수의 값을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _grad_W_RWBS;              // fluid particle * estimated_num_nfp만큼 gradient Kernel 함수의 값을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _laplacian_vel_coeff_RWBS; // fluid particle * estimated_num_nfp만큼 laplacian velocity coeff 값을 저장한 STRB의 RWBS
 
   // scailing factor를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _scailing_factor_RWBS;
@@ -91,7 +97,7 @@ private:
   ComPtr<ID3D11Buffer> _cptr_max_density_error_STGB;
 
   // cubic spline kernel
-  ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CONB;
+  ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_ICONB;
 
   // neighborhood search
   std::unique_ptr<Neighborhood_Uniform_Grid_GPU> _uptr_neighborhood;
@@ -126,7 +132,19 @@ private:
 
   // update ninfo
   ComPtr<ID3D11ComputeShader> _cptr_update_ninfo_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_ninfo_CS_CONB;
+  ComPtr<ID3D11Buffer>        _cptr_update_ninfo_CS_ICONB;
+
+  // update W
+  ComPtr<ID3D11ComputeShader> _cptr_update_W_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_W_CS_ICONB;
+
+  // update grad_W
+  ComPtr<ID3D11ComputeShader> _cptr_update_grad_W_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_grad_W_CS_ICONB;
+
+  // update laplacian_vel_coeff
+  ComPtr<ID3D11ComputeShader> _cptr_update_laplacian_vel_coeff_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_laplacian_vel_coeff_CS_ICONB;
 
   // Apply BC
   ComPtr<ID3D11ComputeShader> _cptr_apply_BC_CS;
