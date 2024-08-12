@@ -11,7 +11,7 @@
     FP  : Fluid Particle
 */
 
-// #define PCISPH_GPU_PERFORMANCE_ANALYSIS
+#define PCISPH_GPU_PERFORMANCE_ANALYSIS
 
 // Forward Declaration
 namespace ms
@@ -48,6 +48,7 @@ private:
   void  copy_cur_pos_and_vel(void);
   void  init_fluid_acceleration(void); // it doesn't consider acceleration by pressure
   void  init_pressure_and_a_pressure(void);
+  void  init_ncount(void);
   void  predict_velocity_and_position(void);
   void  predict_density_error_and_update_pressure(void);
   void  update_number_density(void);
@@ -58,6 +59,7 @@ private:
   void  update_W(void);
   void  update_grad_W(void);
   void  update_laplacian_vel_coeff(void);
+  void  update_a_pressure_coeff(void);
 
 private:
   float  _dt                  = 0.0f;
@@ -86,8 +88,9 @@ private:
   Read_Write_Buffer_Set _ninfo_RWBS;               // fluid particle * estimated_num_nfp만큼 neighbor information을 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _ncount_RWBS;              // fluid particle만큼 neighbor의 수를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _W_RWBS;                   // fluid particle * estimated_num_nfp만큼 Kernel 함수의 값을 저장한 STRB의 RWBS
-  Read_Write_Buffer_Set _grad_W_RWBS;              // fluid particle * estimated_num_nfp만큼 gradient Kernel 함수의 값을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _v_grad_W_RWBS;              // fluid particle * estimated_num_nfp만큼 gradient Kernel 함수의 값을 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _laplacian_vel_coeff_RWBS; // fluid particle * estimated_num_nfp만큼 laplacian velocity coeff 값을 저장한 STRB의 RWBS
+  Read_Write_Buffer_Set _a_pressure_coeff_RWBS;    // fluid particle * estimated_num_nfp만큼 a_pressure coeff 값을 저장한 STRB의 RWBS
 
   // scailing factor를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _scailing_factor_RWBS;
@@ -108,7 +111,7 @@ private:
 
   // cal scailing factor
   ComPtr<ID3D11ComputeShader> _cptr_update_scailing_factor_CS;
-  ComPtr<ID3D11Buffer>        _cptr_cal_scailing_factor_CS_CONB;
+  ComPtr<ID3D11Buffer>        _cptr_cal_scailing_factor_CS_ICONB;
 
   // init fluid acceleration
   ComPtr<ID3D11ComputeShader> _cptr_init_fluid_acceleration_CS;
@@ -128,7 +131,7 @@ private:
 
   // update a_pressure
   ComPtr<ID3D11ComputeShader> _cptr_update_a_pressure_CS;
-  ComPtr<ID3D11Buffer>        _cptr_update_a_pressure_CS_CONB;
+  ComPtr<ID3D11Buffer>        _cptr_update_a_pressure_CS_ICONB;
 
   // update ninfo
   ComPtr<ID3D11ComputeShader> _cptr_update_ninfo_CS;
@@ -146,9 +149,17 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_update_laplacian_vel_coeff_CS;
   ComPtr<ID3D11Buffer>        _cptr_update_laplacian_vel_coeff_CS_ICONB;
 
+  // update a_pressure coeff
+  ComPtr<ID3D11ComputeShader> _cptr_update_a_pressure_coeff_CS;
+  ComPtr<ID3D11Buffer>        _cptr_update_a_pressure_coeff_CS_ICONB;
+
   // Apply BC
   ComPtr<ID3D11ComputeShader> _cptr_apply_BC_CS;
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
+
+  // init ncount
+  ComPtr<ID3D11ComputeShader> _cptr_init_ncount_CS;
+  ComPtr<ID3D11Buffer>        _cptr_init_ncount_CS_CONB;
 
   // performance analysis
   void print_performance_analysis_result(void);
@@ -157,6 +168,10 @@ private:
   float _dt_sum_update_neighborhood                       = 0.0f;
   float _dt_sum_update_scailing_factor                    = 0.0f;
   float _dt_sum_update_ninfo                              = 0.0f;
+  float _dt_sum_update_W                                  = 0.0f;
+  float _dt_sum_update_grad_W                             = 0.0f;
+  float _dt_sum_update_laplacian_vel_coeff                = 0.0f;
+  float _dt_sum_update_a_pressure_coeff                   = 0.0f;
   float _dt_sum_init_fluid_acceleration                   = 0.0f;
   float _dt_sum_init_pressure_and_a_pressure              = 0.0f;
   float _dt_sum_copy_cur_pos_and_vel                      = 0.0f;

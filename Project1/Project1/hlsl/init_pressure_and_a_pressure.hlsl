@@ -2,7 +2,7 @@
 
 cbuffer CB : register(b0)
 {
-  uint g_num_fluid_particle;
+  uint g_num_fp;
 }
 
 RWStructuredBuffer<float>   pressure_buffer     : register(u0);
@@ -11,7 +11,7 @@ RWStructuredBuffer<float3>  a_presssure_buffer  : register(u1);
 [numthreads(NUM_THREAD,1,1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-  if (g_num_fluid_particle <= DTid.x)
+  if (g_num_fp <= DTid.x)
     return;
 
   pressure_buffer[DTid.x]     = 0.0;

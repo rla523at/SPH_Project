@@ -1,8 +1,6 @@
 #define NUM_THREAD 256
 
-#include "cubic_spline_kernel.hlsli"
-
-cbuffer CB : register(b1)
+cbuffer CB : register(b0)
 {
   float g_rho0;
   float g_m0;

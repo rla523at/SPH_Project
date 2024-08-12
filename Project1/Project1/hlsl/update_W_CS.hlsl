@@ -26,18 +26,21 @@ void main(uint3 DTid : SV_DispatchThreadID)
   const uint num_nfp = ncount_buffer[fp_index];
   for (uint i = 0; i < num_nfp; ++i)
   {
-    const uint index1       = start_index + i;
-    const uint nbr_fp_index = ninfo_buffer[index1].nbr_fp_index;    
+    const uint index1 = start_index + i;
+
+    const Neighbor_Information ninfo = ninfo_buffer[index1];
+    
+    const uint nbr_fp_index = ninfo.nbr_fp_index;    
 
     if (nbr_fp_index < fp_index)
-      continue;
+      continue;    
     
-    const uint index2 = nbr_fp_index * g_estimated_num_nfp + ninfo_buffer[index1].neighbor_index;
+    const float d     = ninfo.distance;
+    const float value = W(d);
     
-    const float d = ninfo_buffer[index1].distance;
-    const float W = W(d);
-    
-    W_buffer[index1] = W;
-    W_buffer[index2] = W;    
+    const uint index2 = nbr_fp_index * g_estimated_num_nfp + ninfo.neighbor_index;
+
+    W_buffer[index1] = value;
+    W_buffer[index2] = value;    
   }
 }

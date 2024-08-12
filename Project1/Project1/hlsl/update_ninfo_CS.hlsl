@@ -65,27 +65,46 @@ void main(uint3 DTID : SV_DispatchThreadID)
       if (g_supprot_radius < distance)
         continue;
       
-      uint this_ncount;
-      uint neighbor_ncount;
-      InterlockedAdd(ncount_buffer[cur_fp_index], 1, this_ncount);      
-      InterlockedAdd(ncount_buffer[nbr_fp_index], 1, neighbor_ncount);
+      if (nbr_fp_index != cur_fp_index)
+      {
+        uint this_ncount;
+        InterlockedAdd(ncount_buffer[cur_fp_index], 1, this_ncount);
+
+        uint neighbor_ncount;
+        InterlockedAdd(ncount_buffer[nbr_fp_index], 1, neighbor_ncount);
+
+        Neighbor_Information info;      
+        info.nbr_fp_index   = nbr_fp_index;
+        info.neighbor_index = neighbor_ncount;
+        info.v_xij          = v_xij;
+        info.distance       = distance;
+        info.distnace2      = distance2;      
+
+        ninfo_buffer[start_index3 + this_ncount] = info; 
       
-      Neighbor_Information info;      
-      info.nbr_fp_index   = nbr_fp_index;
-      info.neighbor_index = neighbor_ncount;
-      info.v_xij          = v_xij;
-      info.distance       = distance;
-      info.distnace2      = distance2;      
+        Neighbor_Information info2;
+        info2.nbr_fp_index    = cur_fp_index;
+        info2.neighbor_index  = this_ncount;
+        info2.v_xij           = -v_xij;
+        info2.distance        = distance;
+        info2.distnace2       = distance2;      
 
-      Neighbor_Information info2;
-      info2.nbr_fp_index    = cur_fp_index;
-      info2.neighbor_index  = this_ncount;
-      info2.v_xij           = -v_xij;
-      info2.distance        = distance;
-      info2.distnace2       = distance2;      
+        ninfo_buffer[start_index4 + neighbor_ncount]  = info2;
+      }
+      else
+      {
+        uint this_ncount;
+        InterlockedAdd(ncount_buffer[cur_fp_index], 1, this_ncount);   
+      
+        Neighbor_Information info;      
+        info.nbr_fp_index   = cur_fp_index;
+        info.neighbor_index = this_ncount;
+        info.v_xij          = v_xij;
+        info.distance       = distance;
+        info.distnace2      = distance2;      
 
-      ninfo_buffer[start_index3 + this_ncount]      = info;
-      ninfo_buffer[start_index4 + neighbor_ncount]  = info2;
+        ninfo_buffer[start_index3 + this_ncount] = info;      
+      }
     }   
   }
 }

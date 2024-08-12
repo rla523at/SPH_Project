@@ -1,3 +1,359 @@
+# 2024.08.12
+## GPU 코드 최적화
+
+결론적으로 약 1374ms를 줄여 32%정도 계산 시간을 줄였다.
+
+$$ \frac{1374}{4325} \times 100 \sim 32 \% $$
+
+```
+                                                          before          after
+===================================================     ===========     ==========
+_dt_sum_update                                           4325.56 ms     2951.74 ms
+===================================================     ===========     ==========
+_dt_sum_update_neighborhood                              1575.66 ms     823.75   ms
+_dt_sum_update_scailing_factor                           139.575 ms     138.884  ms
+_dt_sum_init_fluid_acceleration                          598.65  ms     595.153  ms
+_dt_sum_init_pressure_and_a_pressure                     1.97872 ms     2.04208  ms
+_dt_sum_copy_cur_pos_and_vel                             7.52288 ms     7.57351  ms
+_dt_sum_predict_velocity_and_position                    19.9792 ms     15.6958  ms
+_dt_sum_predict_density_error_and_update_pressure        356.088 ms     269.273  ms
+_dt_sum_cal_max_density_error                            149.539 ms     0        ms
+_dt_sum_update_a_pressure                                839.965 ms     616.974  ms
+_dt_sum_apply_BC                                         2.32352 ms     2.34109  ms
+===================================================      ==========     ==========     
+```
+
+### Neighborhood Search 추가 병렬화
+#### [문제]
+Uniform Grid Neighborhood Search를 위한 데이터중 Geometry Cell마다 몇 개의 particle이 속해 있는지 저장하는 `GCFP_count_buffer`가 있다.
+
+그리고 update_GCFP은 Geometry Cell이 바뀐 Particle들에 대한 정보를 업데이트하는 함수이며, 이 함수의 로직중에는 Geometry Cell의 `GCFP_count`를 늘리는 부분이 포함되어 있다.
+
+`GCFP_count`를 병렬적으로 늘릴 경우 race condition이 발생할 수 있기 때문에 기존에는 병렬화가 되어 있지 않았다.
+
+```
+ConsumeStructuredBuffer<Changed_GCFP_ID_Data> changed_GCFP_ID_buffer  : register(u3);
+
+[numthreads(1, 1, 1)]
+void main()
+{
+  //...
+
+  for (uint i = 0; i < g_consume_buffer_count; ++i)
+  {
+    const Changed_GCFP_ID_Data data = changed_GCFP_ID_buffer.Consume();
+
+    GCFP_ID cur_id;
+    cur_id.gc_index   = data.cur_gc_index;
+    cur_id.gcfp_index = GCFP_count_buffer[data.cur_gc_index];
+
+    //...
+
+    //prev_id가 지워진 정보는 rearrange_GCFP_CS에서 업데이트함
+    GCFP_count_buffer[cur_id.gc_index]++; //이 부분 때문에 병렬화가 안됨
+  }
+}
+```
+
+#### [해결]
+hlsl 내장 함수 중 InterlockedAdd를 사용하면 thread group 내부에서는 물론 thread group간에서도 덧셈에 대해서 atomic 연산을 할 수 있다.
+
+따라서, 위의 코드를 병렬화하고 InterlockedAdd를 사용해 GCFP_count_buffer에 문제가 생기지 않게 하였다.
+
+```
+ConsumeStructuredBuffer<Changed_GCFP_ID_Data> changed_GCFP_ID_buffer  : register(u3);
+
+[numthreads(NUM_THREAD, 1, 1)]
+void main(uint3 DTid : SV_DispatchThreadID)
+{
+  //...
+  const Changed_GCFP_ID_Data data = changed_GCFP_ID_buffer.Consume();
+    
+  GCFP_ID cur_id;
+  cur_id.gc_index = data.cur_gc_index;
+  InterlockedAdd(GCFP_count_buffer[data.cur_gc_index], 1, cur_id.gcfp_index);
+  //...
+}
+```
+
+#### [결과]
+Neighborhood을 성능 측정한 결과는 다음과 같다.
+
+```
+                                            before        after
+===================================       ==========     ==========
+_dt_sum_update                            1575.94  ms    798.814 ms
+===================================       ==========     ==========
+_dt_sum_find_changed_GCFPT_ID             3.25735  ms    3.26042  ms
+_dt_sum_update_GCFP                       784.848  ms    6.28652  ms
+_dt_sum_rearrange_GCFP                    6.21322  ms    6.30793  ms
+_dt_sum_update_nfp                        667.078  ms    669.123  ms
+===================================       ==========     ==========
+```
+
+Neighborhood update만 비교를 해보면 약 780ms가 줄어서 약 50%의 성능 개선 효과가 있었다.
+
+$$ \frac{780}{1576} \times 100 \sim 50 \% $$
+
+### 중복 계산 제거(문제)
+
+#### [동기]
+
+SPH Framework의 수식들을 살펴보니 다음과 같은 중복 계산을 줄일 수 있음을 파악하였다.
+
+* **[neighbor information에서 중복 계산]**
+
+$x_{ij} = x_i - x_j$라고 한다면, $x_{ij} = -x_{ji}$이고, $|x_{ij}| = |x_{ji}|$이다.
+
+따라서, $i$와 $j$가 neighbor이고 $i$의 neighbor information을 저장하기 위해 $x_{ij}$와 $|x_{ij}|$를 계산하였다면, $j$의 neighbor information을 저장할 때에는 $x_{ji}$와 $|x_{ji}|$를 다시 계산할 필요는 없다.
+
+* **[밀도에서 중복 계산]**
+
+$d_{ij} = ||x_i - x_j||$라고 하면, $i$와 $j$ particle에서 밀도 식은 다음과 같다.
+
+$$ \rho(x_i) = m_0 \sum_j W(d_{ij}) $$
+
+이 때, 수식을 자세히 살펴보면, 다음이 성립함을 알 수 있다.
+
+$$ W(d_{ij}) = W(d_{ji}) $$
+
+따라서, $i$의 밀도를 계산할 때, $W(d_{ij})$를 계산했다면, $j$의 밀도를 계산할 때는 $W(d_{ji})$를 다시 계산할 필요가 없다.
+
+* **[압력에 의한 가속도에서 중복 계산]**
+
+$c^p_{ij} = \frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}$라고 하면, 압력에 의한 가속도 계산식은 다음과 같다.
+
+$$ a_p(x_i) = - m_0 \sum_j c^p_{ij} \nabla W_{ij} $$
+
+이 때, 수식을 자세히 살펴보면, 다음이 성립함을 알 수 있다.
+
+$$ c^p_{ij} = c^p_{ji}, \quad \nabla W_{ij} = -\nabla W_{ji} $$
+
+따라서, $a_p(x_i)$를 계산하였다면, $a_p(x_j)$를 계산할 때는, $c^p_{ji}$와 $\nabla W_{ji}$를 다시 계산할 필요가 없다.
+
+* **[점성에 의한 가속도에서 중복 계산]**
+
+$c^v_{ij} = \frac{v_{ij} \cdot x_{ij}}{x_{ij} \cdot x_{ij}+0.01h^2}$라고 하면, 점성에 의한 가속도 계산식은 다음과 같다.
+
+$$ a_v(x_i) = 2 \nu (d+2) m_0 \sum_j \frac{1}{\rho_j} c^v_{ij} \nabla W_{ij}  $$
+
+이 때, 수식을 자세히 살펴보면, 다음이 성립함을 알 수 있다.
+
+$$ c^v_{ij} = c^v_{ji}, \quad \nabla W_{ij} = -\nabla W_{ji} $$
+
+따라서, $a_v(x_i)$를 계산하였다면, $a_v(x_j)$를 계산할 때는, $c^v_{ji}$와 $\nabla W_{ji}$를 다시 계산할 필요가 없다.
+
+#### [해결]
+
+neighbor information은 중복없이 계산하고, 추가로 $W_{ij}, \nabla W_{ij}, c^p_{ij},c^v_{ij}$를 중복없이 계산 후 저장해 놓고 다른 계산에서 사용한다.
+
+* **[neighbor information은 중복없이 계산]**
+
+```
+      if (nbr_fp_index != cur_fp_index)
+      {
+        uint this_ncount;
+        InterlockedAdd(ncount_buffer[cur_fp_index], 1, this_ncount);
+
+        uint neighbor_ncount;
+        InterlockedAdd(ncount_buffer[nbr_fp_index], 1, neighbor_ncount);
+
+        Neighbor_Information info;      
+        info.nbr_fp_index   = nbr_fp_index;
+        info.neighbor_index = neighbor_ncount;
+        info.v_xij          = v_xij;
+        info.distance       = distance;
+        info.distnace2      = distance2;      
+
+        ninfo_buffer[start_index3 + this_ncount] = info; 
+      
+        Neighbor_Information info2;
+        info2.nbr_fp_index    = cur_fp_index;
+        info2.neighbor_index  = this_ncount;
+        info2.v_xij           = -v_xij;
+        info2.distance        = distance;
+        info2.distnace2       = distance2;      
+
+        ninfo_buffer[start_index4 + neighbor_ncount]  = info2;
+      }
+      else
+      {
+        uint this_ncount;
+        InterlockedAdd(ncount_buffer[cur_fp_index], 1, this_ncount);   
+      
+        Neighbor_Information info;      
+        info.nbr_fp_index   = cur_fp_index;
+        info.neighbor_index = this_ncount;
+        info.v_xij          = v_xij;
+        info.distance       = distance;
+        info.distnace2      = distance2;      
+
+        ninfo_buffer[start_index3 + this_ncount] = info;      
+      }
+```
+
+* **[grad_W 중복없이 계산 및 저장]**
+
+```
+  const uint num_nfp = ncount_buffer[fp_index];
+  for (uint i = 0; i < num_nfp; ++i)
+  {
+    const uint index1 = start_index + i;
+    const uint nbr_fp_index = ninfo_buffer[index1].nbr_fp_index;
+
+    if (nbr_fp_index < fp_index)
+      continue;   
+    
+    const float d = ninfo_buffer[index1].distance;
+    
+    if (d == 0.0f) 
+      continue;
+
+    const float3 v_xij    = ninfo_buffer[index1].v_xij;      
+    const float3 v_grad_q = 1.0f / (g_h * d) * v_xij;
+    const float3 v_grad_W = dWdq(d) * v_grad_q;
+
+    const uint index2 = nbr_fp_index * g_estimated_num_nfp + ninfo_buffer[index1].neighbor_index;
+    
+    grad_W_buffer[index1] = v_grad_W;
+    grad_W_buffer[index2] = -v_grad_W;
+  }
+```
+
+* **[저장된 값 활용]**
+```
+  //...
+  for (uint i=0; i< num_nfp; ++i)
+  {
+    const float d = ninfo_buffer[index1].distance;
+    
+    if (d == 0.0)
+      continue;
+
+    const float3  v_grad_kernel   = v_grad_W_buffer[index1];
+    const float   coeff           = a_pressure_coeff_buffer[index1];
+    const float3  v_grad_pressure = coeff * v_grad_kernel;
+
+    v_a_pressure += v_grad_pressure;
+  }
+```
+
+#### [결과]
+
+```
+                                                          before          after
+===================================================     ==========      ==========  
+_dt_sum_update                                          2951.74 ms      13167.5 ms  
+===================================================     ==========      ==========  
+_dt_sum_update_neighborhood                             823.75   ms     13.4758  ms 
+_dt_sum_update_scailing_factor                          138.884  ms     46.7306  ms 
+_dt_sum_init_fluid_acceleration                         595.153  ms     822.914  ms 
+_dt_sum_init_pressure_and_a_pressure                    2.04208  ms     2.01104  ms 
+_dt_sum_copy_cur_pos_and_vel                            7.57351  ms     7.55457  ms 
+_dt_sum_predict_velocity_and_position                   15.6958  ms     15.4654  ms 
+_dt_sum_predict_density_error_and_update_pressure       269.273  ms     122.208  ms 
+_dt_sum_cal_max_density_error                           0        ms     0        ms 
+_dt_sum_update_a_pressure                               616.974  ms     2385.12  ms 
+_dt_sum_apply_BC                                        2.34109  ms     2.38333  ms 
+_dt_sum_update_ninfo                                                    2381.93  ms            
+_dt_sum_update_W                                                        1933.35  ms  
+_dt_sum_update_grad_W                                                   2360.36  ms  
+_dt_sum_update_laplacian_vel_coeff                                      597.336  ms  
+_dt_sum_update_a_pressure_coeff                                         1478.12  ms  
+===================================================                     ==========     
+```
+
+* **[고민1]**
+
+update_ninfo의 경우 InterlockedAdd 함수를 호출하기 때문에 느릴 수 있음이 이해가 되지만, 그 외에 update_W ~ update_a_pressure_coeff 함수의 경우 기존 함수들과 비슷하거나더 적은 양의 계산을 하는데 왜 이렇게 오래 걸리는지 고민 중.
+
+**update_W**
+
+```
+  const uint num_nfp = ncount_buffer[fp_index];
+  for (uint i = 0; i < num_nfp; ++i)
+  {
+    //...
+    const Neighbor_Information ninfo = ninfo_buffer[index1];
+    //...
+    
+    if (nbr_fp_index < fp_index)
+      continue;    
+    
+    const float d     = ninfo.distance;
+    const float value = W(d);
+    
+    const uint index2 = nbr_fp_index * g_estimated_num_nfp + ninfo.neighbor_index;
+
+    W_buffer[index1] = value;
+    W_buffer[index2] = value;    
+  }
+```
+
+**기존 predict_density_error_and_update_pressure**
+
+```
+  const uint num_nfp = ncount_buffer[fp_index];
+  for (uint i=0; i<num_nfp; ++i)
+  {
+    const uint ninfo_index  = start_index + i;
+    const uint nfp_index    = ninfo_buffer[ninfo_index].fp_index;
+
+    const float3  v_xj      = pos_buffer[nfp_index];
+    const float   distance  = length(v_xi-v_xj);
+
+    rho += W(distance);
+  }
+```
+
+* **[고민2]**
+
+init_fluid_acceleration 함수와 update_a_pressure함수의 경우, 기존에는 계산을 하였고 개선 후에는 값을 읽어오기만 하는데 왜 더 느려졌는지 고민 중.
+
+**저장된 값 활용**
+
+```
+  //...
+  for (uint i=0; i< num_nfp; ++i)
+  {
+    const float d = ninfo_buffer[index1].distance;
+    
+    if (d == 0.0)
+      continue;
+
+    const float3  v_grad_kernel   = v_grad_W_buffer[index1];
+    const float   coeff           = a_pressure_coeff_buffer[index1];
+    const float3  v_grad_pressure = coeff * v_grad_kernel;
+
+    v_a_pressure += v_grad_pressure;
+  }
+```
+
+**기존 코드**
+
+```
+  for (uint i=0; i< num_nfp; ++i)
+  {
+    //..
+    const float3  v_xij = v_xi - v_xj;
+    const float   distance = length(v_xij);
+    
+    if (distance == 0.0)
+      continue;
+
+    const float3 v_grad_q         = 1.0f / (g_h * distance) * v_xij;
+    const float3 v_grad_kernel    = dWdq(distance) * v_grad_q;
+    const float   coeff           = (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
+    const float3  v_grad_pressure = coeff * v_grad_kernel;
+
+    v_a_pressure += v_grad_pressure;
+  }
+
+```
+
+
+</br></br></br>
+
 # 2024.08.09
 ## GPU 코드 최적화
 
@@ -87,8 +443,6 @@ warp 단위를 만족하는 숫자중 128, 256, 512, 1024를 테스트 해보았
 1024 thread를 사용했을 떄와, 512 thread를 사용했을 떄를 비교해보면 104ms가 줄어서 약 11%의 성능 개선 효과가 있었다.
 
 $$ \frac{104}{910} \times 100 \sim 11\% $$
-
-
 
 
 </br></br></br>

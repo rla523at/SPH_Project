@@ -1,28 +1,28 @@
-#include "cubic_spline_kernel.hlsli"
-
 #define NUM_THREAD 256
 
-struct Neighbor_Information
-{
-  uint    fp_index;
-  float3  tvector;
-  float   distance;
-};
-
-cbuffer Constant_Data : register(b1)
+cbuffer Constant_Data : register(b0)
 {
   uint  g_estimated_num_nfp;  
   float g_beta;
 };
 
-StructuredBuffer<uint>                  max_index_buffer  : register(t0);
-StructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(t1);
-StructuredBuffer<uint>                  nfp_count_buffer  : register(t2);
+StructuredBuffer<uint>    max_index_buffer  : register(t0);
+StructuredBuffer<uint>    nfp_count_buffer  : register(t1);
+StructuredBuffer<float3>  grad_W_buffer     : register(t2);
 
 RWStructuredBuffer<float> scailing_factor_buffer : register(u0);
 
-groupshared float3  shared_sum_grad_kernel[NUM_THREAD];
-groupshared float  shared_sum_grad_kernel_size[NUM_THREAD];
+struct debug_strcut
+{
+  float3 sum_grad_W;
+  float  sum_grad_W_size;
+  float   sum_dot_sum;
+};
+
+RWStructuredBuffer<debug_strcut> debug_buffer : register(u1);
+
+groupshared float3  shared_sum_grad_W[NUM_THREAD];
+groupshared float   shared_sum_grad_W_size[NUM_THREAD];
 
 [numthreads(NUM_THREAD,1,1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -31,28 +31,20 @@ void main(uint3 DTid : SV_DispatchThreadID)
   const uint start_index  = fp_index * g_estimated_num_nfp;
   const uint num_nfp      = nfp_count_buffer[fp_index];
 
-  // assume num nfp < NUM_THREAD(256)
-  float3 v_grad_kernel = float3(0,0,0);
-
+  float3 v_grad_W = float3(0,0,0);
+  
   if (DTid.x < num_nfp)
   {
-    const uint nfp_index = start_index + DTid.x;
-
-    const Neighbor_Information ninfo = nfp_info_buffer[nfp_index];
-
-    const float distance = ninfo.distance;
-
-    if (distance != 0) 
-    {
-      const float3 v_xij          = ninfo.tvector;    
-      const float3 v_grad_q       = 1.0 / (g_h * distance) * v_xij;
-      
-      v_grad_kernel  = dWdq(distance) * v_grad_q;
-    }
+    v_grad_W = grad_W_buffer[start_index + DTid.x];
   }
-  
-  shared_sum_grad_kernel[DTid.x]      = v_grad_kernel;
-  shared_sum_grad_kernel_size[DTid.x] = dot(v_grad_kernel, v_grad_kernel);
+
+  shared_sum_grad_W[DTid.x]       = v_grad_W;
+  shared_sum_grad_W_size[DTid.x]  = dot(v_grad_W, v_grad_W);
+
+  //debug
+  debug_buffer[DTid.x].sum_grad_W       = shared_sum_grad_W[DTid.x];
+  debug_buffer[DTid.x].sum_grad_W_size  = shared_sum_grad_W_size[DTid.x];
+  //debug
 
   GroupMemoryBarrierWithGroupSync();
 
@@ -61,8 +53,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     if (DTid.x < stride)
     {
       const uint index2 = DTid.x + stride;
-      shared_sum_grad_kernel[DTid.x] += shared_sum_grad_kernel[index2];
-      shared_sum_grad_kernel_size[DTid.x] += shared_sum_grad_kernel_size[index2];
+      shared_sum_grad_W[DTid.x] += shared_sum_grad_W[index2];
+      shared_sum_grad_W_size[DTid.x] += shared_sum_grad_W_size[index2];
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -70,10 +62,16 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
   if (DTid.x == 0)
   {
-    const float   sum_grad_kernel_size  = shared_sum_grad_kernel_size[0];
-    const float3  v_sum_grad_kernel     = shared_sum_grad_kernel[0];
-    const float   sum_dot_sum           = dot(v_sum_grad_kernel, v_sum_grad_kernel);
- 
-    scailing_factor_buffer[0] = 1.0 / (g_beta * (sum_dot_sum + sum_grad_kernel_size));   
+    const float   sum_grad_W_size   = shared_sum_grad_W_size[0];
+
+    const float3  v_sum_grad_W      = shared_sum_grad_W[0];
+    const float   sum_dot_sum       = dot(v_sum_grad_W, v_sum_grad_W);
+
+    scailing_factor_buffer[0] = 1.0 / (g_beta * (sum_dot_sum + sum_grad_W_size));   
+
+    //debug
+    debug_buffer[255].sum_dot_sum      = sum_dot_sum;
+    debug_buffer[255].sum_grad_W_size  = sum_grad_W_size;
+    //debug
   }  
 }

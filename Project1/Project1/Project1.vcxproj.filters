@@ -98,10 +98,16 @@
     <FxCompile Include="hlsl\update_W_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
-    <FxCompile Include="hlsl\update_grad_W.hlsl">
+    <FxCompile Include="hlsl\update_grad_W_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
-    <FxCompile Include="hlsl\update_laplacian_vel_coeff.hlsl">
+    <FxCompile Include="hlsl\update_laplacian_vel_coeff_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\update_a_pressure_coeff_CS.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\init_ncount_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
   </ItemGroup>

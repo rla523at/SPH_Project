@@ -1,20 +1,18 @@
 #define NUM_THREAD 512
 
-#include "cubic_spline_kernel.hlsli"
-#include "uniform_grid_output.hlsli"
+#include "Neighbor_Information.hlsli"
 
-cbuffer CB : register(b1)
+cbuffer CB : register(b0)
 {
   float g_m0;
   uint  g_num_fp;
   uint  g_estimated_num_nfp;
 };
 
-StructuredBuffer<float>                 density_buffer  : register(t0);
-StructuredBuffer<float>                 pressure_buffer : register(t1);
-StructuredBuffer<float3>                v_pos_buffer    : register(t2);
-StructuredBuffer<Neighbor_Information>  ninfo_buffer    : register(t3);
-StructuredBuffer<uint>                  ncount_buffer   : register(t4);
+StructuredBuffer<Neighbor_Information>  ninfo_buffer            : register(t0);
+StructuredBuffer<uint>                  ncount_buffer           : register(t1);
+StructuredBuffer<float3>                v_grad_W_buffer         : register(t2);
+StructuredBuffer<float>                 a_pressure_coeff_buffer : register(t3);
 
 RWStructuredBuffer<float3> v_a_pressure_buffer : register(u0);
 
@@ -27,35 +25,24 @@ void main(uint3 DTid : SV_DispatchThreadID)
   const uint fp_index     = DTid.x;
   const uint start_index  = fp_index * g_estimated_num_nfp;
   
-  const float   rhoi  = density_buffer[fp_index];
-  const float   pi    = pressure_buffer[fp_index];
-  const float3  v_xi  = v_pos_buffer[fp_index];
-
   float3 v_a_pressure = float3(0.0, 0.0, 0.0);
 
   const uint num_nfp = ncount_buffer[fp_index];
   for (uint i=0; i< num_nfp; ++i)
   {
-    const uint ninfo_index  = start_index + i;
-    const uint nfp_index    = ninfo_buffer[ninfo_index].fp_index;
+    const uint index1     = start_index + i;
+    const uint nbr_fp_index  = ninfo_buffer[index1].nbr_fp_index;
 
-    if (fp_index == nfp_index)
+    if (fp_index == nbr_fp_index)
       continue;
 
-    const float   rhoj  = density_buffer[nfp_index];
-    const float   pj    = pressure_buffer[nfp_index];
-    const float3  v_xj  = v_pos_buffer[nfp_index];
-
-    const float3  v_xij = v_xi - v_xj;
-    const float   distance = length(v_xij);
+    const float d = ninfo_buffer[index1].distance;
     
-    if (distance == 0.0)
+    if (d == 0.0)
       continue;
 
-    const float3 v_grad_q       = 1.0f / (g_h * distance) * v_xij;
-    const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
-
-    const float   coeff           = (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
+    const float3  v_grad_kernel   = v_grad_W_buffer[index1];
+    const float   coeff           = a_pressure_coeff_buffer[index1];
     const float3  v_grad_pressure = coeff * v_grad_kernel;
 
     v_a_pressure += v_grad_pressure;

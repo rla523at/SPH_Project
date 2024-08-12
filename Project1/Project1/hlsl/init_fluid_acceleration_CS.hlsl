@@ -1,23 +1,20 @@
 #define NUM_THREAD 256
 
-#include "cubic_spline_kernel.hlsli"
 #include "Neighbor_Information.hlsli"
 
-cbuffer CB : register(b1)
+cbuffer CB : register(b0)
 {
   float3  g_v_a_gravity;
-  float   g_m0;
   float   g_viscosity_constant;
-  float   g_regularization_term;
   uint    g_num_fluid_particle;
   uint    g_estimated_num_nfp;
 };
 
 StructuredBuffer<float>                 density_buffer              : register(t0);
-StructuredBuffer<Neighbor_Information>  ninfo_buffer                : register(t2);
-StructuredBuffer<uint>                  ninfo_count_buffer          : register(t3);
-StructuredBuffer<float3>                grad_W_buffer               : register(t4);
-StructuredBuffer<float>                 laplacian_vel_coeff_buffer  : register(t5);
+StructuredBuffer<Neighbor_Information>  ninfo_buffer                : register(t1);
+StructuredBuffer<uint>                  ninfo_count_buffer          : register(t2);
+StructuredBuffer<float3>                grad_W_buffer               : register(t3);
+StructuredBuffer<float>                 laplacian_vel_coeff_buffer  : register(t4);
 
 RWStructuredBuffer<float3> acceleration_buffer : register(u0);
 
@@ -48,8 +45,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     const float  rhoj                 = density_buffer[nbr_fp_index];
     const float  coeff                = laplacian_vel_coeff_buffer[index1];
-    const float3 v_grad_kernel        = grad_W_buffer[index1];
-    const float3 v_laplacian_velocity = coeff / rhoj * v_grad_kernel;
+    const float3 v_grad_W             = grad_W_buffer[index1];
+    const float3 v_laplacian_velocity = coeff / rhoj * v_grad_W;
 
     v_a_viscosity += v_laplacian_velocity;
   }

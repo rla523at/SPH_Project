@@ -1,16 +1,13 @@
 #define NUM_THREAD 256
 
-#include "uniform_grid_output.hlsli"
-#include "Cubic_Spline_Kernel.hlsli"
-
-cbuffer Constant_Buffer : register(b1)
+cbuffer Constant_Buffer : register(b0)
 {
   uint  g_estimated_num_nfp;
   uint  g_num_fluid_particle;
 };
 
-StructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(t0);
-StructuredBuffer<uint>                  nfp_count_buffer  : register(t1);
+StructuredBuffer<uint>  nfp_count_buffer  : register(t0);
+StructuredBuffer<float> W_buffer          : register(t1);
 
 RWStructuredBuffer<float> result_buffer : register(u0);
 
@@ -28,8 +25,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
   const uint num_nfp = nfp_count_buffer[fp_index];
   for (uint i=0; i<num_nfp; ++i)
   {
-    const float distance = nfp_info_buffer[start_index + i].distance;
-    number_density += W(distance);
+    number_density += W_buffer[start_index + i];
   }
 
   result_buffer[fp_index] = number_density;
