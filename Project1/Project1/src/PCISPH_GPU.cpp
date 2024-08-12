@@ -675,7 +675,7 @@ void PCISPH_GPU::print_performance_analysis_result(void)
   std::cout << std::left;
   std::cout << "PCISPH_GPU Performance Analysis Result \n";
   std::cout << "======================================================================\n";
-  std::cout << std::setw(60) << "_dt_sum_update" << _dt_sum_update << " ms\n";
+  std::cout << std::setw(60) << "_dt_sum_update" << std::setw(8) << _dt_sum_update << " ms\n";
   std::cout << "======================================================================\n";
   std::cout << std::setw(60) << "_dt_sum_update_neighborhood" << std::setw(8) << _dt_sum_update_neighborhood << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_update_scailing_factor" << std::setw(8) << _dt_sum_update_scailing_factor << " ms\n";

@@ -11,7 +11,7 @@
     FP  : Fluid Particle
 */
 
-//#define PCISPH_GPU_PERFORMANCE_ANALYSIS
+#define PCISPH_GPU_PERFORMANCE_ANALYSIS
 
 // Forward Declaration
 namespace ms
