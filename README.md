@@ -26,7 +26,7 @@
 
 이를 간략화 하면 다음과 같다.
 
-[그림]
+![before_opt](https://github.com/user-attachments/assets/56cb079b-a360-42c2-81d7-fe55996ddf7e)
 
 이 때, GPU에서 CPU로 data를 읽어오는 과정 때문에 다음과 같은 비효율이 발생한다.
 * CPU는 Produce Work 후에도 Read Data나 다음 Produce Work를 수행하지 못하고 GPU의 Consume Work을 기다려야 한다.
@@ -38,7 +38,7 @@
 
 그러면 CPU는 Produce Work를 GPU는 Consume Work를 비동기적으로 수행할 수 있다.
 
-[그림]
+![opt](https://github.com/user-attachments/assets/48f538d1-1a24-4268-979b-c309b787b65e)
 
 이를 위해 코드를 다음과 같이 수정하였다.
 
@@ -68,7 +68,7 @@ _dt_sum_update_a_pressure                                804.587 ms      621.542
 
 Iteration과 관련된 부분만 비교를 해보면 약 400ms가 줄어서 약 30%의 성능 개선 효과가 있었다.
 
-$$ \frac{400}{1305} \times 100 \sim 30\% $$
+$$ \frac{400}{1305} \times 100 \sim 30\\% $$
 
 성능 개선 효과가 두드러졌던 이유를 생각해보면 _min_iter와 _max_iter 차이가 적고 기존에도 _max_iter만큼 iteration이 되는 경우가 많았기 때문에 iteration을 비동기적으로 _max_iter만큼 수행하는게 동기화 과정을 포함하여 iteration 수를 줄이는 것보다 더 높은 성능을 보였던것 같다.
 
@@ -86,7 +86,7 @@ warp 단위를 만족하는 숫자중 128, 256, 512, 1024를 테스트 해보았
 
 1024 thread를 사용했을 떄와, 512 thread를 사용했을 떄를 비교해보면 104ms가 줄어서 약 11%의 성능 개선 효과가 있었다.
 
-$$ \frac{104}{910} \times 100 \sim 11\% $$
+$$ \frac{104}{910} \times 100 \sim 11\\% $$
 
 
 
