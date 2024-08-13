@@ -404,14 +404,14 @@ void Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(const 
 #ifdef UNIFORM_GRID_PERFORMANCE_ANALYSIS
   std::cout << std::left;
   std::cout << "Neighborhood_Uniform_Grid_GPU Performance Analysis Result \n";
-  std::cout << "======================================================================\n";
-  //std::cout << std::setw(60) << "_dt_avg_update" << _dt_sum_update / num_frame << " ms\n";
-  //std::cout << "======================================================================\n";
-  //std::cout << std::setw(60) << "_dt_avg_find_changed_GCFPT_ID" << std::setw(8) << _dt_sum_find_changed_GCFPT_ID / num_frame << " ms\n";
-  //std::cout << std::setw(60) << "_dt_avg_update_GCFP" << std::setw(8) << _dt_sum_update_GCFP / num_frame << " ms\n";
-  //std::cout << std::setw(60) << "_dt_avg_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_update_nfp" << std::setw(8) << _dt_sum_update_nfp / num_frame << " ms\n";
-  std::cout << "======================================================================\n\n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_find_changed_GCFPT_ID" << std::setw(13) << _dt_sum_find_changed_GCFPT_ID / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_GCFP" << std::setw(13) << _dt_sum_update_GCFP / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_rearrange_GCFP" << std::setw(13) << _dt_sum_rearrange_GCFP / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_nfp" << std::setw(13) << _dt_sum_update_nfp / num_frame << " ms\n";
+  std::cout << "================================================================================\n\n";
 #endif
 }
 
