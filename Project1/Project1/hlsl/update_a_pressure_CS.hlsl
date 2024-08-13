@@ -63,29 +63,33 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
 
   GroupMemoryBarrierWithGroupSync();
 
-  //for (uint stride = NUM_THREAD/2; 0 < stride; stride /= 2)
-  //{
-  //  if (Gindex < stride)
-  //  {
-  //    const uint index2 = Gindex + stride;
-  //    shared_v_grad_pressure[Gindex] += shared_v_grad_pressure[index2];      
-  //  }
-  //
-  //  GroupMemoryBarrierWithGroupSync();
-  //}
-  //
-  //if (Gindex == 0)
-  //  v_a_pressure_buffer[fp_index] = -g_m0 * shared_v_grad_pressure[0]; 
+  uint stride = NUM_THREAD/2;
+  while(num_nfp < stride)
+    stride /=2;
 
-  if (Gindex == 0)
+  for (; 0 < stride; stride /= 2)
   {
-    float3 v_a_pressure = float3(0,0,0);
-    
-    for (uint i=0; i <num_nfp; ++i)
-      v_a_pressure += shared_v_grad_pressure[i];
+    if (Gindex < stride)
+    {
+      const uint index2 = Gindex + stride;
+      shared_v_grad_pressure[Gindex] += shared_v_grad_pressure[index2];      
+    }
   
-    v_a_pressure_buffer[fp_index] = -g_m0 * v_a_pressure; 
-  }    
+    GroupMemoryBarrierWithGroupSync();
+  }
+  
+  if (Gindex == 0)
+    v_a_pressure_buffer[fp_index] = -g_m0 * shared_v_grad_pressure[0]; 
+
+  //if (Gindex == 0)
+  //{
+  //  float3 v_a_pressure = float3(0,0,0);
+  //  
+  //  for (uint i=0; i <num_nfp; ++i)
+  //    v_a_pressure += shared_v_grad_pressure[i];
+  //
+  //  v_a_pressure_buffer[fp_index] = -g_m0 * v_a_pressure; 
+  //}    
 }
 
 // #define NUM_THREAD 256

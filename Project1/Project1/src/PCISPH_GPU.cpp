@@ -690,21 +690,22 @@ void PCISPH_GPU::print_performance_analysis_result_avg(const UINT num_frame)
 #ifdef PCISPH_GPU_PERFORMANCE_ANALYSIS
   std::cout << std::left;
   std::cout << "PCISPH_GPU Performance Analysis Result AVERAGE \n";
-  std::cout << "======================================================================\n";
-  std::cout << std::setw(60) << "_dt_avg_update" << std::setw(8) << _dt_sum_update / num_frame << " ms\n";
-  std::cout << "======================================================================\n";
-  std::cout << std::setw(60) << "_dt_avg_update_neighborhood" << std::setw(8) << _dt_sum_update_neighborhood / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_update_scailing_factor" << std::setw(8) << _dt_sum_update_scailing_factor / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_init_fluid_acceleration" << std::setw(8) << _dt_sum_init_fluid_acceleration / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_init_pressure_and_a_pressure" << std::setw(8) << _dt_sum_init_pressure_and_a_pressure / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_copy_cur_pos_and_vel" << std::setw(8) << _dt_sum_copy_cur_pos_and_vel / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_predict_velocity_and_position" << std::setw(8) << _dt_sum_predict_velocity_and_position / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_predict_density_error_and_update_pressure" << std::setw(8) << _dt_sum_predict_density_error_and_update_pressure / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_cal_max_density_error" << std::setw(8) << _dt_sum_cal_max_density_error / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_update_a_pressure" << std::setw(8) << _dt_sum_update_a_pressure / num_frame << " ms\n";
-  std::cout << std::setw(60) << "_dt_avg_apply_BC" << std::setw(8) << _dt_sum_apply_BC / num_frame << " ms\n";
-  std::cout << "======================================================================\n\n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update_neighborhood" << std::setw(13) << _dt_sum_update_neighborhood / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_scailing_factor" << std::setw(13) << _dt_sum_update_scailing_factor / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_init_fluid_acceleration" << std::setw(13) << _dt_sum_init_fluid_acceleration / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_init_pressure_and_a_pressure" << std::setw(13) << _dt_sum_init_pressure_and_a_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_copy_cur_pos_and_vel" << std::setw(13) << _dt_sum_copy_cur_pos_and_vel / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_predict_velocity_and_position" << std::setw(13) << _dt_sum_predict_velocity_and_position / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_predict_density_error_and_update_pressure" << std::setw(13) << _dt_sum_predict_density_error_and_update_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_cal_max_density_error" << std::setw(13) << _dt_sum_cal_max_density_error / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_a_pressure" << std::setw(13) << _dt_sum_update_a_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_apply_BC" << std::setw(13) << _dt_sum_apply_BC / num_frame << " ms\n";
+  std::cout << "================================================================================\n\n";
 #endif
 }
+
 
 } // namespace ms
