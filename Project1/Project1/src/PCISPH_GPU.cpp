@@ -104,7 +104,7 @@ namespace ms
 PCISPH_GPU::PCISPH_GPU(
   const Initial_Condition_Cubes& initial_condition,
   const Domain&                  solution_domain,
-  Device_Manager&          device_manager)
+  Device_Manager&                device_manager)
 {
   constexpr float dt                        = 1.0e-2f;
   constexpr float viscosity                 = 1.0e-2f;
@@ -295,15 +295,6 @@ void PCISPH_GPU::update(void)
   _time += _dt;
 
   PERFORMANCE_ANALYSIS_END(update);
-
-  //////////////////////////////////////////////////////////////////////////
-  if (_time > 4.0)
-  {
-    Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result();
-    print_performance_analysis_result();
-    exit(523);
-  }
-  //////////////////////////////////////////////////////////////////////////
 }
 
 float PCISPH_GPU::particle_radius(void) const
@@ -516,11 +507,9 @@ float PCISPH_GPU::cal_max_density_error(void)
 void PCISPH_GPU::update_a_pressure(void)
 {
   PERFORMANCE_ANALYSIS_START;
-
-  constexpr UINT num_thread = 512;
-  constexpr UINT num_CB     = 2;
-  constexpr UINT num_SRV    = 5;
-  constexpr UINT num_UAV    = 1;
+  constexpr UINT max_group = 65535;
+  constexpr UINT num_CB    = 2;
+  constexpr UINT num_SRV   = 5;
 
   ID3D11Buffer* CBs[num_CB] = {
     _cptr_cubic_spline_kerenel_CONB.Get(),
@@ -535,20 +524,25 @@ void PCISPH_GPU::update_a_pressure(void)
     _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
   };
 
-  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _fluid_v_a_pressure_RWBS.cptr_UAV.Get(),
-  };
+  _DM_ptr->set_UAV(0, _fluid_v_a_pressure_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 1);
 
   const auto cptr_context = _DM_ptr->context_cptr();
   cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
   cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
-  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  cptr_context->CSSetShader(_cptr_update_a_pressure_CS.Get(), nullptr, NULL);
 
-  const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
-  cptr_context->Dispatch(num_group_x, 1, 1);
+  _DM_ptr->set_shader_CS(_cptr_update_a_pressure_CS);
 
-  _DM_ptr->CS_barrier();
+  UINT num_group_x = _num_FP;
+  UINT num_group_y = 1;
+
+  if (max_group < _num_FP)
+  {
+    num_group_x = max_group;
+    num_group_y = Utility::ceil(_num_FP, max_group);
+  }
+
+  _DM_ptr->dispatch(num_group_x, num_group_y, 1);
 
   PERFORMANCE_ANALYSIS_END(update_a_pressure);
 }
@@ -687,7 +681,29 @@ void PCISPH_GPU::print_performance_analysis_result(void)
   std::cout << std::setw(60) << "_dt_sum_cal_max_density_error" << std::setw(8) << _dt_sum_cal_max_density_error << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_update_a_pressure" << std::setw(8) << _dt_sum_update_a_pressure << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_apply_BC" << std::setw(8) << _dt_sum_apply_BC << " ms\n";
+  std::cout << "======================================================================\n\n";
+#endif
+}
+
+void PCISPH_GPU::print_performance_analysis_result_avg(const UINT num_frame)
+{
+#ifdef PCISPH_GPU_PERFORMANCE_ANALYSIS
+  std::cout << std::left;
+  std::cout << "PCISPH_GPU Performance Analysis Result AVERAGE \n";
   std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update" << std::setw(8) << _dt_sum_update / num_frame << " ms\n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update_neighborhood" << std::setw(8) << _dt_sum_update_neighborhood / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_scailing_factor" << std::setw(8) << _dt_sum_update_scailing_factor / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_init_fluid_acceleration" << std::setw(8) << _dt_sum_init_fluid_acceleration / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_init_pressure_and_a_pressure" << std::setw(8) << _dt_sum_init_pressure_and_a_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_copy_cur_pos_and_vel" << std::setw(8) << _dt_sum_copy_cur_pos_and_vel / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_predict_velocity_and_position" << std::setw(8) << _dt_sum_predict_velocity_and_position / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_predict_density_error_and_update_pressure" << std::setw(8) << _dt_sum_predict_density_error_and_update_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_cal_max_density_error" << std::setw(8) << _dt_sum_cal_max_density_error / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_a_pressure" << std::setw(8) << _dt_sum_update_a_pressure / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_apply_BC" << std::setw(8) << _dt_sum_apply_BC / num_frame << " ms\n";
+  std::cout << "======================================================================\n\n";
 #endif
 }
 

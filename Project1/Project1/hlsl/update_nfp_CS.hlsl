@@ -1,3 +1,5 @@
+#define NUM_THREAD 1024
+
 #include "uniform_grid_common.hlsli"
 #include "uniform_grid_output.hlsli"
 
@@ -14,7 +16,7 @@ RWStructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(u0);
 RWStructuredBuffer<uint>                  nfp_count_buffer  : register(u1);
 
 //entry function
-[numthreads(1024, 1, 1)]
+[numthreads(NUM_THREAD, 1, 1)]
 void main(uint3 DTID : SV_DispatchThreadID)
 {        
   if (g_num_particle <= DTID.x)

@@ -24,7 +24,7 @@ inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 100;
 inline constexpr UINT g_estimated_num_nfp  = 200;
 
-#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
 
 namespace ms
 {
@@ -75,6 +75,10 @@ namespace ms
 {
 class Neighborhood_Uniform_Grid_GPU
 {
+public:
+  static void print_performance_analysis_result(void);
+  static void print_avg_performance_analysis_result(const UINT num_frame);
+
 public:
   Neighborhood_Uniform_Grid_GPU(
     const Domain&          domain,
@@ -157,8 +161,7 @@ private:
 
 
   // performance analysis
-public:
-  static void print_performance_analysis_result(void);
+
 
 private:
   static inline float _dt_sum_update                = 0.0f;
