@@ -27,6 +27,10 @@ namespace ms
 class PCISPH_GPU : public SPH_Scheme
 {
 public:
+  static void print_performance_analysis_result(void);
+  static void print_performance_analysis_result_avg(const UINT num_frame);
+
+public:
   PCISPH_GPU(const Initial_Condition_Cubes& initial_condition,
              const Domain&                  solution_domain,
              Device_Manager&                device_manager);
@@ -162,24 +166,23 @@ private:
   ComPtr<ID3D11Buffer>        _cptr_init_ncount_CS_CONB;
 
   // performance analysis
-  void print_performance_analysis_result(void);
 
-  float _dt_sum_update                                    = 0.0f;
-  float _dt_sum_update_neighborhood                       = 0.0f;
-  float _dt_sum_update_scailing_factor                    = 0.0f;
-  float _dt_sum_update_ninfo                              = 0.0f;
-  float _dt_sum_update_W                                  = 0.0f;
-  float _dt_sum_update_grad_W                             = 0.0f;
-  float _dt_sum_update_laplacian_vel_coeff                = 0.0f;
-  float _dt_sum_update_a_pressure_coeff                   = 0.0f;
-  float _dt_sum_init_fluid_acceleration                   = 0.0f;
-  float _dt_sum_init_pressure_and_a_pressure              = 0.0f;
-  float _dt_sum_copy_cur_pos_and_vel                      = 0.0f;
-  float _dt_sum_predict_velocity_and_position             = 0.0f;
-  float _dt_sum_predict_density_error_and_update_pressure = 0.0f;
-  float _dt_sum_cal_max_density_error                     = 0.0f;
-  float _dt_sum_update_a_pressure                         = 0.0f;
-  float _dt_sum_apply_BC                                  = 0.0f;
+  static inline float _dt_sum_update                                    = 0.0f;
+  static inline float _dt_sum_update_neighborhood                       = 0.0f;
+  static inline float _dt_sum_update_scailing_factor                    = 0.0f;
+  static inline float _dt_sum_update_ninfo                              = 0.0f;
+  static inline float _dt_sum_update_W                                  = 0.0f;
+  static inline float _dt_sum_update_grad_W                             = 0.0f;
+  static inline float _dt_sum_update_laplacian_vel_coeff                = 0.0f;
+  static inline float _dt_sum_update_a_pressure_coeff                   = 0.0f;
+  static inline float _dt_sum_init_fluid_acceleration                   = 0.0f;
+  static inline float _dt_sum_init_pressure_and_a_pressure              = 0.0f;
+  static inline float _dt_sum_copy_cur_pos_and_vel                      = 0.0f;
+  static inline float _dt_sum_predict_velocity_and_position             = 0.0f;
+  static inline float _dt_sum_predict_density_error_and_update_pressure = 0.0f;
+  static inline float _dt_sum_cal_max_density_error                     = 0.0f;
+  static inline float _dt_sum_update_a_pressure                         = 0.0f;
+  static inline float _dt_sum_apply_BC                                  = 0.0f;
 };
 
 } // namespace ms
