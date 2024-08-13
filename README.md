@@ -1,3 +1,183 @@
+# 2024.08.13
+## GPU 코드 최적화
+
+### Frame 당 성능
+PCISPH update 함수의 Frame당 성능 측정 결과는 다음과 같다.
+
+```
+PCISPH_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              8.65898       ms
+================================================================================
+_dt_avg_update_neighborhood                                 2.37403       ms
+_dt_avg_update_scailing_factor                              0.345017      ms
+_dt_avg_init_fluid_acceleration                             1.48357       ms
+_dt_avg_init_pressure_and_a_pressure                        0.00507673    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0191895     ms
+_dt_avg_predict_velocity_and_position                       0.0428115     ms
+_dt_avg_predict_density_error_and_update_pressure           0.678709      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   1.54367       ms
+_dt_avg_apply_BC                                            0.00599321    ms
+================================================================================
+```
+
+참고로, 위 결과는 400Frame을 측정하여 평균한 값이다.
+
+### update_a_pressure 최적화
+
+#### [문제]
+기존 코드는 한 thread당 num_nfp번 v_grad_pressure를 계산한다.
+
+```cpp
+//...
+  const uint num_nfp = ncount_buffer[fp_index];
+  for (uint i=0; i< num_nfp; ++i)
+  {
+    //...
+    const float3 v_grad_q       = 1.0f / (g_h * distance) * v_xij;
+    const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
+
+    const float   coeff           = (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
+    const float3  v_grad_pressure = coeff * v_grad_kernel;
+
+    v_a_pressure += v_grad_pressure;
+  }
+//...
+```
+
+num_nfp는 최대 200까지 될 수 있음으로, 이 부분을 개선하여 병렬처리 성능을 개선하려고 노력하였다.
+
+#### [시도 - group shared memory]
+
+병렬처리 효율을 개선하기 위해, group shared memory에 v_grad_pressure를 병렬적으로 계산해 저장하는 방식을 생각하였다.
+
+하나의 Group에서는 NUM_THREAD 개수의 particlce에 대한 정보를 계산함으로 다음과 같은 group shared memory가 필요하다.
+
+```
+groupshared float3 shared_v_grad_pressure[NUM_THREAD * NUM_NFP_MAX];
+```
+
+하지만 이방식은 group shared memory의 크기의 한계 때문에 불가능하다.
+
+NUM_THREAD로 최소한의 warp 단위인 32를 사용한다고 하더라도 필요한 group shared memory는 약 77KB이다.
+
+$$ 32 \times 200 \times 12\text{byte} = 775,200\text{byte} $$
+
+하지만 group shared memory는 그룹당 최대 16KB이다.
+
+#### [해결]
+하나의 Group에서 하나의 particle에 대한 정보를 계산하고 각 Thread가 하나의 neighbor particle에 대한 계산을 하게 수정하였다.
+
+그 결과 for loop 대신에 group shared memroy를 사용하여 v_grad_pressure 값을 계산한뒤 최종적으로 그 값들을 전부 더하기만 하면 된다.
+
+```cpp
+groupshared float3 shared_v_grad_pressure[NUM_THREAD];
+
+[numthreads(NUM_THREAD,1,1)]
+void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
+{
+  float3 v_grad_pressure = float3(0,0,0);
+
+  if (Gindex < num_nfp)
+  {
+    //...
+    v_grad_pressure = coeff * v_grad_kernel;
+    //...
+  }
+
+  shared_v_grad_pressure[Gindex] = v_grad_pressure;
+
+  GroupMemoryBarrierWithGroupSync();
+
+  uint stride = NUM_THREAD/2;
+  while(num_nfp < stride)
+    stride /=2;
+
+  for (; 0 < stride; stride /= 2)
+  {
+    if (Gindex < stride)
+    {
+      const uint index2 = Gindex + stride;
+      shared_v_grad_pressure[Gindex] += shared_v_grad_pressure[index2];      
+    }
+  
+    GroupMemoryBarrierWithGroupSync();
+  }
+  
+  if (Gindex == 0)
+   v_a_pressure_buffer[fp_index] = -g_m0 * shared_v_grad_pressure[0]; 
+}
+```
+
+참고로 group의 수는 한 dimension에 최대 65535개를 넘을 수 없어, particle의 수가 65535개가 넘는 경우 num_group_y를 활용하였다.
+
+```cpp
+  UINT num_group_x = _num_FP;
+  UINT num_group_y = 1;
+
+  if (max_group < _num_FP)
+  {
+    num_group_x = max_group;
+    num_group_y = Utility::ceil(_num_FP, max_group);
+  }
+
+  _DM_ptr->dispatch(num_group_x, num_group_y, 1);
+```
+
+#### [결과]
+
+개선후 update_a_pressure 함수의 성능 변화는 다음과 같다.
+
+||before|opt|
+|---|---|---|
+|(ms)|1.54367|1.34131|
+
+대략 0.2ms(13%) 계산시간이 줄어들었다.
+
+#### [추가개선]
+
+shared memory에 있는 값을 더할 때, 단일 Thread로 진행하게 수정하였다.
+
+```
+  if (Gindex == 0)
+  {
+    float3 v_a_pressure = float3(0,0,0);
+    
+    for (uint i=0; i <num_nfp; ++i)
+      v_a_pressure += shared_v_grad_pressure[i];
+  
+    v_a_pressure_buffer[fp_index] = -g_m0 * v_a_pressure; 
+  }    
+```
+
+개선후 update_a_pressure 함수의 성능 변화는 다음과 같다.
+
+||before|opt|
+|---|---|---|
+|(ms)|1.54367|1.17244|
+
+대략 0.37ms(24%) 계산시간이 줄어 들었다.
+
+num_nfp가 큰 particle 보다 작은 particle들이 더 많기 GroupSync를 사용한 병렬화보다 sequential하게 더하는게 더 빨라 성능 향상이 된것 같다.
+
+### 추가 고민
+update_a_pressure 함수의 성능을 비교해보면, 미리 계산한 값을 활용하는 코드보다 기존 코드가 데이터를 읽어오는 횟수도 약간 더 많고 추가적인 연산이 있음에도 불구하고 앞도적으로 성능이 더 좋은 이유를 더 고민해봐야 겠다.
+
+[사진]
+
+||기존코드|미리 계산한 값을 활용하는 코드|
+|---|:---:|:---:|
+|데이터 읽기|4 + 4*num_nfp|1 + 4*num_nfp|
+|성능(ms)|1.54367|5.94051|
+
+### 메모리 접근과 연산 속도
+NVIDIA GeForce RTX 3060 12 GB 제품의 이론적인 FP32 연산 성능은 12.74TFLOPS이고 Memory Bandwidth는 360GB/s 임으로 Memory를 한번 읽어오는 동안 약 36번의 floating point 연산을 할 수 있다.
+
+> Reference  
+> [techpowerup - geforce-rtx-3060-12-gb.c3682](https://www.techpowerup.com/gpu-specs/geforce-rtx-3060-12-gb.c3682)
+
+
 # 2024.08.12
 ## GPU 코드 최적화
 
