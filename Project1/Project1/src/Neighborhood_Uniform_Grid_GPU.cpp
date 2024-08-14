@@ -369,6 +369,11 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   _DM_ptr->CS_barrier();
 
   PERFORMANCE_ANALYSIS_END(update_nfp);
+
+  ////debug
+  //const auto debug_GCFP_count = _DM_ptr->read<UINT>(_GCFP_count_RWBS.cptr_buffer);
+  //print_max(debug_GCFP_count);
+  ////debug
 }
 
 void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
@@ -384,6 +389,22 @@ void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
   std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(8) << _dt_sum_update_nfp << " ms\n";
   std::cout << "======================================================================\n\n";
+#endif
+}
+
+void Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(const UINT num_frame)
+{
+#ifdef UNIFORM_GRID_PERFORMANCE_ANALYSIS
+  std::cout << std::left;
+  std::cout << "Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame \n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
+  std::cout << "================================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_find_changed_GCFPT_ID" << std::setw(13) << _dt_sum_find_changed_GCFPT_ID / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_GCFP" << std::setw(13) << _dt_sum_update_GCFP / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_rearrange_GCFP" << std::setw(13) << _dt_sum_rearrange_GCFP / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_nfp" << std::setw(13) << _dt_sum_update_nfp / num_frame << " ms\n";
+  std::cout << "================================================================================\n\n";
 #endif
 }
 

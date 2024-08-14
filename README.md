@@ -1,5 +1,5 @@
 # 2024.08.13
-## GPU 코드 최적화
+## PCISPH 코드 최적화
 
 ### Frame 당 성능
 PCISPH update 함수의 Frame당 성능 측정 결과는 다음과 같다.
@@ -178,7 +178,124 @@ update_a_pressure 함수의 성능을 비교해보면, 미리 계산한 값을 �
 |데이터 읽기|4 + 4*num_nfp|1 + 4*num_nfp|
 |성능(ms)|1.54367|5.94051|
 
-### 메모리 접근과 연산 속도
+## Neighborhood 코드 최적화
+
+### Frame 당 성능
+Neighborhood update 함수의 Frame당 성능 측정 결과는 다음과 같다.
+
+```
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.96883       ms
+================================================================================
+_dt_avg_find_changed_GCFPT_ID                               0.00816641    ms
+_dt_avg_update_GCFP                                         0.0155696     ms
+_dt_avg_rearrange_GCFP                                      0.0152503     ms
+_dt_avg_update_nfp                                          1.67129       ms
+================================================================================
+```
+
+참고로, 위 결과는 400Frame을 측정하여 평균한 값이다.
+
+### update_nfp 최적화
+
+#### [문제]
+기존 코드에는 하나의 Thread가 하나의 Particle에 대한 정보를 계산한다.
+
+그래서, neighbor grid cell만큼 loop를 돌고, ngc loop 안에서 각 neighbor grid cell에 들어있는 particle만큼 loop를 돌아서 neighbor인지를 확인한다.
+
+```cpp
+  for (uint i=0; i< num_ngc; ++i)
+  {
+    const uint ngc_index    = ngc_index_buffer[start_index1 + i];
+    const uint num_gcfp     = GCFP_count_buffer[ngc_index];
+    const uint start_index2 = ngc_index * g_estimated_num_gcfp;
+
+    for (uint j = 0; j < num_gcfp; ++j)
+    {
+      const uint    nfp_index = fp_index_buffer[start_index2 + j];    
+      const float3  v_xj      = fp_pos_buffer[nfp_index];
+      const float3  v_xij     = v_xi - v_xj;
+      const float   distance  = length(v_xij);
+
+      if (g_divide_length < distance)
+        continue;
+      
+      Neighbor_Information info;
+      info.fp_index = nfp_index;
+      info.tvector  = v_xij;
+      info.distance = distance;
+
+      nfp_info_buffer[start_index3 + neighbor_count] = info;
+    
+      ++neighbor_count;
+    }   
+  }
+```
+
+즉, 하나의 Thread가 num_ngc * num_gcfp 만큼 반복문을 돌기 때문에 이를 병렬화하여 병렬처리 성능을 개선하고자 하였다.
+
+#### [해결]
+이를 위해 Group X,Y,Z를 활용해 Particle 개수 X neighbor grid cell 개수만큼 Group을 생성하였다.
+
+```cpp
+  UINT num_group_x = _common_CB_data.num_particle;
+  UINT num_group_y = 1;
+  UINT num_group_z = g_estimated_num_ngc;
+
+  if (max_group < _common_CB_data.num_particle)
+  {
+    num_group_x = max_group;
+    num_group_y = Utility::ceil(_common_CB_data.num_particle, max_group);
+  }
+
+  _DM_ptr->dispatch(num_group_x, num_group_y, num_group_z);
+```
+
+그리고 각 그룹에서는 하나의 geometry cell에 들어있는 particle들을 병렬적으로 탐색하여 neighbor를 찾도록 하였다.
+
+```cpp
+  if (Gindex < num_gcfp)
+  {
+    const uint    nfp_index = fp_index_buffer[ngc_index * g_estimated_num_gcfp + Gindex];    
+    const float3  v_xj      = fp_pos_buffer[nfp_index];
+    const float3  v_xij     = v_xi - v_xj;
+    const float   distance  = length(v_xij);
+
+    if (g_divide_length < distance)
+      return;
+      
+    Neighbor_Information info;
+    info.fp_index = nfp_index;
+    info.tvector  = v_xij;
+    info.distance = distance;
+
+    uint nbr_count;
+    InterlockedAdd(nfp_count_buffer[cur_fp_index], 1, nbr_count);
+
+    nfp_info_buffer[cur_fp_index * g_estimated_num_nfp + nbr_count] = info;
+  }
+```
+
+최종적으로 개선 전과 후의 코드는 다음과 같다.
+
+[그림]
+
+#### [결과]
+
+update_nfp 함수의 성능 변화는 다음과 같다.
+
+||개선 전|개선 후|
+|---|---|---|
+|(ms)|1.67129|2.85834|
+
+오히려 성능이 안좋아졌다.
+
+예상되는 성능 저하의 원인은 다음과 같다.
+1. Num Thread로 64를 사용하지만 64개의 particle을 포함하는 cell은 많지 않고 대부분의 cell이 훨씬 적은 수의 particle을 포함하고 있어서 오히려 thread가 비효율적으로 사용될 수 있다.
+2. 중간에 InterlockedAdd 함수로 동기화 과정이 들어가 있다.
+
+## 메모리 접근과 연산 속도
 NVIDIA GeForce RTX 3060 12 GB 제품의 이론적인 FP32 연산 성능은 12.74TFLOPS이고 Memory Bandwidth는 360GB/s 임으로 Memory를 1byte 읽어오는 동안 약 36번의 floating point 연산을 할 수 있다.
 
 > Reference  

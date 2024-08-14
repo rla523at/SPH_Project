@@ -6,6 +6,7 @@
 #include "PCISPH_GPU.h"
 #include "WCSPH.h"
 #include "Window_Manager.h"
+#include "Neighborhood_Uniform_Grid_GPU.h"
 
 #include "../../_lib/_header/msexception/Exception.h"
 #include <d3dcompiler.h>
@@ -19,7 +20,7 @@ SPH::SPH(Device_Manager& device_manager)
   _DM_ptr = &device_manager;
 
   Domain solution_domain;
-  
+
   ////dam breaking
   //solution_domain.x_start = -2.0f;
   //solution_domain.x_end   = 2.0f;
@@ -160,6 +161,21 @@ void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_co
   _GS_Cbuffer_data.m_proj    = camera.proj_matrix();
 
   this->update_GS_Cbuffer(cptr_context);
+
+  //////////////////////////////////////////////////////////////////////////
+  static UINT num_frame = 0;
+  if (!stop_update)
+  {
+    ++num_frame;
+    if (num_frame == 400)
+    {
+      ms::PCISPH_GPU::print_performance_analysis_result_avg(num_frame);
+      ms::Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(num_frame);
+      //ms::PCISPH_GPU::print_performance_analysis_result();
+      exit(523);
+    }
+  }
+  //////////////////////////////////////////////////////////////////////////
 }
 
 void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
@@ -338,7 +354,7 @@ void SPH::set_fluid_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_con
   constexpr UINT num_SRV = 2;
 
   ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    v_pos_BS.cptr_SRV.Get(), 
+    v_pos_BS.cptr_SRV.Get(),
     density_BS.cptr_SRV.Get(),
   };
 
@@ -376,7 +392,6 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
 
   cptr_context->OMSetBlendState(nullptr, nullptr, 0XFFFFFFFF); //SAMPLE MASK에 NULL 넣으면 안된다.
 }
-
 
 void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)
 {
