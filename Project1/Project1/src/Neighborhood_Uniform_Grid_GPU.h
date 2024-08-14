@@ -67,6 +67,18 @@ struct Neighbor_Information
   UINT    fp_index = 0;
   Vector3 translate_vector;
   float   distance = 0.0f;
+
+  //bool operator=(const Neighbor_Information& other)
+  //{
+  //  fp_index = other.fp_index;
+  //  translate_vector = other.translate_vector;
+  //  distance         = other.distance;
+  //}
+
+  bool operator<(const Neighbor_Information& other) const
+  {
+    return fp_index < other.fp_index;
+  }
 };
 
 } // namespace ms

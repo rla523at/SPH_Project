@@ -51,8 +51,6 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
   _ninfo_RWBS  = _DM_ptr->create_STRB_RWBS<Neighbor_Information>(num_fp * g_estimated_num_nfp);
   _ncount_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(num_fp);
 
-  //_cptr_find_changed_GCFP_ID_CS = device_manager.create_CS(L"hlsl/find_changed_GCFP_ID_CS.hlsl");
-
   _cptr_update_GCFP_CS    = device_manager.create_CS(L"hlsl/update_GCFP_CS.hlsl");
   _cptr_update_GCFP_CS_CB = device_manager.create_CONB(16);
 
@@ -66,7 +64,7 @@ Neighborhood_Uniform_Grid_GPU::Neighborhood_Uniform_Grid_GPU(
 void Neighborhood_Uniform_Grid_GPU::init_ngc_index_buffer(void)
 {
   // make inital data
-  constexpr long long delta[3] = {-1, 0, 1};
+  constexpr int delta[3] = {-1, 0, 1};
 
   const auto num_cell          = _common_CB_data.num_cell;
   const auto num_x_cell        = _common_CB_data.num_x_cell;
@@ -281,25 +279,12 @@ void Neighborhood_Uniform_Grid_GPU::rearrange_GCFP(void)
 
 void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS)
 {
-  ////debug
-  //struct debug_struct
-  //{
-  //  Grid_Cell_ID cur_GCid;
-  //  Grid_Cell_ID neighbor_GCids[27];
-  //  UINT         valid_count;
-  //};
-
-  //const auto debug_RWBS = _DM_ptr->create_STRB_RWBS<debug_struct>(_common_CB_data.num_particle);
-  //const auto debug_uint_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(_common_CB_data.num_cell);
-
-  ////debug
-
   PERFORMANCE_ANALYSIS_START;
   constexpr UINT max_group = 65535;
 
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
-  constexpr auto num_UAV             = 4;//deubg
+  constexpr auto num_UAV             = 2;
 
   ID3D11Buffer* constant_buffers[num_constant_buffer] = {
     _cptr_common_CB.Get()};
@@ -316,8 +301,6 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   ID3D11UnorderedAccessView* UAVs[num_UAV] = {
     _ninfo_RWBS.cptr_UAV.Get(),
     _ncount_RWBS.cptr_UAV.Get(),
-    //debug_RWBS.cptr_UAV.Get(),//debg
-    //debug_uint_RWBS.cptr_UAV.Get(),//debg
   };
 
   const auto cptr_context = _DM_ptr->context_cptr();
@@ -339,17 +322,6 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   _DM_ptr->dispatch(num_group_x, num_group_y, num_group_z);
 
   PERFORMANCE_ANALYSIS_END(update_nfp);
-
-  ////debug
-  //const auto debug_ngc_count = _DM_ptr->read<UINT>(_ngc_count_RBS.cptr_buffer);
-  //const auto debug_GCFP_ID = _DM_ptr->read<GCFP_ID>(_GCFP_ID_RWBS.cptr_buffer);
-  //const auto debug_uint_data      = _DM_ptr->read<UINT>(debug_uint_RWBS.cptr_buffer);
-  //const auto debug_data      = _DM_ptr->read<debug_struct>(debug_RWBS.cptr_buffer);
-  //
-  //print_sort_and_count(debug_ngc_count);
-  //print_sort_and_count(debug_uint_data);  
-  //const auto stop       = 0;
-  ////debug
 }
 
 void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
@@ -364,7 +336,7 @@ void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
   std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(8) << _dt_sum_update_nfp << " ms\n";
   std::cout << "======================================================================\n\n";
-  #endif
+#endif
 }
 
 void Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(const UINT num_frame)
