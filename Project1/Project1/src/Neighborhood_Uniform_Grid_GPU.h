@@ -52,8 +52,8 @@ struct Uniform_Grid_Common_CB_Data
 
 struct GCFP_ID
 {
-  UINT gc_index   = 0;
-  UINT gcfp_index = 0;
+  Grid_Cell_ID GCid       = {};
+  UINT         gcfp_index = 0;
 };
 
 struct Changed_GCFPT_ID_Data
@@ -85,7 +85,7 @@ public:
     const float            divide_length,
     const Read_Buffer_Set& fluid_v_pos_RBS,
     const UINT             num_fp,
-    const Device_Manager&  device_manager);
+    Device_Manager&        device_manager);
 
 public:
   void update(const Read_Buffer_Set& fluid_v_pos_RBS);
@@ -101,8 +101,7 @@ private:
   UINT         grid_cell_index(const Grid_Cell_ID& index_vector) const;
   bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
 
-  void find_changed_GCFPT_ID(const Read_Buffer_Set& fluid_v_pos_RBS);
-  void update_GCFP(void);
+  void update_GCFP(const Read_Buffer_Set& fluid_v_pos_RBS);
   void rearrange_GCFP(void);
   void update_nfp(const Read_Buffer_Set& fluid_v_pos_RBS);
 
@@ -110,7 +109,13 @@ private:
   void init_GCFP_buffer(const Read_Buffer_Set& fluid_v_pos_RBS);
 
 private:
-  const Device_Manager* _DM_ptr;
+  static inline float _dt_sum_update                = 0.0f;
+  static inline float _dt_sum_update_GCFP           = 0.0f;
+  static inline float _dt_sum_rearrange_GCFP        = 0.0f;
+  static inline float _dt_sum_update_nfp            = 0.0f;
+
+private:
+  Device_Manager* _DM_ptr;
 
   Uniform_Grid_Common_CB_Data _common_CB_data;
   ComPtr<ID3D11Buffer>        _cptr_common_CB;
@@ -138,16 +143,7 @@ private:
   // fluid particle 마다 neighbor fluid particle의 개수를 저장한 STRB의 RWBS
   Read_Write_Buffer_Set _ncount_RWBS;
 
-  // 이번 프레임에 바뀐 GCFPT ID를 저장한 ACBS
-  Append_Conssume_Buffer_Set _changed_GCFP_ID_ACBS;
-
-
-
   //////////////////////////////////////////////////////////////////////
-
-  // find_changed_GCFPT_ID_CS
-  ComPtr<ID3D11ComputeShader> _cptr_find_changed_GCFP_ID_CS;
-  ComPtr<ID3D11Buffer>        _cptr_find_changed_GCFP_ID_CS_CB;
 
   // update_GCFP
   ComPtr<ID3D11ComputeShader> _cptr_update_GCFP_CS;
@@ -158,17 +154,6 @@ private:
 
   // update nfp
   ComPtr<ID3D11ComputeShader> _cptr_update_nfp_CS;
-
-
-  // performance analysis
-
-
-private:
-  static inline float _dt_sum_update                = 0.0f;
-  static inline float _dt_sum_find_changed_GCFPT_ID = 0.0f;
-  static inline float _dt_sum_update_GCFP    = 0.0f;
-  static inline float _dt_sum_rearrange_GCFP        = 0.0f;
-  static inline float _dt_sum_update_nfp            = 0.0f;
 };
 
 } // namespace ms

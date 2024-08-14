@@ -1,4 +1,4 @@
-////Version2
+////Version3
 #define NUM_THREAD 64
 #define NUM_MAX_GROUP 65535
 
@@ -29,19 +29,18 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
  if (Gindex == 0)
    nfp_count_buffer[cur_fp_index] = 0;
 
- const GCFP_ID cur_id        = GCFP_ID_buffer[cur_fp_index];
- const uint    cur_gc_index  = cur_id.gc_index;  
- const uint    num_ngc       = ngc_count_buffer[cur_gc_index];
+ const GCFP_ID  cur_id   = GCFP_ID_buffer[cur_fp_index];
+ const uint3    cur_GCid = cur_id.GCid;
 
  const float3 v_xi = fp_pos_buffer[cur_fp_index];  
 
- for (uint i=0; i < num_ngc; ++i)
+ for (uint i=0; i < g_estimated_num_ngc; ++i)
  {
-   const uint ngc_index = ngc_index_buffer[cur_gc_index * g_estimated_num_ngc + i];
-   const uint num_gcfp  = GCFP_count_buffer[ngc_index];
+   const uint3 nbr_GCid = find_neighbor_GCid(cur_GCid, i);
 
-   if (Gindex < num_gcfp)
+   if (is_valid_GCid(nbr_GCid))
    {
+     const uint    ngc_index = to_GCindex(nbr_GCid);
      const uint    nfp_index = fp_index_buffer[ngc_index * g_estimated_num_gcfp + Gindex];    
      const float3  v_xj      = fp_pos_buffer[nfp_index];
      const float3  v_xij     = v_xi - v_xj;

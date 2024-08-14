@@ -116,9 +116,9 @@ public:
 
 struct Grid_Cell_ID
 {
-  size_t x = 0;
-  size_t y = 0;
-  size_t z = 0;
+  UINT x = 0;
+  UINT y = 0;
+  UINT z = 0;
 };
 
 } // namespace ms

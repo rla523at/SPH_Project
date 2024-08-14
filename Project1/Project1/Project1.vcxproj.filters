@@ -62,9 +62,6 @@
     <FxCompile Include="hlsl\update_nfp_CS.hlsl">
       <Filter>HLSL\Uniform_Grid</Filter>
     </FxCompile>
-    <FxCompile Include="hlsl\find_changed_GCFP_ID_CS.hlsl">
-      <Filter>HLSL\Uniform_Grid</Filter>
-    </FxCompile>
     <FxCompile Include="hlsl\update_GCFP_CS.hlsl">
       <Filter>HLSL\Uniform_Grid</Filter>
     </FxCompile>
@@ -94,6 +91,9 @@
     </FxCompile>
     <FxCompile Include="hlsl\apply_BC_CS.hlsl">
       <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
+    <FxCompile Include="hlsl\test_CS.hlsl">
+      <Filter>HLSL\Uniform_Grid</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
