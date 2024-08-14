@@ -307,7 +307,8 @@ _dt_avg_update_nfp                                          1.67129       ms
 
 최종적으로 개선 전과 후의 코드는 다음과 같다.
 
-[그림]
+![2024-08-14 10 49 15](https://github.com/user-attachments/assets/35b007e8-68e6-43c3-9799-01a40cca15e5)
+
 
 #### [결과]
 
