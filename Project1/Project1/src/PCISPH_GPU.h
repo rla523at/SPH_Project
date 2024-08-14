@@ -130,7 +130,6 @@ private:
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
 
   // performance analysis
-
   static inline float _dt_sum_update                                    = 0.0f;
   static inline float _dt_sum_update_neighborhood                       = 0.0f;
   static inline float _dt_sum_update_scailing_factor                    = 0.0f;

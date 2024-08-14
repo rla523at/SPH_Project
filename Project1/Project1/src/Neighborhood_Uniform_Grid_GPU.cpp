@@ -336,8 +336,6 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
 {
   PERFORMANCE_ANALYSIS_START;
 
-  constexpr UINT num_thread = 1024;
-
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
   constexpr auto num_UAV             = 2;
@@ -365,12 +363,61 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_update_nfp_CS.Get(), nullptr, NULL);
 
-  const auto num_group_x = ms::Utility::ceil(_common_CB_data.num_particle, num_thread);
+  const auto num_group_x = static_cast<UINT>(std::ceil(_common_CB_data.num_particle / 32.0f));
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
 
   PERFORMANCE_ANALYSIS_END(update_nfp);
+
+  //PERFORMANCE_ANALYSIS_START;
+  //constexpr UINT max_group  = 65535;
+
+  //constexpr auto num_constant_buffer = 1;
+  //constexpr auto num_SRV             = 6;
+  //constexpr auto num_UAV             = 2;
+
+  //ID3D11Buffer* constant_buffers[num_constant_buffer] = {
+  //  _cptr_common_CB.Get()};
+
+  //ID3D11ShaderResourceView* SRVs[num_SRV] = {
+  //  fluid_v_pos_RBS.cptr_SRV.Get(),
+  //  _fp_index_RWBS.cptr_SRV.Get(),
+  //  _GCFP_count_RWBS.cptr_SRV.Get(),
+  //  _GCFP_ID_RWBS.cptr_SRV.Get(),
+  //  _ngc_index_RBS.cptr_SRV.Get(),
+  //  _ngc_count_RBS.cptr_SRV.Get(),
+  //};
+
+  //ID3D11UnorderedAccessView* UAVs[num_UAV] = {
+  //  _ninfo_RWBS.cptr_UAV.Get(),
+  //  _ncount_RWBS.cptr_UAV.Get(),
+  //};
+
+  //const auto cptr_context = _DM_ptr->context_cptr();
+  //cptr_context->CSSetConstantBuffers(0, num_constant_buffer, constant_buffers);
+  //cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
+  //cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
+  //cptr_context->CSSetShader(_cptr_update_nfp_CS.Get(), nullptr, NULL);
+
+  //UINT num_group_x = _common_CB_data.num_particle;
+  //UINT num_group_y = 1;
+  //UINT num_group_z = g_estimated_num_ngc;
+
+  //if (max_group < _common_CB_data.num_particle)
+  //{
+  //  num_group_x = max_group;
+  //  num_group_y = Utility::ceil(_common_CB_data.num_particle, max_group);
+  //}
+
+  //_DM_ptr->dispatch(num_group_x, num_group_y, num_group_z); //ngc 계산하는게 더 빠를지도..
+
+  //PERFORMANCE_ANALYSIS_END(update_nfp);
+
+  ////debug
+  //const auto debug_nbr_counts = _DM_ptr->read<UINT>(_ncount_RWBS.cptr_buffer);
+  //const auto stop             = 0;
+  ////debug
 }
 
 void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
@@ -403,7 +450,7 @@ void Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(const 
 {
 #ifdef UNIFORM_GRID_PERFORMANCE_ANALYSIS
   std::cout << std::left;
-  std::cout << "Neighborhood_Uniform_Grid_GPU Performance Analysis Result \n";
+  std::cout << "Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame \n";
   std::cout << "================================================================================\n";
   std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
   std::cout << "================================================================================\n";

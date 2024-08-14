@@ -689,7 +689,7 @@ void PCISPH_GPU::print_performance_analysis_result_avg(const UINT num_frame)
 {
 #ifdef PCISPH_GPU_PERFORMANCE_ANALYSIS
   std::cout << std::left;
-  std::cout << "PCISPH_GPU Performance Analysis Result AVERAGE \n";
+  std::cout << "PCISPH_GPU Performance Analysis Result per frame \n";
   std::cout << "================================================================================\n";
   std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
   std::cout << "================================================================================\n";
