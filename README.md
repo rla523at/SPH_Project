@@ -1,3 +1,31 @@
+</br></br></br>
+
+# 2024.08.14
+## PCISPH 코드 최적화
+
+
+
+### Register와 Groupshared Memory
+register는 GPU에서 가장 빠른 메모리 공간으로 커널 내에서 어떠한 qualifier도 없이 선언되는 automatic 변수는 일반적으로 register에 저장된다. 
+
+Groupshared Memory는 on-chip이기 때문에 local 이나 global memory 보다 높은 bandwidth와 낮은 latency를 가지고 있지만 register에 비해서는 느리다. 
+
+## Neighborhood 코드 최적화
+
+### 세분화된 병렬처리
+개선된 코드에서는 Thread Group당 하나의 geometry cell에 들어있는 Particle에 대한 작업만 할당되어 있었다.
+
+이는 병렬화를 높이기 위한 시도였으나, 각 스레드가 수행하는 작업이 너무 작아져, 수행하는 작업에 드는 시간 대비 스레드 간의 동기화 및 스케줄링 오버헤드가 더 큰 비중을 차지하여 오히려 성능이 저하된 것으로 추측하였다.
+
+따라서, Thread Group당 모든 neighbor geometry cell에 들어있는 Particle에 대한 작업을 할당하였다.
+
+
+
+
+
+
+</br></br></br>
+
 # 2024.08.13
 ## PCISPH 코드 최적화
 
