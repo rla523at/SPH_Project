@@ -1,5 +1,6 @@
-#define NUM_THREAD 256
+#define NUM_THREAD 128
 #define NUM_MAX_GROUP 65535
+#define N 2
 
 #include "cubic_spline_kernel.hlsli"
 #include "uniform_grid_output.hlsli"
@@ -31,20 +32,25 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
 
   const uint num_nfp = ncount_buffer[fp_index];
   
+  const float   rhoi  = density_buffer[fp_index];
+  const float   pi    = pressure_buffer[fp_index];
+  const float3  v_xi  = v_pos_buffer[fp_index];
+
   float3 v_grad_pressure = float3(0,0,0);
 
-  if (Gindex < num_nfp)
+  for (uint i=0; i<N; ++i)
   {
-    const uint ninfo_index  = fp_index * g_estimated_num_nfp + Gindex;
-    const uint nfp_index    = ninfo_buffer[ninfo_index].fp_index;
-    
-    const float   rhoi  = density_buffer[fp_index];
-    const float   pi    = pressure_buffer[fp_index];
-    const float3  v_xi  = v_pos_buffer[fp_index];
+    const uint index = Gindex * N + i;
+      
+    if (num_nfp <= index)
+        break;
 
-    const float   rhoj  = density_buffer[nfp_index];
-    const float   pj    = pressure_buffer[nfp_index];
-    const float3  v_xj  = v_pos_buffer[nfp_index];
+    const uint ninfo_index  = fp_index * g_estimated_num_nfp + index;
+    const uint nbr_fp_index = ninfo_buffer[ninfo_index].fp_index;  
+
+    const float   rhoj  = density_buffer[nbr_fp_index];
+    const float   pj    = pressure_buffer[nbr_fp_index];
+    const float3  v_xj  = v_pos_buffer[nbr_fp_index];
 
     const float3  v_xij = v_xi - v_xj;
     const float   distance = length(v_xij);
@@ -55,21 +61,58 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
       const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
       const float  coeff          = (pi / (rhoi * rhoi) + pj / (rhoj * rhoj));
       
-      v_grad_pressure = coeff * v_grad_kernel;
-    }
-  }
+      v_grad_pressure += coeff * v_grad_kernel;
+    } 
+  }  
 
   shared_v_grad_pressure[Gindex] = v_grad_pressure;
 
-  GroupMemoryBarrierWithGroupSync();
+  GroupMemoryBarrierWithGroupSync(); 
 
   if (Gindex == 0)
   {
     float3 v_a_pressure = float3(0,0,0);
     
-    for (uint i=0; i <num_nfp; ++i)
+    const uint n = min(NUM_THREAD, num_nfp);
+  
+    for (uint i=0; i <n; ++i)
       v_a_pressure += shared_v_grad_pressure[i];
   
     v_a_pressure_buffer[fp_index] = -g_m0 * v_a_pressure; 
   }    
 }
+
+
+  //uint stride = 1 << firstbithigh(num_nfp);
+  //
+  //for (; 0 < stride; stride /= 2)
+  //{
+  //  if (Gindex < stride)
+  //  {
+  //    const uint index2 = Gindex + stride;
+  //    shared_v_grad_pressure[Gindex] += shared_v_grad_pressure[index2];      
+  //  }
+  //
+  //  GroupMemoryBarrierWithGroupSync();
+  //}
+  //
+  //if (Gindex == 0)
+  //  v_a_pressure_buffer[fp_index] = -g_m0 * shared_v_grad_pressure[0];
+
+
+
+  //uint stride = NUM_THREAD / 2;
+  //
+  //for (; 0 < stride; stride /= 2)
+  //{
+  //  if (Gindex < stride)
+  //  {
+  //    const uint index2 = Gindex + stride;
+  //    shared_v_grad_pressure[Gindex] += shared_v_grad_pressure[index2];      
+  //  }
+  //
+  //  GroupMemoryBarrierWithGroupSync();
+  //}
+  //
+  //if (Gindex == 0)
+  //  v_a_pressure_buffer[fp_index] = -g_m0 * shared_v_grad_pressure[0];

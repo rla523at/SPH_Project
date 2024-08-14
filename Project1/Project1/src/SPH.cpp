@@ -170,7 +170,7 @@ void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_co
     if (num_frame == 400)
     {
       ms::PCISPH_GPU::print_performance_analysis_result_avg(num_frame);
-      ms::Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(num_frame);
+      //ms::Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(num_frame);
       //ms::PCISPH_GPU::print_performance_analysis_result();
       exit(523);
     }  
