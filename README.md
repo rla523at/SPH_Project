@@ -1,28 +1,83 @@
 </br></br></br>
 
 # 2024.08.14
-## PCISPH 코드 최적화
+## PCISPH 코드 최적화 - update a_pressure
+하나의 Thread에서 하나의 neighbor particle에 대한 정보를 계산하여 Group Shared Memory에 계산값을 저장하고 있었다.
 
+```cpp
+if (Gindex < num_nfp)
+{
+  //...
+  v_grad_pressure = coeff * v_grad_kernel;
+}
 
+shared_v_grad_pressure[Gindex] = v_grad_pressure;
+
+GroupMemoryBarrierWithGroupSync();
+//...
+```
+
+이 때, Thread당 연산 부하가 작아 오히려 병렬화 효율이 낮아질 수 있다는걸 알게 되어 하나의 Thread당 N개의 neighbor particle에 대한 정보를 계산하도록 개선하였다.
+
+```cpp
+for (uint i=0; i<N; ++i)
+{
+  const uint index = Gindex * N + i;
+    
+  if (num_nfp <= index)
+      break;
+
+  shared_v_grad_pressure[index] = coeff * v_grad_kernel;
+} 
+```
+
+그리고 group shared memory에 저장된 값들을 누산하게 되는데, 하나의 Thread에서 계산된 값들은 Register를 이용해서 미리 누산하게 되면 group shared memory에 접근했던 방식을 register에 접근하는 방식으로 개선하였다.
+
+```cpp
+float3 v_grad_pressure = float3(0,0,0);
+
+for (uint i=0; i<N; ++i)
+{
+  const uint index = Gindex * N + i;
+    
+  if (num_nfp <= index)
+      break;
+
+  v_grad_pressure += coeff * v_grad_kernel;
+} 
+
+shared_v_grad_pressure[Gindex] = v_grad_pressure;
+```
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=2일 때 개선전 대비 약 31%의 계산시간 감소를 얻을 수 있었다.
+
+|N|1(original)|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|1.16928|0.806842|0.904428|1.06757|
 
 ### Register와 Groupshared Memory
 register는 GPU에서 가장 빠른 메모리 공간으로 커널 내에서 어떠한 qualifier도 없이 선언되는 automatic 변수는 일반적으로 register에 저장된다. 
 
 Groupshared Memory는 on-chip이기 때문에 local 이나 global memory 보다 높은 bandwidth와 낮은 latency를 가지고 있지만 register에 비해서는 느리다. 
 
-## Neighborhood 코드 최적화
+## Neighborhood 코드 최적화 - update_nfp
+이전에 병렬화 효율을 개선하기 위해 하나의 Thread가 num_ngc * num_gcfp(neighbor grid cell에 들어 있는 모든 particle)에 대한 정보를 계산하던 방식에서 하나의 Thread가 하나의 particle에 대한 정보를 계산하게 수정하였더니 오히려 성능이 안좋아 졌었다.
 
-### 세분화된 병렬처리
-개선된 코드에서는 Thread Group당 하나의 geometry cell에 들어있는 Particle에 대한 작업만 할당되어 있었다.
+![2024-08-14 10 49 15](https://github.com/user-attachments/assets/35b007e8-68e6-43c3-9799-01a40cca15e5)
 
-이는 병렬화를 높이기 위한 시도였으나, 각 스레드가 수행하는 작업이 너무 작아져, 수행하는 작업에 드는 시간 대비 스레드 간의 동기화 및 스케줄링 오버헤드가 더 큰 비중을 차지하여 오히려 성능이 저하된 것으로 추측하였다.
+이 또한, Thread당 연산 부하가 작아 오히려 병렬화 효율이 낮아진 경우일 수 있겠다는 판단에 Thread당 neighbor grid cell 개수의 Particle에 대한 정보를 계산하는 방식으로 개선하였다.
 
-따라서, Thread Group당 모든 neighbor geometry cell에 들어있는 Particle에 대한 작업을 할당하였다.
+[사진]
 
+또한, ngc_index_buffer와 GCFP_count_buffer에 접근하는 부분을 global buffer에 접근하는 부분을 group shared memory에 접근 방식으로 개선하였다.
 
+[사진]
 
+계산시간 테스트 결과 기존 대비 약 45% 계산시간이 감소한걸 확인할 수 있었다.
 
-
+||origina|improved|
+|---|---|---|
+|Computation Time(ms)|1.67129|0.912575|
 
 </br></br></br>
 
