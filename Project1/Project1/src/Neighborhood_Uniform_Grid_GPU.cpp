@@ -212,12 +212,12 @@ void Neighborhood_Uniform_Grid_GPU::update(const Read_Buffer_Set& fluid_v_pos_RB
   PERFORMANCE_ANALYSIS_END(update);
 }
 
-const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ninfo_BS(void) const
+const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ninfo_RWBS(void) const
 {
   return _ninfo_RWBS;
 }
 
-const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ncount_BS(void) const
+const Read_Write_Buffer_Set& Neighborhood_Uniform_Grid_GPU::get_ncount_RWBS(void) const
 {
   return _ncount_RWBS;
 }

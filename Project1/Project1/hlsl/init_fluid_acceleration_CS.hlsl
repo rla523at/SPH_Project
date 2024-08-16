@@ -1,4 +1,6 @@
-#define NUM_THREAD 256
+#define NUM_THREAD 128
+#define NUM_MAX_GROUP 65535
+#define N 2
 
 #include "uniform_grid_output.hlsli"
 #include "cubic_spline_kernel.hlsli"
@@ -9,8 +11,8 @@ cbuffer CB : register(b1)
   float   g_m0;
   float   g_viscosity_constant;
   float   g_regularization_term;
-  uint    g_num_fluid_particle;
-  uint    g_estimated_num_nfp;
+  uint    g_num_FP;
+  uint    g_estimated_num_NFP;
 };
 
 StructuredBuffer<float>                 density_buffer      : register(t0);
@@ -20,49 +22,69 @@ StructuredBuffer<uint>                  ninfo_count_buffer  : register(t3);
 
 RWStructuredBuffer<float3> acceleration_buffer : register(u0);
 
+groupshared float3 shared_v_laplacian_vel[NUM_THREAD];
+
 [numthreads(NUM_THREAD, 1, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
 {
-  if (g_num_fluid_particle <= DTid.x)
-    return;
+  const uint fp_index = Gid.x + Gid.y*NUM_MAX_GROUP; 
 
-  float3 v_a_viscosity = float3(0,0,0);
+  if (g_num_FP <= fp_index)
+    return;  
 
-  const uint fp_index     = DTid.x;
-  const uint start_index  = fp_index * g_estimated_num_nfp;
-
+  const uint num_nfp = ninfo_count_buffer[fp_index];
+  
   const float   rhoi = density_buffer[fp_index];
   const float3  v_vi = velocity_buffer[fp_index];
 
-  const uint num_nfp  = ninfo_count_buffer[fp_index];
-  for (uint i=0; i<num_nfp; ++i)
+  float3 v_laplacian_vel = float3(0,0,0);
+
+  for (uint i=0; i<N; ++i)
   {
-    const uint ninfo_index  = start_index + i;
-    const uint nfp_index    = ninfo_buffer[ninfo_index].fp_index;
+    const uint index = Gindex * N + i;
 
-    if (fp_index == nfp_index)
-      continue;
+    if (num_nfp <= index)
+        break;
 
-    const float   rhoj = density_buffer[nfp_index];
-    const float3  v_vj = velocity_buffer[nfp_index];
+    const uint ninfo_index  = fp_index * g_estimated_num_NFP + index;
+
+    const Neighbor_Information Ninfo = ninfo_buffer[ninfo_index];
+
+    const uint nbr_fp_index = Ninfo.fp_index;
+
+    const float   rhoj = density_buffer[nbr_fp_index];
+    const float3  v_vj = velocity_buffer[nbr_fp_index];
     
-    const float3  v_xij     = ninfo_buffer[ninfo_index].tvector;
-    const float   distance  = ninfo_buffer[ninfo_index].distance;
+    const float3  v_xij     = Ninfo.tvector;
+    const float   distance  = Ninfo.distance;
     const float   distance2 = distance * distance;
 
     if (distance == 0.0f) 
       continue;
 
-    const float3 v_grad_q       = 1.0f / (g_h * distance) * v_xij;
-    const float3 v_grad_kernel  = dWdq(distance) * v_grad_q;
+    const float3 v_grad_q  = 1.0f / (g_h * distance) * v_xij;
+    const float3 v_grad_W  = dWdq(distance) * v_grad_q;
 
     const float3 v_vij = v_vi - v_vj;
     const float  coeff = dot(v_vij, v_xij) / (rhoj * (distance2 + g_regularization_term));
 
-    const float3 v_laplacian_velocity = coeff * v_grad_kernel;
-
-    v_a_viscosity += v_laplacian_velocity;
+    v_laplacian_vel += coeff * v_grad_W;
   }
 
-  acceleration_buffer[fp_index] = g_viscosity_constant * v_a_viscosity + g_v_a_gravity;
+  shared_v_laplacian_vel[Gindex] = v_laplacian_vel;
+
+  GroupMemoryBarrierWithGroupSync(); 
+
+  if (Gindex == 0)
+  {
+    float3 v_a_viscosity = float3(0,0,0);
+    
+    const uint n = min(NUM_THREAD, num_nfp);
+  
+    for (uint i=0; i <n; ++i)
+      v_a_viscosity += shared_v_laplacian_vel[i];
+
+    acceleration_buffer[fp_index] = g_viscosity_constant * v_a_viscosity + g_v_a_gravity;
+  }
+
 }
