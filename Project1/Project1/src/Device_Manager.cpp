@@ -622,7 +622,7 @@ void Device_Manager::CS_barrier(void) const
 
 void Device_Manager::dispatch(const UINT num_group_x, const UINT num_group_y, const UINT num_group_z) const
 {
-  _cptr_context->Dispatch(num_group_x, 1, 1);
+  _cptr_context->Dispatch(num_group_x, num_group_y, num_group_z);
   this->CS_barrier();
 }
 

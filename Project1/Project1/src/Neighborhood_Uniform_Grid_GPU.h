@@ -117,28 +117,28 @@ private:
 
   //////////////////////////////////////////////////////////////////////
 
-  // geometry cell * estimated ngc¸¸Å­ ngc indexÀ» ÀúÀåÇÑ ISTRBÀÇ RBS
+  // geometry cell * estimated ngcï¿½ï¿½Å­ ngc indexï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ISTRBï¿½ï¿½ RBS
   Read_Buffer_Set _ngc_index_RBS;
 
-  // geometry cell¸¶´Ù neighbor grid cellÀÇ °³¼ö¸¦ ÀúÀåÇÑ ISTRBÀÇ RBS
+  // geometry cellï¿½ï¿½ï¿½ï¿½ neighbor grid cellï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ISTRBï¿½ï¿½ RBS
   Read_Buffer_Set _ngc_count_RBS;
 
-  // geometry cell * estimated gcfp¸¸Å­ fp index¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // geometry cell * estimated gcfpï¿½ï¿½Å­ fp indexï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _fp_index_RWBS;
 
-  // geometry cell¸¶´Ù ¼ÓÇØÀÖ´Â fluid particleÀÇ °³¼ö¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // geometry cellï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ fluid particleï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _GCFP_count_RWBS;
 
-  // fluid particle¸¶´Ù GCFP ID¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // fluid particleï¿½ï¿½ï¿½ï¿½ GCFP IDï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _GCFP_ID_RWBS;
 
-  // fluid particle * estimated neighbor¸¸Å­ Neighbor_InformationÀ» ÀúÀåÇÑ STRBÀÇ RWBS
+  // fluid particle * estimated neighborï¿½ï¿½Å­ Neighbor_Informationï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _ninfo_RWBS;
 
-  // fluid particle ¸¶´Ù neighbor fluid particleÀÇ °³¼ö¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // fluid particle ï¿½ï¿½ï¿½ï¿½ neighbor fluid particleï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _ncount_RWBS;
 
-  // ÀÌ¹ø ÇÁ·¹ÀÓ¿¡ ¹Ù²ï GCFPT ID¸¦ ÀúÀåÇÑ ACBS
+  // ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿ï¿½ ï¿½Ù²ï¿½ GCFPT IDï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ACBS
   Append_Conssume_Buffer_Set _changed_GCFP_ID_ACBS;
 
 

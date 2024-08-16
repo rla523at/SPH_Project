@@ -336,6 +336,8 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
 {
   PERFORMANCE_ANALYSIS_START;
 
+  constexpr UINT num_thread = 1024;
+
   constexpr auto num_constant_buffer = 1;
   constexpr auto num_SRV             = 6;
   constexpr auto num_UAV             = 2;
@@ -363,7 +365,7 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
   cptr_context->CSSetShader(_cptr_update_nfp_CS.Get(), nullptr, NULL);
 
-  const auto num_group_x = static_cast<UINT>(std::ceil(_common_CB_data.num_particle / 1024.0f));
+  const auto num_group_x = ms::Utility::ceil(_common_CB_data.num_particle, num_thread);
   cptr_context->Dispatch(num_group_x, 1, 1);
 
   _DM_ptr->CS_barrier();
@@ -389,6 +391,16 @@ void Neighborhood_Uniform_Grid_GPU::print_performance_analysis_result(void)
   std::cout << std::setw(60) << "_dt_sum_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP << " ms\n";
   std::cout << std::setw(60) << "_dt_sum_update_nfp" << std::setw(8) << _dt_sum_update_nfp << " ms\n";
   std::cout << "======================================================================\n\n";
+
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_update" << _dt_sum_update /400.0f << " ms\n";
+  std::cout << "======================================================================\n";
+  std::cout << std::setw(60) << "_dt_avg_find_changed_GCFPT_ID" << std::setw(8) << _dt_sum_find_changed_GCFPT_ID /400.0f << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_GCFP" << std::setw(8) << _dt_sum_update_GCFP /400.0f << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_rearrange_GCFP" << std::setw(8) << _dt_sum_rearrange_GCFP /400.0f << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_update_nfp" << std::setw(8) << _dt_sum_update_nfp /400.0f << " ms\n";
+  std::cout << "======================================================================\n\n";
+
 #endif
 }
 

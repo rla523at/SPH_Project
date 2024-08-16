@@ -71,7 +71,7 @@ private:
 
   float _time = 0.0f;
 
-  // fluid particle¸¸Å­ data¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // fluid particleï¿½ï¿½Å­ dataï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _fluid_v_pos_RWBS;
   Read_Write_Buffer_Set _fluid_v_cur_pos_RWBS;
   Read_Write_Buffer_Set _fluid_v_vel_RWBS;
@@ -83,7 +83,7 @@ private:
   Read_Write_Buffer_Set _fluid_number_density_RWBS;
   Read_Write_Buffer_Set _fluid_density_error_RWBS;
 
-  // scailing factor¸¦ ÀúÀåÇÑ STRBÀÇ RWBS
+  // scailing factorï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ STRBï¿½ï¿½ RWBS
   Read_Write_Buffer_Set _scailing_factor_RWBS;
 
   // for optimization

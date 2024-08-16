@@ -390,7 +390,7 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
   cptr_context->GSSetShader(nullptr, nullptr, 0);
   cptr_context->PSSetShader(nullptr, nullptr, 0);
 
-  cptr_context->OMSetBlendState(nullptr, nullptr, 0XFFFFFFFF); //SAMPLE MASK¿¡ NULL ³ÖÀ¸¸é ¾ÈµÈ´Ù.
+  cptr_context->OMSetBlendState(nullptr, nullptr, 0XFFFFFFFF); //SAMPLE MASKï¿½ï¿½ NULL ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ÈµÈ´ï¿½.
 }
 
 void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)
