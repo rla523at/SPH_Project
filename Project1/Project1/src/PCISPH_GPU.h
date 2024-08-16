@@ -33,7 +33,7 @@ public:
 public:
   PCISPH_GPU(const Initial_Condition_Cubes& initial_condition,
              const Domain&                  solution_domain,
-             Device_Manager&          device_manager);
+             Device_Manager&                device_manager);
   ~PCISPH_GPU();
 
 public:
@@ -131,6 +131,7 @@ private:
   // performance analysis
   static inline float _dt_sum_update                                    = 0.0f;
   static inline float _dt_sum_update_neighborhood                       = 0.0f;
+  static inline float _dt_sum_update_number_density                     = 0.0f;
   static inline float _dt_sum_update_scailing_factor                    = 0.0f;
   static inline float _dt_sum_init_fluid_acceleration                   = 0.0f;
   static inline float _dt_sum_init_pressure_and_a_pressure              = 0.0f;

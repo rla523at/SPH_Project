@@ -1,36 +1,64 @@
-#define NUM_THREAD 256
+#define NUM_THREAD 128
+#define NUM_MAX_GROUP 65535
+#define N 2
 
 #include "uniform_grid_output.hlsli"
 #include "Cubic_Spline_Kernel.hlsli"
 
 cbuffer Constant_Buffer : register(b1)
 {
-  uint  g_estimated_num_nfp;
-  uint  g_num_fluid_particle;
+  uint  g_estimated_num_NFP;
+  uint  g_num_FP;
 };
 
-StructuredBuffer<Neighbor_Information>  nfp_info_buffer   : register(t0);
-StructuredBuffer<uint>                  nfp_count_buffer  : register(t1);
+StructuredBuffer<Neighbor_Information>  ninfo_buffer   : register(t0);
+StructuredBuffer<uint>                  ncount_buffer  : register(t1);
 
 RWStructuredBuffer<float> result_buffer : register(u0);
 
+groupshared float shared_sum_W[NUM_THREAD];
+
 [numthreads(NUM_THREAD, 1, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
 {
-  if(g_num_fluid_particle <= DTid.x) 
+  const uint fp_index = Gid.x + Gid.y*NUM_MAX_GROUP; 
+
+  if(g_num_FP <= fp_index) 
     return;
 
-  const uint fp_index     = DTid.x;
-  const uint start_index  = fp_index * g_estimated_num_nfp;
+  const uint start_index  = fp_index * g_estimated_num_NFP;
 
-  float number_density = 0.0;
+  float sum_W = 0.0;
 
-  const uint num_nfp = nfp_count_buffer[fp_index];
-  for (uint i=0; i<num_nfp; ++i)
+  const uint num_nfp = ncount_buffer[fp_index];
+
+  for (uint i=0; i<N; ++i)
   {
-    const float distance = nfp_info_buffer[start_index + i].distance;
-    number_density += W(distance);
+    const uint index = Gindex * N + i;
+
+    if (num_nfp <= index)
+        break;
+
+    const uint ninfo_index  = fp_index * g_estimated_num_NFP + index;
+
+    const Neighbor_Information Ninfo = ninfo_buffer[ninfo_index];
+
+    sum_W += W(Ninfo.distance);
   }
 
-  result_buffer[fp_index] = number_density;
+  shared_sum_W[Gindex] = sum_W;
+
+  GroupMemoryBarrierWithGroupSync(); 
+
+  if (Gindex == 0)
+  {
+    float number_density = 0;
+    
+    const uint n = min(NUM_THREAD, num_nfp);
+  
+    for (uint i=0; i <n; ++i)
+      number_density += shared_sum_W[i];
+
+    result_buffer[fp_index] = number_density;
+  }
 }
