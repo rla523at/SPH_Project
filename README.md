@@ -67,11 +67,12 @@ Groupshared Memory는 on-chip이기 때문에 local 이나 global memory 보다 
 
 이 또한, Thread당 연산 부하가 작아 오히려 병렬화 효율이 낮아진 경우일 수 있겠다는 판단에 Thread당 neighbor grid cell 개수의 Particle에 대한 정보를 계산하는 방식으로 개선하였다.
 
-[사진]
+![update_nfp](https://github.com/user-attachments/assets/b26f6aae-5fd6-47a0-96cc-678d9319c9c5)
 
-또한, ngc_index_buffer와 GCFP_count_buffer에 접근하는 부분을 global buffer에 접근하는 부분을 group shared memory에 접근 방식으로 개선하였다.
 
-[사진]
+또한, ngc_index_buffer와 GCFP_count_buffer에 접근하는 부분을 group shared memory에 접근하는 방식으로 개선하였다.
+
+![update_nfp2](https://github.com/user-attachments/assets/c026aa73-0eed-4cb6-afd3-a8d906da0b1e)
 
 계산시간 테스트 결과 기존 대비 약 45% 계산시간이 감소한걸 확인할 수 있었다.
 
