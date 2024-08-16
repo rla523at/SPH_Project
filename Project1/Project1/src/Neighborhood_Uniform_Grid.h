@@ -22,18 +22,18 @@ public:
     const std::vector<Vector3>& fluid_particle_pos_vectors,
     const std::vector<Vector3>& boundary_particle_pos_vectors) override;
 
-  const Neighbor_Informations& search_for_fluid(const size_t fpid) const override;
-  const std::vector<size_t>& search_for_boundary(const size_t bpid) const override;
+  const Neighbor_Informations& search_for_fluid(const UINT fpid) const override;
+  const std::vector<UINT>& search_for_boundary(const UINT bpid) const override;
 
 private:
   Grid_Cell_ID grid_cell_index_vector(const Vector3& v_pos) const;
-  size_t       grid_cell_index(const Vector3& v_pos) const;
-  size_t       grid_cell_index(const Grid_Cell_ID& index_vector) const;
+  UINT       grid_cell_index(const Vector3& v_pos) const;
+  UINT       grid_cell_index(const Grid_Cell_ID& index_vector) const;
   bool         is_valid_index(const Grid_Cell_ID& index_vector) const;
-  bool         is_valid_index(const size_t gcid) const;
+  bool         is_valid_index(const UINT gcid) const;
 
   //fill neighbor particle ids into pids and return number of neighbor particles
-  size_t search(const Vector3& pos, size_t* pids) const;
+  UINT search(const Vector3& pos, UINT* pids) const;
 
   void update_fpid_to_neighbor_fpids(const std::vector<Vector3>& pos_vectors);
   void update_bpid_to_neighbor_fpids(
@@ -43,19 +43,19 @@ private:
   void init_gcid_to_neighbor_gcids(void);
 
 private:
-  std::vector<std::vector<size_t>>   _gcid_to_neighbor_gcids;
-  std::vector<std::vector<size_t>>   _gcid_to_fpids;
-  std::vector<size_t>                _fpid_to_gcid;
+  std::vector<std::vector<UINT>>   _gcid_to_neighbor_gcids;
+  std::vector<std::vector<UINT>>   _gcid_to_fpids;
+  std::vector<UINT>                _fpid_to_gcid;
   std::vector<Neighbor_Informations> _fpid_to_neighbor_informations;
-  std::vector<size_t>                _bpid_to_gcid;
-  std::vector<std::vector<size_t>>   _bpid_to_neighbor_fpids;
+  std::vector<UINT>                _bpid_to_gcid;
+  std::vector<std::vector<UINT>>   _bpid_to_neighbor_fpids;
 
   Domain _domain;
   float  _divide_length = 0.0f;
 
-  size_t _num_x_cell = 0;
-  size_t _num_y_cell = 0;
-  size_t _num_z_cell = 0;
+  UINT _num_x_cell = 0;
+  UINT _num_y_cell = 0;
+  UINT _num_z_cell = 0;
 };
 
 } // namespace ms
