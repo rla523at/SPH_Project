@@ -102,8 +102,8 @@ public:
 public:
   void update(const Read_Buffer_Set& fluid_v_pos_RBS);
 
-  const Read_Write_Buffer_Set& get_ninfo_BS(void) const;
-  const Read_Write_Buffer_Set& get_ncount_BS(void) const;
+  const Read_Write_Buffer_Set& get_ninfo_RWBS(void) const;
+  const Read_Write_Buffer_Set& get_ncount_RWBS(void) const;
 
   ComPtr<ID3D11ShaderResourceView> nfp_info_buffer_SRV_cptr(void) const;
   ComPtr<ID3D11ShaderResourceView> nfp_count_buffer_SRV_cptr(void) const;
