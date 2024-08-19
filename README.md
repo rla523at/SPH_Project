@@ -1,6 +1,91 @@
 </br></br></br>
 
+# 2024.08.16
+
+## PCISPH 코드 최적화 - init_fluid_acceleration
+기존 코드는 한 thread당 neighbor particle개수 만큼 v_laplacian velocity를 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 v_laplacian velocity를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+[그림]
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=2일 때 개선전 대비 `약 82%`의 계산시간 감소를 얻을 수 있었다.
+
+|N|1(original)|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|1.48523|0.270606|0.308372|0.356083|
+
+
+## PCISPH 코드 최적화 - update_number_density
+기존 코드는 한 thread당 neighbor particle개수 만큼 W값을 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 W를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+[그림]
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=2일 때 개선전 대비 `약 48%`의 계산시간 감소를 얻을 수 있었다.
+
+|N|1(original)|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.329368|0.172437|0.206938|0.228883|
+
+## PCISPH 코드 최적화 - update_number_density
+기존 코드는 한 thread당 neighbor particle개수 만큼 W값을 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 W를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+[그림]
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 개선전 코드가 항상 더 나은 성능을 보였다.
+
+|N|original|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.66788|0.784055|0.927477|1.09307|
+
+왜 이 코드만 개선전이 성능이 더 좋은지 고민중이다.
+
+
+
+</br></br></br>
+
 # 2024.08.14
+## 결과
+
+최적화 결과는 다음과 같다.
+
+```
+PCISPH_GPU Performance Analysis Result per frame
+================================================================================
+_dt_avg_update                                              5.56771       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.15773       ms
+_dt_avg_update_scailing_factor                              0.345694      ms
+_dt_avg_init_fluid_acceleration                             1.48523       ms
+_dt_avg_init_pressure_and_a_pressure                        0.00508841    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187942     ms
+_dt_avg_predict_velocity_and_position                       0.0388983     ms
+_dt_avg_predict_density_error_and_update_pressure           0.672252      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.81341       ms
+_dt_avg_apply_BC                                            0.00583697    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.10597       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.021993      ms
+_dt_avg_rearrange_GCFP                                      0.0145832     ms
+_dt_avg_update_nfp                                          0.891356      ms
+================================================================================
+```
+
 ## PCISPH 코드 최적화 - update a_pressure
 하나의 Thread에서 하나의 neighbor particle에 대한 정보를 계산하여 Group Shared Memory에 계산값을 저장하고 있었다.
 
