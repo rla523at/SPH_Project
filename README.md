@@ -8,28 +8,28 @@
 ```
 PCISPH_GPU Performance Analysis Result per frame
 ================================================================================
-_dt_avg_update                                              4.21239       ms
+_dt_avg_update                                              4.00479       ms
 ================================================================================
-_dt_avg_update_neighborhood                                 1.16168       ms
-_dt_avg_update_number_density                               0.173176      ms
-_dt_avg_update_scailing_factor                              0.017792      ms
-_dt_avg_init_fluid_acceleration                             0.270658      ms
-_dt_avg_init_pressure_and_a_pressure                        0.00504649    ms
-_dt_avg_copy_cur_pos_and_vel                                0.0186807     ms
-_dt_avg_predict_velocity_and_position                       0.039195      ms
-_dt_avg_predict_density_error_and_update_pressure           0.671903      ms
+_dt_avg_update_neighborhood                                 1.14807       ms
+_dt_avg_update_number_density                               0.173746      ms
+_dt_avg_update_scailing_factor                              0.0178631     ms
+_dt_avg_init_fluid_acceleration                             0.271192      ms
+_dt_avg_init_pressure_and_a_pressure                        0.00498217    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187285     ms
+_dt_avg_predict_velocity_and_position                       0.0399128     ms
+_dt_avg_predict_density_error_and_update_pressure           0.545056      ms
 _dt_avg_cal_max_density_error                               0             ms
-_dt_avg_update_a_pressure                                   0.819154      ms
-_dt_avg_apply_BC                                            0.00593009    ms
+_dt_avg_update_a_pressure                                   0.814734      ms
+_dt_avg_apply_BC                                            0.00592225    ms
 ================================================================================
 
 Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
 ================================================================================
-_dt_avg_update                                              1.10857       ms
+_dt_avg_update                                              1.09833       ms
 ================================================================================
-_dt_avg_update_GCFP                                         0.0222797     ms
-_dt_avg_rearrange_GCFP                                      0.0147017     ms
-_dt_avg_update_nfp                                          0.898183      ms
+_dt_avg_update_GCFP                                         0.0222131     ms
+_dt_avg_rearrange_GCFP                                      0.0146923     ms
+_dt_avg_update_nfp                                          0.895872      ms
 ================================================================================
 ```
 
