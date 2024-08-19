@@ -77,21 +77,32 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
 
  GroupMemoryBarrierWithGroupSync();
 
- if (Gindex==0)
- {
-    shared_index[0] = 0;
-
-    for (uint j=0; j<NUM_THREAD; ++j)
-      shared_index[j+1] += shared_index[j];
-
-    nfp_count_buffer[cur_fp_index] = shared_index[NUM_THREAD];
- }
-
- GroupMemoryBarrierWithGroupSync();
+ //if (Gindex==0)
+ //{
+ //   shared_index[0] = 0;
+ //
+ //   for (uint j=0; j<NUM_THREAD; ++j)
+ //     shared_index[j+1] += shared_index[j];
+ //
+ //   nfp_count_buffer[cur_fp_index] = shared_index[NUM_THREAD];
+ //}
+ //
+ //GroupMemoryBarrierWithGroupSync();
+ //
+ //const uint start_index = cur_fp_index * g_estimated_num_nfp + shared_index[Gindex];
+ //for (uint j=0; j<nbr_count; ++j)
+ //   nfp_info_buffer[start_index + j] = ninfos[j];
  
- const uint start_index = cur_fp_index * g_estimated_num_nfp + shared_index[Gindex];
- for (uint j=0; j<nbr_count; ++j)
-    nfp_info_buffer[start_index + j] = ninfos[j];
+ uint ncount_sum = 0;
+ for (uint j=0; j<=Gindex+1; ++j)
+   ncount_sum += shared_index[j];
+ 
+ const uint start_index = cur_fp_index * g_estimated_num_nfp + ncount_sum - nbr_count;
+ for (uint k=0; k<nbr_count; ++k)
+    nfp_info_buffer[start_index + k] = ninfos[k];
+ 
+ if (Gindex == NUM_THREAD-1)
+   nfp_count_buffer[cur_fp_index] = ncount_sum;
 }
 
 // //Version 12
