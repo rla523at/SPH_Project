@@ -447,44 +447,66 @@ void PCISPH_GPU::predict_velocity_and_position(void)
 
 void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 {
+  //PERFORMANCE_ANALYSIS_START;
+  //constexpr UINT max_group = 65535;
+
+  //const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_RWBS();
+  //const auto& ncount_BS = _uptr_neighborhood->get_ncount_RWBS();
+
+  //_DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_CONB);
+  //_DM_ptr->set_CONB(1, _cptr_predict_density_error_and_update_pressure_CS_CONB);
+  //_DM_ptr->bind_CONBs_to_CS(0, 2);
+
+  //_DM_ptr->set_SRV(0, _fluid_v_pos_RWBS.cptr_SRV);
+  //_DM_ptr->set_SRV(1, _scailing_factor_RWBS.cptr_SRV);
+  //_DM_ptr->set_SRV(2, ninfo_BS.cptr_SRV);
+  //_DM_ptr->set_SRV(3, ncount_BS.cptr_SRV);
+  //_DM_ptr->bind_SRVs_to_CS(0, 4);
+
+  //_DM_ptr->set_UAV(0, _fluid_density_RWBS.cptr_UAV);
+  //_DM_ptr->set_UAV(1, _fluid_pressure_RWBS.cptr_UAV);
+  //_DM_ptr->bind_UAVs_to_CS(0, 2);
+
+  //_DM_ptr->set_shader_CS(_cptr_predict_density_error_and_update_pressure_CS);
+
+  //UINT num_group_x = _num_FP;
+  //UINT num_group_y = 1;
+
+  //if (max_group < _num_FP)
+  //{
+  //  num_group_x = max_group;
+  //  num_group_y = Utility::ceil(_num_FP, max_group);
+  //}
+
+  //_DM_ptr->dispatch(num_group_x, num_group_y, 1);
+
+  //PERFORMANCE_ANALYSIS_END(predict_density_error_and_update_pressure);
+
+
   PERFORMANCE_ANALYSIS_START;
+  constexpr UINT num_thread = 256;
 
   const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_RWBS();
   const auto& ncount_BS = _uptr_neighborhood->get_ncount_RWBS();
 
-  constexpr UINT num_thread = 256;
-  constexpr UINT num_CB     = 2;
-  constexpr UINT num_SRV    = 4;
-  constexpr UINT num_UAV    = 3;
+  _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_CONB);
+  _DM_ptr->set_CONB(1, _cptr_predict_density_error_and_update_pressure_CS_CONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 2);
 
-  ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
-    _cptr_predict_density_error_and_update_pressure_CS_CONB.Get(),
-  };
+  _DM_ptr->set_SRV(0, _fluid_v_pos_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _scailing_factor_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(2, ninfo_BS.cptr_SRV);
+  _DM_ptr->set_SRV(3, ncount_BS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 4);
 
-  ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _fluid_v_pos_RWBS.cptr_SRV.Get(),
-    _scailing_factor_RWBS.cptr_SRV.Get(),
-    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
-    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
-  };
+  _DM_ptr->set_UAV(0, _fluid_density_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(1, _fluid_pressure_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 2);
 
-  ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-    _fluid_density_RWBS.cptr_UAV.Get(),
-    _fluid_pressure_RWBS.cptr_UAV.Get(),
-    _fluid_density_error_RWBS.cptr_UAV.Get(),
-  };
-
-  const auto cptr_context = _DM_ptr->context_cptr();
-  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
-  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
-  cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  cptr_context->CSSetShader(_cptr_predict_density_error_and_update_pressure_CS.Get(), nullptr, NULL);
+  _DM_ptr->set_shader_CS(_cptr_predict_density_error_and_update_pressure_CS);
 
   const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
-  cptr_context->Dispatch(num_group_x, 1, 1);
-
-  _DM_ptr->CS_barrier();
+  _DM_ptr->dispatch(num_group_x, 1, 1);
 
   PERFORMANCE_ANALYSIS_END(predict_density_error_and_update_pressure);
 }
