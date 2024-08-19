@@ -484,7 +484,7 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 
 
   PERFORMANCE_ANALYSIS_START;
-  constexpr UINT num_thread = 256;
+  constexpr UINT num_thread = 32;
 
   const auto& ninfo_BS  = _uptr_neighborhood->get_ninfo_RWBS();
   const auto& ncount_BS = _uptr_neighborhood->get_ncount_RWBS();
