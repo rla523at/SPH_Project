@@ -1,6 +1,37 @@
 </br></br></br>
 
 # 2024.08.16
+## 결과
+
+최종 최적화 결과는 다음과 같다.
+
+```
+PCISPH_GPU Performance Analysis Result per frame
+================================================================================
+_dt_avg_update                                              4.21239       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.16168       ms
+_dt_avg_update_number_density                               0.173176      ms
+_dt_avg_update_scailing_factor                              0.017792      ms
+_dt_avg_init_fluid_acceleration                             0.270658      ms
+_dt_avg_init_pressure_and_a_pressure                        0.00504649    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0186807     ms
+_dt_avg_predict_velocity_and_position                       0.039195      ms
+_dt_avg_predict_density_error_and_update_pressure           0.671903      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.819154      ms
+_dt_avg_apply_BC                                            0.00593009    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.10857       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.0222797     ms
+_dt_avg_rearrange_GCFP                                      0.0147017     ms
+_dt_avg_update_nfp                                          0.898183      ms
+================================================================================
+```
 
 ## PCISPH 코드 최적화 - init_fluid_acceleration
 기존 코드는 한 thread당 neighbor particle개수 만큼 v_laplacian velocity를 계산하였다.
@@ -48,7 +79,14 @@ N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로
 |---|---|---|---|---|
 |Computation Time(ms)|0.66788|0.784055|0.927477|1.09307|
 
-왜 이 코드만 개선전이 성능이 더 좋은지 고민중이다.
+따라서, 개선전 코드에서 NUM_THREAD를 바꿔가면서 성능을 테스트해보았고, 결론적으로 NUM_THREAD가 32일 때, 약 17% 계산시간이 감소하였다.
+
+|NUM_THREAD|32|64|128|256|
+|---|---|---|---|---|
+|Computation Time(ms)|0.553398|0.622605|0.636829|0.671903|
+
+### 고민
+다른 코드와 비슷한 형태인데, 왜 이 코드만 개선전이 성능이 더 좋은지 고민중이다.
 
 
 
