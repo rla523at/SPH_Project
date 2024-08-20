@@ -46,18 +46,9 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
   const uint FP_index_end   = nbr_chunk_buffer[chunk_index];
   const uint num_FP_chunk   = FP_index_end - FP_index_begin;
 
-  //chunk별로 nbr sum이 있다.
-  //cal nbr sum
-  if (Gindex == 0)
-  {
-    uint nbr_sum_prev = 0;
-    for (uint i=0; i<num_FP_chunk; ++i)
-    { 
-      shared_nbr_sum[i] = nbr_sum_prev + ncount_buffer[FP_index_begin +i];
-      nbr_sum_prev      = shared_nbr_sum[i];    
-    }     
-  }
-
+  if (Gindex < num_FP_chunk)
+      shared_nbr_sum[Gindex] = local_nbr_sum_buffer[chunk_index].nbr_sum[Gindex];
+    
   GroupMemoryBarrierWithGroupSync();
 
   // Thread별로 내가 어떤 FP_index에 어떤 nbr_index를 계산하는지 알아야 됨
