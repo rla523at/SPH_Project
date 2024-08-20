@@ -59,6 +59,8 @@ private:
   void  update_a_pressure(void);
   void  update_neighborhood(void);
 
+  void init_nbr_chunk(void);
+
 private:
   float  _dt                  = 0.0f;
   float  _allow_density_error = 0.0f;
@@ -89,6 +91,11 @@ private:
   // for optimization
   ComPtr<ID3D11Buffer> _cptr_fluid_density_error_intermediate_buffer;
   ComPtr<ID3D11Buffer> _cptr_max_density_error_STGB;
+
+  Read_Write_Buffer_Set _nbr_chunk_RWBS;
+  Read_Write_Buffer_Set _nbr_chunk_count_RWBS;
+  Read_Write_Buffer_Set _nbr_chunk_DIAB_RWBS;
+  Read_Write_Buffer_Set _local_nbr_sum_RWBS;
 
   //cubic spline kernel
   ComPtr<ID3D11Buffer> _cptr_cubic_spline_kerenel_CONB;
@@ -128,9 +135,14 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_apply_BC_CS;
   ComPtr<ID3D11Buffer>        _cptr_apply_BC_CS_CONB;
 
+  //init nbr chunk
+  ComPtr<ID3D11ComputeShader> _cptr_init_nbr_chunk_CS;
+  ComPtr<ID3D11Buffer>        _cptr_init_nbr_chunk_CS_CONB;
+
   // performance analysis
   static inline float _dt_sum_update                                    = 0.0f;
   static inline float _dt_sum_update_neighborhood                       = 0.0f;
+  static inline float _dt_sum_init_nbr_chunk                            = 0.0f;
   static inline float _dt_sum_update_number_density                     = 0.0f;
   static inline float _dt_sum_update_scailing_factor                    = 0.0f;
   static inline float _dt_sum_init_fluid_acceleration                   = 0.0f;

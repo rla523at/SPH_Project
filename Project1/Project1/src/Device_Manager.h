@@ -157,6 +157,7 @@ public:
   void create_texture_like_back_buffer(ComPtr<ID3D11Texture2D>& cptr_2D_texture) const;
   void CS_barrier(void) const;
   void dispatch(const UINT num_group_x, const UINT num_group_y, const UINT num_group_z) const;
+  void dispatch_indirect(const ComPtr<ID3D11Buffer>& DIAB) const;
 
   void set_shader_CS(const ComPtr<ID3D11ComputeShader>& cptr_CS) const;
 

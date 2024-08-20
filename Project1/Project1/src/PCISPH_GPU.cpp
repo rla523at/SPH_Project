@@ -97,6 +97,17 @@ struct Apply_BC_CS_CB_Data
   UINT  num_fp       = 0;
 };
 
+struct Init_Nbr_Chunk_CS_CB_Data
+{
+  UINT  num_FP = 0;
+  float padding[3];
+};
+
+struct Local_Nbr_Sum_Data
+{
+  UINT nbr_sum[64];
+};
+
 } // namespace ms
 
 namespace ms
@@ -267,6 +278,21 @@ PCISPH_GPU::PCISPH_GPU(
   //opt
   _cptr_fluid_density_error_intermediate_buffer = _DM_ptr->create_STRB<float>(_num_FP);
   _cptr_max_density_error_STGB                  = _DM_ptr->create_STGB_read(sizeof(float));
+
+  _nbr_chunk_RWBS       = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
+  _nbr_chunk_count_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(1);
+  _nbr_chunk_DIAB_RWBS  = _DM_ptr->create_DIAB_RWBS();
+  _local_nbr_sum_RWBS   = _DM_ptr->create_STRB_RWBS<Local_Nbr_Sum_Data>(_num_FP);
+
+  _cptr_init_nbr_chunk_CS = _DM_ptr->create_CS(L"hlsl/init_nbr_chunk.hlsl");
+  {
+    Init_Nbr_Chunk_CS_CB_Data data = {};
+
+    data.num_FP = _num_FP;
+
+    _cptr_init_nbr_chunk_CS_CONB = _DM_ptr->create_ICONB(&data);
+  }
+
   //opt
 }
 
@@ -277,6 +303,7 @@ void PCISPH_GPU::update(void)
   PERFORMANCE_ANALYSIS_START;
 
   this->update_neighborhood();
+  this->init_nbr_chunk();
   this->update_number_density();
   this->update_scailing_factor();
   this->init_fluid_acceleration();
@@ -327,13 +354,47 @@ void PCISPH_GPU::update_neighborhood(void)
   PERFORMANCE_ANALYSIS_END(update_neighborhood);
 }
 
+void PCISPH_GPU::init_nbr_chunk(void)
+{
+  PERFORMANCE_ANALYSIS_START;
+
+  const auto& ncout_RWBS = _uptr_neighborhood->get_ncount_RWBS();
+
+  _DM_ptr->set_CONB(0, _cptr_init_nbr_chunk_CS_CONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 1);
+
+  _DM_ptr->set_SRV(0, ncout_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 1);
+
+  _DM_ptr->set_UAV(0, _nbr_chunk_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(1, _nbr_chunk_count_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(2, _nbr_chunk_DIAB_RWBS.cptr_UAV);
+  _DM_ptr->set_UAV(3, _local_nbr_sum_RWBS.cptr_UAV);
+  _DM_ptr->bind_UAVs_to_CS(0, 4);
+
+  _DM_ptr->set_shader_CS(_cptr_init_nbr_chunk_CS);
+
+  _DM_ptr->dispatch(1, 1, 1);
+
+  PERFORMANCE_ANALYSIS_END(init_nbr_chunk);
+
+  //////debug
+  //const auto debug_nbr_chunk       = _DM_ptr->read<UINT>(_nbr_chunk_RWBS.cptr_buffer);
+  //const auto debug_nbr_chunk_count = _DM_ptr->read<UINT>(_nbr_chunk_count_RWBS.cptr_buffer);
+  //const auto debug_nbr_chunk_DIAB  = _DM_ptr->read<UINT>(_nbr_chunk_DIAB_RWBS.cptr_buffer);
+  //const auto debug_local_nbr_sum   = _DM_ptr->read<Local_Nbr_Sum_Data>(_local_nbr_sum_RWBS.cptr_buffer);
+  //const auto stop                  = 0;
+  //배보다 배꼽이 더크네 ~~~~~
+  ////debug
+}
+
 void PCISPH_GPU::init_fluid_acceleration(void)
 {
   PERFORMANCE_ANALYSIS_START;
 
   constexpr UINT max_group = 65535;
 
-  const auto& ninfo_RWBS = _uptr_neighborhood->get_ninfo_RWBS();
+  const auto& ninfo_RWBS  = _uptr_neighborhood->get_ninfo_RWBS();
   const auto& ncount_RWBS = _uptr_neighborhood->get_ncount_RWBS();
 
   _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_CONB);
@@ -461,7 +522,10 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
   _DM_ptr->set_SRV(1, _scailing_factor_RWBS.cptr_SRV);
   _DM_ptr->set_SRV(2, ninfo_BS.cptr_SRV);
   _DM_ptr->set_SRV(3, ncount_BS.cptr_SRV);
-  _DM_ptr->bind_SRVs_to_CS(0, 4);
+  _DM_ptr->set_SRV(4, _nbr_chunk_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(5, _nbr_chunk_count_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(6, _local_nbr_sum_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 7);
 
   _DM_ptr->set_UAV(0, _fluid_density_RWBS.cptr_UAV);
   _DM_ptr->set_UAV(1, _fluid_pressure_RWBS.cptr_UAV);
@@ -469,16 +533,7 @@ void PCISPH_GPU::predict_density_error_and_update_pressure(void)
 
   _DM_ptr->set_shader_CS(_cptr_predict_density_error_and_update_pressure_CS);
 
-  UINT num_group_x = _num_FP;
-  UINT num_group_y = 1;
-
-  if (max_group < _num_FP)
-  {
-    num_group_x = max_group;
-    num_group_y = Utility::ceil(_num_FP, max_group);
-  }
-
-  _DM_ptr->dispatch(num_group_x, num_group_y, 1);
+  _DM_ptr->dispatch_indirect(_nbr_chunk_DIAB_RWBS.cptr_buffer);
 
   PERFORMANCE_ANALYSIS_END(predict_density_error_and_update_pressure);
 }
@@ -572,7 +627,7 @@ void PCISPH_GPU::apply_BC(void)
 }
 
 void PCISPH_GPU::update_scailing_factor(void)
-{  
+{
   PERFORMANCE_ANALYSIS_START;
   const auto cptr_max_index_buffer     = Utility::find_max_index_float(_fluid_number_density_RWBS.cptr_buffer, _num_FP);
   const auto cptr_max_index_buffer_SRV = _DM_ptr->create_SRV(cptr_max_index_buffer);
@@ -724,6 +779,7 @@ void PCISPH_GPU::print_performance_analysis_result_avg(const UINT num_frame)
   std::cout << std::setw(60) << "_dt_avg_update" << std::setw(13) << _dt_sum_update / num_frame << " ms\n";
   std::cout << "================================================================================\n";
   std::cout << std::setw(60) << "_dt_avg_update_neighborhood" << std::setw(13) << _dt_sum_update_neighborhood / num_frame << " ms\n";
+  std::cout << std::setw(60) << "_dt_avg_init_nbr_chunk" << std::setw(13) << _dt_sum_init_nbr_chunk / num_frame << " ms\n";
   std::cout << std::setw(60) << "_dt_avg_update_number_density" << std::setw(13) << _dt_sum_update_number_density / num_frame << " ms\n";
   std::cout << std::setw(60) << "_dt_avg_update_scailing_factor" << std::setw(13) << _dt_sum_update_scailing_factor / num_frame << " ms\n";
   std::cout << std::setw(60) << "_dt_avg_init_fluid_acceleration" << std::setw(13) << _dt_sum_init_fluid_acceleration / num_frame << " ms\n";

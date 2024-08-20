@@ -402,7 +402,7 @@ Read_Write_Buffer_Set Device_Manager::create_DIAB_RWBS(void) const
     desc.Buffer.NumElements              = 3;
 
     const auto result = _cptr_device->CreateShaderResourceView(cptr_buffer.Get(), &desc, cptr_SRV.GetAddressOf());
-    REQUIRE(!FAILED(result), "append consum unordered access view creation should succeed");
+    REQUIRE(!FAILED(result), "dispatch indriect argument shader resource view creation should succeed");
   }
 
   ComPtr<ID3D11UnorderedAccessView> cptr_UAV;
@@ -415,7 +415,7 @@ Read_Write_Buffer_Set Device_Manager::create_DIAB_RWBS(void) const
     desc.Buffer.Flags                     = NULL;
 
     const auto result = _cptr_device->CreateUnorderedAccessView(cptr_buffer.Get(), &desc, cptr_UAV.GetAddressOf());
-    REQUIRE(!FAILED(result), "append consum unordered access view creation should succeed");
+    REQUIRE(!FAILED(result), "dispatch indriect argument unordered access view creation should succeed");
   }
 
   Read_Write_Buffer_Set result;
@@ -623,6 +623,12 @@ void Device_Manager::CS_barrier(void) const
 void Device_Manager::dispatch(const UINT num_group_x, const UINT num_group_y, const UINT num_group_z) const
 {
   _cptr_context->Dispatch(num_group_x, num_group_y, num_group_z);
+  this->CS_barrier();
+}
+
+void Device_Manager::dispatch_indirect(const ComPtr<ID3D11Buffer>& DIAB) const
+{
+  _cptr_context->DispatchIndirect(DIAB.Get(), NULL);
   this->CS_barrier();
 }
 

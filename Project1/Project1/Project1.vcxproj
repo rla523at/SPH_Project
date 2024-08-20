@@ -31,6 +31,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="hlsl\init_nbr_chunk.hlsl" />
     <FxCompile Include="hlsl\test_CS.hlsl" />
     <FxCompile Include="hlsl\update_number_density_CS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
