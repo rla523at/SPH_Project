@@ -59,6 +59,7 @@ private:
   void  update_a_pressure(void);
   void  update_neighborhood(void);
 
+  void update_nbr_chunk_end_index(void);
   void init_nbr_chunk(void);
 
 private:
@@ -92,6 +93,7 @@ private:
   ComPtr<ID3D11Buffer> _cptr_fluid_density_error_intermediate_buffer;
   ComPtr<ID3D11Buffer> _cptr_max_density_error_STGB;
 
+  Read_Write_Buffer_Set _nbr_chunk_end_index_RWBS;
   Read_Write_Buffer_Set _nbr_chunk_RWBS;
   Read_Write_Buffer_Set _nbr_chunk_count_RWBS;
   Read_Write_Buffer_Set _nbr_chunk_DIAB_RWBS;
@@ -139,9 +141,14 @@ private:
   ComPtr<ID3D11ComputeShader> _cptr_init_nbr_chunk_CS;
   ComPtr<ID3D11Buffer>        _cptr_init_nbr_chunk_CS_CONB;
 
+  //update nbr chunk end index
+  ComPtr<ID3D11ComputeShader> _cptr_update_nbr_chunk_end_index_CS;
+
+
   // performance analysis
   static inline float _dt_sum_update                                    = 0.0f;
   static inline float _dt_sum_update_neighborhood                       = 0.0f;
+  static inline float _dt_sum_update_nbr_chunk_end_index                = 0.0f;
   static inline float _dt_sum_init_nbr_chunk                            = 0.0f;
   static inline float _dt_sum_update_number_density                     = 0.0f;
   static inline float _dt_sum_update_scailing_factor                    = 0.0f;

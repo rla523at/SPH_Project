@@ -96,7 +96,7 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
     const uint nbr_index_end   = shared_nbr_sum[Gindex];
     
     float sum_W = 0.0;
-    for (uint i = nbr_index_begin; i < nbr_index_end; ++i) //여기가 잘못됐네
+    for (uint i = nbr_index_begin; i < nbr_index_end; ++i)
       sum_W += shared_W[i];
     
     const float rho      = sum_W * g_m0;

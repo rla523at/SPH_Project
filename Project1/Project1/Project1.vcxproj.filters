@@ -98,6 +98,9 @@
     <FxCompile Include="hlsl\init_nbr_chunk.hlsl">
       <Filter>HLSL\PCISPH</Filter>
     </FxCompile>
+    <FxCompile Include="hlsl\update_nbr_chunk_end_index.hlsl">
+      <Filter>HLSL\PCISPH</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="hlsl\uniform_grid_common.hlsli">
