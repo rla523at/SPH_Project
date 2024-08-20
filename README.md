@@ -1,5 +1,65 @@
 </br></br></br>
 
+# 2024.08.19
+## 최적화 결과
+```
+_dt_avg_update                                              3.94271       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.09558       ms
+_dt_avg_update_number_density                               0.172424      ms
+_dt_avg_update_scailing_factor                              0.017785      ms
+_dt_avg_init_fluid_acceleration                             0.270125      ms
+_dt_avg_init_pressure_and_a_pressure                        0.00504521    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187321     ms
+_dt_avg_predict_velocity_and_position                       0.0388008     ms
+_dt_avg_predict_density_error_and_update_pressure           0.558781      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.819914      ms
+_dt_avg_apply_BC                                            0.00597577    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.04887       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.0223155     ms
+_dt_avg_rearrange_GCFP                                      0.0147891     ms
+_dt_avg_update_nfp                                          0.854544      ms
+================================================================================
+```
+
+## Neighborhood 코드 최적화 - update_nfp
+update_nfp는 각 Particle마다 Neighbor Geometry Cell에 들어 있는 모든 Particle들에 대한 연산이 필요한 함수이다.
+
+기존에는 Geometry Cell에 최대 64개 까지 Particle이 존재 할 수 있다는 사실에 기반하여 64개의 Thread를 사용하여 i번째 thread는 모든 Neighbor Geometry Cell에 들어있는 i번째 particle들에 대한 연산을 수행하였다. 
+
+하지만 일반적으로 Neighbor Geometry Cell에는 64개 보다 훨씬 적은 Particle이 존재함으로 작업을 하지 않는 Thread가 많이 발생할 수 있다.
+
+이를 개선하기 위해, i번째 thread는 i번 째 Neighbor Geometry Cell에 있는 모든 particle들에 대한 연산을 수행하도록 수정하였다.
+
+warp 단위를 맞추기 위해 32개의 thread를 사용하였고, 대부분의 Cell이 27개의 neighbor geometry cell을 갖음으로 작업을 하지 않는 thread를 줄일 수 있을것이라고 판단하였다.
+
+[그림]
+
+개선전 대비 약 `5%` 계산시간이 감소하였다.
+
+||개선전|개선후|
+|---|---|---|
+|Computation Time(ms)|0.899932|0.855475|
+
+### 실패한 개선
+InterLockAdd함수가 병목에 원인이 될 수 있다고 판단하여, local 변수를 활용하고 GroupMemoryBarrierWithGroupSync를 사용해 InterLockAdd함수를 제거하였다.
+
+하지만 개선전에 비해 계산시간이 증가하였고, GroupMemoryBarrierWithGroupSync로 인해 오히려 더 성능이 떨어진것으로 보인다.
+
+GroupMemoryBarrierWithGroupSync를 줄이는 추가적인 개선을 해보았지만 유의미한 성능 개선은 없었다.
+
+[그림]
+
+
+
+</br></br></br>
+
 # 2024.08.16
 ## 결과
 
