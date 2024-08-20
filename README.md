@@ -39,7 +39,7 @@ update_nfp는 각 Particle마다 Neighbor Geometry Cell에 들어 있는 모든 
 
 warp 단위를 맞추기 위해 32개의 thread를 사용하였고, 대부분의 Cell이 27개의 neighbor geometry cell을 갖음으로 작업을 하지 않는 thread를 줄일 수 있을것이라고 판단하였다.
 
-[그림]
+![update_nfp1](https://github.com/user-attachments/assets/fa8df285-cd85-4821-b94b-74ea6edecf5b)
 
 개선전 대비 약 `5%` 계산시간이 감소하였다.
 
@@ -54,9 +54,7 @@ InterLockAdd함수가 병목에 원인이 될 수 있다고 판단하여, local 
 
 GroupMemoryBarrierWithGroupSync를 줄이는 추가적인 개선을 해보았지만 유의미한 성능 개선은 없었다.
 
-[그림]
-
-
+![update_nfp2](https://github.com/user-attachments/assets/ea47f084-05b8-4742-aa97-7829c8ceeb59)
 
 </br></br></br>
 
