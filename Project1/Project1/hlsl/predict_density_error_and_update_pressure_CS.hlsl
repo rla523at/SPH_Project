@@ -25,7 +25,6 @@ StructuredBuffer<Neighbor_Information>  ninfo_buffer            : register(t2);
 StructuredBuffer<uint>                  ncount_buffer           : register(t3);
 StructuredBuffer<uint>                  nbr_chunk_buffer        : register(t4);
 StructuredBuffer<uint>                  nbr_chunk_count_buffer  : register(t5);
-StructuredBuffer<Local_Nbr_Sum>         local_nbr_sum_buffer    : register(t6);
 
 RWStructuredBuffer<float> density_buffer        : register(u0);
 RWStructuredBuffer<float> pressure_buffer       : register(u1);
@@ -46,8 +45,15 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
   const uint FP_index_end   = nbr_chunk_buffer[chunk_index];
   const uint num_FP_chunk   = FP_index_end - FP_index_begin;
 
-  if (Gindex < num_FP_chunk)
-      shared_nbr_sum[Gindex] = local_nbr_sum_buffer[chunk_index].nbr_sum[Gindex];
+  //chunk별로 nbr sum이 있다.
+  //cal nbr sum
+  if (Gindex == 0)
+  {
+    shared_nbr_sum[0] = ncount_buffer[FP_index_begin];
+
+    for (uint i=1; i<num_FP_chunk; ++i)
+      shared_nbr_sum[i] = shared_nbr_sum[i-1] + ncount_buffer[FP_index_begin +i];
+  }
     
   GroupMemoryBarrierWithGroupSync();
 

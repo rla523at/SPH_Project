@@ -381,11 +381,6 @@ void PCISPH_GPU::update_nbr_chunk_end_index(void)
   _DM_ptr->dispatch(num_group_x, 1, 1);
 
   PERFORMANCE_ANALYSIS_END(update_nbr_chunk_end_index);
-
-  ////debug
-  //const auto debug_uint = _DM_ptr->read<UINT>(_nbr_chunk_end_index_RWBS.cptr_buffer);
-  //const auto stop = 0;
-  ////deubg
 }
 
 void PCISPH_GPU::init_nbr_chunk(void)
@@ -398,37 +393,16 @@ void PCISPH_GPU::init_nbr_chunk(void)
   _DM_ptr->set_SRV(0, _nbr_chunk_end_index_RWBS.cptr_SRV);
   _DM_ptr->bind_SRVs_to_CS(0, 1);
 
-  //_DM_ptr->set_UAV(0, _nbr_chunk_RWBS.cptr_UAV);
-  //_DM_ptr->set_UAV(1, _nbr_chunk_count_RWBS.cptr_UAV);
-  //_DM_ptr->set_UAV(2, _nbr_chunk_DIAB_RWBS.cptr_UAV);
-  //_DM_ptr->bind_UAVs_to_CS(0, 3);
-
-  //debug
-  const auto debug_uint_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(10);
-
   _DM_ptr->set_UAV(0, _nbr_chunk_RWBS.cptr_UAV);
   _DM_ptr->set_UAV(1, _nbr_chunk_count_RWBS.cptr_UAV);
   _DM_ptr->set_UAV(2, _nbr_chunk_DIAB_RWBS.cptr_UAV);
-  _DM_ptr->set_UAV(3, debug_uint_RWBS.cptr_UAV);
-  _DM_ptr->bind_UAVs_to_CS(0, 4);
-
-  //
+  _DM_ptr->bind_UAVs_to_CS(0, 3);
 
   _DM_ptr->set_shader_CS(_cptr_init_nbr_chunk_CS);
 
   _DM_ptr->dispatch(1, 1, 1);
 
   PERFORMANCE_ANALYSIS_END(init_nbr_chunk);
-
-  //////debug
-  const auto debug_nbr_chunk       = _DM_ptr->read<UINT>(_nbr_chunk_RWBS.cptr_buffer);
-  const auto debug_nbr_chunk_count = _DM_ptr->read<UINT>(_nbr_chunk_count_RWBS.cptr_buffer);
-  const auto debug_nbr_chunk_DIAB  = _DM_ptr->read<UINT>(_nbr_chunk_DIAB_RWBS.cptr_buffer);
-  //const auto debug_local_nbr_sum   = _DM_ptr->read<Local_Nbr_Sum_Data>(_local_nbr_sum_RWBS.cptr_buffer);
-  const auto debug_uint = _DM_ptr->read<UINT>(debug_uint_RWBS.cptr_buffer);
-  const auto stop       = 0;
-  //배보다 배꼽이 더크네 ~~~~~
-  ////debug
 }
 
 void PCISPH_GPU::init_fluid_acceleration(void)

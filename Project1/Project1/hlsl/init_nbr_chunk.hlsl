@@ -29,13 +29,16 @@ void main(void)
   const uint num_nbr_chunk  = index;
   nbr_chunk_count_buffer[0] = num_nbr_chunk;
   
-  nbr_chunk_DIA_buffer[0]   = num_nbr_chunk;
-  nbr_chunk_DIA_buffer[1]   = 1;
-  nbr_chunk_DIA_buffer[2]   = 1;
-  
-  if (NUM_GROUP_MAX < num_nbr_chunk)
+  if (num_nbr_chunk < NUM_GROUP_MAX)
+  {
+    nbr_chunk_DIA_buffer[0]   = num_nbr_chunk;
+    nbr_chunk_DIA_buffer[1]   = 1;
+    nbr_chunk_DIA_buffer[2]   = 1;
+  }
+  else
   {
     nbr_chunk_DIA_buffer[0] = NUM_GROUP_MAX;
     nbr_chunk_DIA_buffer[1] = (num_nbr_chunk + NUM_GROUP_MAX -1) / NUM_GROUP_MAX ; // ceil(num_nbr_chunk, NUM_GROUP_MAX)
+    nbr_chunk_DIA_buffer[2] = 1;
   }
 }
