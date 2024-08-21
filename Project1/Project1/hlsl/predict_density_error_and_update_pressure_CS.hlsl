@@ -6,11 +6,6 @@
 #include "cubic_spline_kernel.hlsli"
 #include "uniform_grid_output.hlsli"
 
-struct Local_Nbr_Sum
-{
-  uint nbr_sum[NUM_FP_CHUNK_MAX];
-};
-
 cbuffer CB : register(b1)
 {
  float g_rho0;

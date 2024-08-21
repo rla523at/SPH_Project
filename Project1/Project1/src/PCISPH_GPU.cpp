@@ -422,23 +422,27 @@ void PCISPH_GPU::init_fluid_acceleration(void)
   _DM_ptr->set_SRV(1, _fluid_v_vel_RWBS.cptr_SRV);
   _DM_ptr->set_SRV(2, ninfo_RWBS.cptr_SRV);
   _DM_ptr->set_SRV(3, ncount_RWBS.cptr_SRV);
-  _DM_ptr->bind_SRVs_to_CS(0, 4);
+  _DM_ptr->set_SRV(4, _nbr_chunk_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(5, _nbr_chunk_count_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 6);
 
   _DM_ptr->set_UAV(0, _fluid_v_accel_RWBS.cptr_UAV);
   _DM_ptr->bind_UAVs_to_CS(0, 1);
 
   _DM_ptr->set_shader_CS(_cptr_init_fluid_acceleration_CS);
 
-  UINT num_group_x = _num_FP;
-  UINT num_group_y = 1;
+  _DM_ptr->dispatch_indirect(_nbr_chunk_DIAB_RWBS.cptr_buffer);
 
-  if (max_group < _num_FP)
-  {
-    num_group_x = max_group;
-    num_group_y = Utility::ceil(_num_FP, max_group);
-  }
+  //UINT num_group_x = _num_FP;
+  //UINT num_group_y = 1;
 
-  _DM_ptr->dispatch(num_group_x, num_group_y, 1);
+  //if (max_group < _num_FP)
+  //{
+  //  num_group_x = max_group;
+  //  num_group_y = Utility::ceil(_num_FP, max_group);
+  //}
+
+  //_DM_ptr->dispatch(num_group_x, num_group_y, 1);
 
   PERFORMANCE_ANALYSIS_END(init_fluid_acceleration);
 }
@@ -574,41 +578,29 @@ void PCISPH_GPU::update_a_pressure(void)
 {
   PERFORMANCE_ANALYSIS_START;
   constexpr UINT max_group = 65535;
-  constexpr UINT num_CB    = 2;
-  constexpr UINT num_SRV   = 5;
 
-  ID3D11Buffer* CBs[num_CB] = {
-    _cptr_cubic_spline_kerenel_CONB.Get(),
-    _cptr_update_a_pressure_CS_CONB.Get(),
-  };
+  const auto& ninfo_RWBS = _uptr_neighborhood->get_ninfo_RWBS();
+  const auto& ncount_RWBS = _uptr_neighborhood->get_ncount_RWBS();
 
-  ID3D11ShaderResourceView* SRVs[num_SRV] = {
-    _fluid_density_RWBS.cptr_SRV.Get(),
-    _fluid_pressure_RWBS.cptr_SRV.Get(),
-    _fluid_v_pos_RWBS.cptr_SRV.Get(),
-    _uptr_neighborhood->nfp_info_buffer_SRV_cptr().Get(),
-    _uptr_neighborhood->nfp_count_buffer_SRV_cptr().Get(),
-  };
+  _DM_ptr->set_CONB(0, _cptr_cubic_spline_kerenel_CONB);
+  _DM_ptr->set_CONB(1, _cptr_update_a_pressure_CS_CONB);
+  _DM_ptr->bind_CONBs_to_CS(0, 2);
+
+  _DM_ptr->set_SRV(0, _fluid_density_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(1, _fluid_pressure_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(2, _fluid_v_pos_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(3, ninfo_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(4, ncount_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(5, _nbr_chunk_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(6, _nbr_chunk_count_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 7);
 
   _DM_ptr->set_UAV(0, _fluid_v_a_pressure_RWBS.cptr_UAV);
   _DM_ptr->bind_UAVs_to_CS(0, 1);
 
-  const auto cptr_context = _DM_ptr->context_cptr();
-  cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
-  cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
-
   _DM_ptr->set_shader_CS(_cptr_update_a_pressure_CS);
 
-  UINT num_group_x = _num_FP;
-  UINT num_group_y = 1;
-
-  if (max_group < _num_FP)
-  {
-    num_group_x = max_group;
-    num_group_y = Utility::ceil(_num_FP, max_group);
-  }
-
-  _DM_ptr->dispatch(num_group_x, num_group_y, 1);
+  _DM_ptr->dispatch_indirect(_nbr_chunk_DIAB_RWBS.cptr_buffer);
 
   PERFORMANCE_ANALYSIS_END(update_a_pressure);
 }
