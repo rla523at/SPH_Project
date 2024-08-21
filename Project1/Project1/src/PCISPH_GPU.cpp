@@ -154,6 +154,13 @@ PCISPH_GPU::PCISPH_GPU(
   _fluid_number_density_RWBS = _DM_ptr->create_STRB_RWBS<float>(_num_FP);
   _scailing_factor_RWBS      = _DM_ptr->create_STRB_RWBS<float>(1);
 
+  _nbr_chunk_end_index_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
+  _nbr_chunk_RWBS           = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
+  _nbr_chunk_count_RWBS     = _DM_ptr->create_STRB_RWBS<UINT>(1);
+  _nbr_chunk_DIAB_RWBS      = _DM_ptr->create_DIAB_RWBS();
+  _local_nbr_sum_RWBS       = _DM_ptr->create_STRB_RWBS<Local_Nbr_Sum_Data>(_num_FP);
+
+
   const float h = smooth_length_param * IC.particle_spacing; //smoothing length
 
   // kernel
@@ -176,6 +183,19 @@ PCISPH_GPU::PCISPH_GPU(
     _fluid_v_pos_RWBS,
     _num_FP,
     device_manager);
+
+  // update nbr chunk end index
+  _cptr_update_nbr_chunk_end_index_CS = _DM_ptr->create_CS(L"hlsl/update_nbr_chunk_end_index.hlsl");
+
+  // init nbr chunk
+  _cptr_init_nbr_chunk_CS = _DM_ptr->create_CS(L"hlsl/init_nbr_chunk.hlsl");
+  {
+    Init_Nbr_Chunk_CS_CB_Data data = {};
+
+    data.num_FP = _num_FP;
+
+    _cptr_init_nbr_chunk_CS_CONB = _DM_ptr->create_ICONB(&data);
+  }
 
   // update number density
   _cptr_update_number_density_CS = _DM_ptr->create_CS(L"hlsl/update_number_density_CS.hlsl");
@@ -277,25 +297,7 @@ PCISPH_GPU::PCISPH_GPU(
 
   //opt
   _cptr_fluid_density_error_intermediate_buffer = _DM_ptr->create_STRB<float>(_num_FP);
-  _cptr_max_density_error_STGB                  = _DM_ptr->create_STGB_read(sizeof(float));
-
-  _nbr_chunk_end_index_RWBS = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
-  _nbr_chunk_RWBS           = _DM_ptr->create_STRB_RWBS<UINT>(_num_FP);
-  _nbr_chunk_count_RWBS     = _DM_ptr->create_STRB_RWBS<UINT>(1);
-  _nbr_chunk_DIAB_RWBS      = _DM_ptr->create_DIAB_RWBS();
-  _local_nbr_sum_RWBS       = _DM_ptr->create_STRB_RWBS<Local_Nbr_Sum_Data>(_num_FP);
-
-  _cptr_init_nbr_chunk_CS = _DM_ptr->create_CS(L"hlsl/init_nbr_chunk.hlsl");
-  {
-    Init_Nbr_Chunk_CS_CB_Data data = {};
-
-    data.num_FP = _num_FP;
-
-    _cptr_init_nbr_chunk_CS_CONB = _DM_ptr->create_ICONB(&data);
-  }
-
-  _cptr_update_nbr_chunk_end_index_CS = _DM_ptr->create_CS(L"hlsl/update_nbr_chunk_end_index.hlsl");
-
+  _cptr_max_density_error_STGB                  = _DM_ptr->create_STGB_read(sizeof(float)); 
   //opt
 }
 
@@ -690,66 +692,35 @@ void PCISPH_GPU::update_number_density(void)
 
   _DM_ptr->set_SRV(0, Ninfo_RWBS.cptr_SRV);
   _DM_ptr->set_SRV(1, Ncount_RWBS.cptr_SRV);
-  _DM_ptr->bind_SRVs_to_CS(0, 2);
+  _DM_ptr->set_SRV(2, _nbr_chunk_RWBS.cptr_SRV);
+  _DM_ptr->set_SRV(3, _nbr_chunk_count_RWBS.cptr_SRV);
+  _DM_ptr->bind_SRVs_to_CS(0, 4);
 
   _DM_ptr->set_UAV(0, _fluid_number_density_RWBS.cptr_UAV);
   _DM_ptr->bind_UAVs_to_CS(0, 1);
 
   _DM_ptr->set_shader_CS(_cptr_update_number_density_CS);
 
-  UINT num_group_x = _num_FP;
-  UINT num_group_y = 1;
+  _DM_ptr->dispatch_indirect(_nbr_chunk_DIAB_RWBS.cptr_buffer);
 
-  if (max_group < _num_FP)
-  {
-    num_group_x = max_group;
-    num_group_y = Utility::ceil(_num_FP, max_group);
-  }
+  //UINT num_group_x = _num_FP;
+  //UINT num_group_y = 1;
 
-  _DM_ptr->dispatch(num_group_x, 1, 1);
+  //if (max_group < _num_FP)
+  //{
+  //  num_group_x = max_group;
+  //  num_group_y = Utility::ceil(_num_FP, max_group);
+  //}
+
+  //_DM_ptr->dispatch(num_group_x, 1, 1);
 
   PERFORMANCE_ANALYSIS_END(update_number_density);
-
-  //PERFORMANCE_ANALYSIS_START;
-
-  //const auto cptr_nfp_info_buffer_SRV  = _uptr_neighborhood->nfp_info_buffer_SRV_cptr();
-  //const auto cptr_nfp_count_buffer_SRV = _uptr_neighborhood->nfp_count_buffer_SRV_cptr();
-
-  //constexpr size_t num_CB     = 2;
-  //constexpr size_t num_SRV    = 2;
-  //constexpr size_t num_UAV    = 1;
-  //constexpr UINT   num_thread = 256;
-
-  //ID3D11Buffer* CBs[num_CB] = {
-  //  _cptr_cubic_spline_kerenel_CONB.Get(),
-  //  _cptr_update_number_density_CS_CONB.Get(),
-  //};
-
-  //ID3D11ShaderResourceView* SRVs[num_SRV] = {
-  //  cptr_nfp_info_buffer_SRV.Get(),
-  //  cptr_nfp_count_buffer_SRV.Get(),
-  //};
-
-  //ID3D11UnorderedAccessView* UAVs[num_UAV] = {
-  //  _fluid_number_density_RWBS.cptr_UAV.Get(),
-  //};
-
-  //const auto cptr_context = _DM_ptr->context_cptr();
-  //cptr_context->CSSetConstantBuffers(0, num_CB, CBs);
-  //cptr_context->CSSetShaderResources(0, num_SRV, SRVs);
-  //cptr_context->CSSetUnorderedAccessViews(0, num_UAV, UAVs, nullptr);
-  //cptr_context->CSSetShader(_cptr_update_number_density_CS.Get(), nullptr, NULL);
-
-  //const auto num_group_x = ms::Utility::ceil(_num_FP, num_thread);
-  //cptr_context->Dispatch(num_group_x, 1, 1);
-
-  //_DM_ptr->CS_barrier();
-
-  //PERFORMANCE_ANALYSIS_END(update_number_density);
 }
 
 float PCISPH_GPU::cal_mass(const float rho0)
 {
+  this->update_nbr_chunk_end_index();
+  this->init_nbr_chunk();
   this->update_number_density();
   const auto max_value_buffer   = Utility::find_max_value_float(_fluid_number_density_RWBS.cptr_buffer, _num_FP);
   const auto max_number_density = _DM_ptr->read_front<float>(max_value_buffer);

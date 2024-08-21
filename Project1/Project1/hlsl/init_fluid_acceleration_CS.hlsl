@@ -1,7 +1,7 @@
-#define NUM_THREAD 256
+#define NUM_THREAD 128
 #define NUM_MAX_GROUP 65535
 #define NUM_FP_CHUNK_MAX 64
-#define N 1
+#define N 2
 
 #include "uniform_grid_output.hlsli"
 #include "cubic_spline_kernel.hlsli"
@@ -122,16 +122,4 @@ void main(uint3 Gid : SV_GroupID, uint Gindex : SV_GroupIndex)
     
     acceleration_buffer[FP_index2] = g_viscosity_constant * sum_v_laplacian_vel + g_v_a_gravity;
   }
-
-  //if (Gindex == 0)
-  //{
-  //  float3 v_a_viscosity = float3(0,0,0);
-  //  
-  //  const uint n = min(NUM_THREAD, num_nfp);
-  //
-  //  for (uint i=0; i <n; ++i)
-  //    v_a_viscosity += shared_v_laplacian_vel[i];
-  //
-  //  acceleration_buffer[fp_index] = g_viscosity_constant * v_a_viscosity + g_v_a_gravity;
-  //}
 }
