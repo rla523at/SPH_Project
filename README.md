@@ -1,5 +1,37 @@
 </br></br></br>
 
+# 2024.08.21
+
+## PCISPH 코드 최적화 - Using CHUNK
+
+기존 코드는 한 Group당 128개의 thread를 할당하고 한 thread당 2개의 neighbor particle에 대한 계산을 수행하였다.
+
+이는, neighbor particle 개수가 최대 200개 까지 될 수 있기 때문이다.
+
+하지만 neighbor particle의 개수를 산술평균내면 일반적으로 50정도임을 알 수 있다.
+
+즉, 평균적으로 하나의 그룹에 너무 많은 thread가 할당되어 있어 비효율적인 상황이다.
+
+### [해결]
+
+이를 해결하기 위해 neighbor particle의 개수가 256개 보다 작으면서 가능한 많은 particle들을 묶어서 Chunk를 만든 다음 기존에 하나의 particle마다 thread group을 할당하였던것을, 하나의 chunk마다 thread group을 할당하게 하였다.
+
+이를 위해 매 Frame마다 chunk를 계산하고, dispatch_indirect를 활용하여 chunk 개수만큼 thread group이 생성되게 하였다.
+
+또한, 현재 하나의 Thread가 N개의 neighbor particle에 대해서 계산을 하여 하나의 Thread당 최적의 연산부하를 갖도록 N을 조절하면서 성능 테스트를 수행하였다.
+
+### [결과]
+
+* update a_pressure
+  * 약 `24%`정도 계산시간이 감소한것을 확인할 수 있다.
+
+|N|original|1|2|4|8|
+|---|---|---|---|---|---|
+|Computation Time(ms)|0.819914|0.658873|0.62808|0.649539|0.74020|
+
+
+</br></br></br>
+
 # 2024.08.20
 
 ## PCISPH 코드 최적화 - predict density error and update pressure
