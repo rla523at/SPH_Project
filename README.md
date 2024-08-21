@@ -1,5 +1,63 @@
 </br></br></br>
 
+# 2024.08.20
+
+## PCISPH 코드 최적화 - predict density error and update pressure
+
+### [문제]
+
+기존 코드는 한 Group당 256개의 thread를 할당하고 한 thread당 1개의 neighbor particle에 대한 계산을 수행하였다.
+
+이는, neighbor particle 개수가 최대 200개 까지 될 수 있기 때문이다.
+
+하지만 neighbor particle의 개수를 산술평균내면 일반적으로 50정도임을 알 수 있다.
+
+즉, 평균적으로 하나의 그룹에 너무 많은 thread가 할당되어 있어 비효율적인 상황이다.
+
+### [해결]
+
+이를 해결하기 위해 neighbor particle의 개수가 256개 보다 작으면서 가능한 많은 particle들을 묶어서 Chunk를 만든 다음 기존에 하나의 particle마다 thread group을 할당하였던것을, 하나의 chunk마다 thread group을 할당하게 하였다.
+
+이를 위해 매 Frame마다 chunk를 계산하고, dispatch_indirect를 활용하여 chunk 개수만큼 thread group이 생성되게 하였다.
+
+### [결과]
+
+||개선 전|개선 후|
+|---|---|---|
+|Computation Time(ms)|0.558781|0.503092|
+
+약 10%정도 계산속도가 감소한것을 확인할 수 있었다.
+
+현재 하나의 Thread가 하나의 neighbor particle에 대해서만 계산을 하는 상황임으로, 한 Thread의 연산부하가 너무 작아 오히려 병렬화 효율이 떨어질 수 있겠다는 판단을 하여 하나의 Thread가 N개의 neighbor particle에 대해서 계산하도록 개선하였다.
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=4일 때, 약 `22%` 계산속도가 감소하였다.
+
+|N|original|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.558781|0.445285|0.435239|0.512811|
+
+### 추가 개선사항
+현재 chunk를 생성하는 코드가 병렬화되어 있지 않아 Frame당 약 2ms의 시간이 소요되고 있다.
+
+즉, 0.1ms를 줄이기 위해 2ms가 추가가된 상황이다.
+
+물론, chunk를 생성한경우 다른 함수들의 성능에도 추가적인 개선여지가 있어 0.1ms보다는 더 많이 계산시간을 줄일 수도 있지만 그럼에도 chunk 생성에 드는 비용을 크게 줄이지 않는 이상 비효율적이일 것으로 예상된다.
+
+따라서 이를 개선하기 위해 chunk 생성 코드를 병렬화 하는 작업이 필요하다.
+
+#### Chunk 생성
+
+Chunk는 particle index를 기준으로 앞에서부터 neighbor particle 개수의 합이 256개 보다 작으면서 가능한 많은 particle들을 포함한다는 조건을 만족하게 만들었으며, 마지막 index의 다음 index를 저장하는 방식으로 chunk를 구분하였다.
+
+예를 들어, particle index가 {0,1,2,3,4,5,7,8,9,10,...}이 있고 조건을 만족하게 묶으면 {0,1,2},{3,4,5,6,7},{8,9,10},...였다고 하자.
+
+그러면 chunk 정보를 저장하기 위해 마지막 index의 다음 index인 {3,8,11,....}을 저장해서 chunk 정보를 저장한다.
+
+
+
+
+</br></br></br>
+
 # 2024.08.19
 ## 최적화 결과
 ```
