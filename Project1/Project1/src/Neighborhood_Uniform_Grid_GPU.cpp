@@ -324,8 +324,9 @@ void Neighborhood_Uniform_Grid_GPU::update_nfp(const Read_Buffer_Set& fluid_v_po
   PERFORMANCE_ANALYSIS_END(update_nfp);
 
   ////debug
-  //const auto debug_GCFP_count = _DM_ptr->read<UINT>(_GCFP_count_RWBS.cptr_buffer);
-  //print_max(debug_GCFP_count);
+  //const auto debug_nbr_count = _DM_ptr->read<UINT>(_ncount_RWBS.cptr_buffer);
+  //print_sort_and_count(debug_nbr_count);
+  //std::cout << "==================\n\n";
   ////debug
 }
 
