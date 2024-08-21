@@ -1,6 +1,246 @@
 </br></br></br>
 
+# 2024.08.20
+
+## PCISPH 코드 최적화 - predict density error and update pressure
+
+### [문제]
+
+기존 코드는 한 Group당 256개의 thread를 할당하고 한 thread당 1개의 neighbor particle에 대한 계산을 수행하였다.
+
+이는, neighbor particle 개수가 최대 200개 까지 될 수 있기 때문이다.
+
+하지만 neighbor particle의 개수를 산술평균내면 일반적으로 50정도임을 알 수 있다.
+
+즉, 평균적으로 하나의 그룹에 너무 많은 thread가 할당되어 있어 비효율적인 상황이다.
+
+### [해결]
+
+이를 해결하기 위해 neighbor particle의 개수가 256개 보다 작으면서 가능한 많은 particle들을 묶어서 Chunk를 만든 다음 기존에 하나의 particle마다 thread group을 할당하였던것을, 하나의 chunk마다 thread group을 할당하게 하였다.
+
+이를 위해 매 Frame마다 chunk를 계산하고, dispatch_indirect를 활용하여 chunk 개수만큼 thread group이 생성되게 하였다.
+
+### [결과]
+
+||개선 전|개선 후|
+|---|---|---|
+|Computation Time(ms)|0.558781|0.503092|
+
+약 10%정도 계산시간이 감소한것을 확인할 수 있었다.
+
+현재 하나의 Thread가 하나의 neighbor particle에 대해서만 계산을 하는 상황임으로, 한 Thread의 연산부하가 너무 작아 오히려 병렬화 효율이 떨어질 수 있겠다는 판단을 하여 하나의 Thread가 N개의 neighbor particle에 대해서 계산하도록 개선하였다.
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=4일 때, 약 `22%` 계산시간이 감소하였다.
+
+|N|original|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.558781|0.445285|0.435239|0.512811|
+
+### 추가 개선사항
+현재 chunk를 생성하는 코드가 병렬화되어 있지 않아 Frame당 약 2ms의 시간이 소요되고 있다.
+
+즉, 0.1ms를 줄이기 위해 2ms가 추가가된 상황이다.
+
+물론, chunk를 생성한경우 다른 함수들의 성능에도 추가적인 개선여지가 있어 0.1ms보다는 더 많이 계산시간을 줄일 수도 있지만 그럼에도 chunk 생성에 드는 비용을 크게 줄이지 않는 이상 비효율적이일 것으로 예상된다.
+
+따라서 이를 개선하기 위해 chunk 생성 코드를 병렬화 하는 작업이 필요하다.
+
+#### Chunk 생성
+
+Chunk는 particle index를 기준으로 앞에서부터 neighbor particle 개수의 합이 256개 보다 작으면서 가능한 많은 particle들을 포함한다는 조건을 만족하게 만들었으며, 마지막 index의 다음 index를 저장하는 방식으로 chunk를 구분하였다.
+
+예를 들어, particle index가 {0,1,2,3,4,5,7,8,9,10,...}이 있고 조건을 만족하게 묶으면 {0,1,2},{3,4,5,6,7},{8,9,10},...였다고 하자.
+
+그러면 chunk 정보를 저장하기 위해 마지막 index의 다음 index인 {3,8,11,....}을 저장해서 chunk 정보를 저장한다.
+
+
+
+
+</br></br></br>
+
+# 2024.08.19
+## 최적화 결과
+```
+_dt_avg_update                                              3.94271       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.09558       ms
+_dt_avg_update_number_density                               0.172424      ms
+_dt_avg_update_scailing_factor                              0.017785      ms
+_dt_avg_init_fluid_acceleration                             0.270125      ms
+_dt_avg_init_pressure_and_a_pressure                        0.00504521    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187321     ms
+_dt_avg_predict_velocity_and_position                       0.0388008     ms
+_dt_avg_predict_density_error_and_update_pressure           0.558781      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.819914      ms
+_dt_avg_apply_BC                                            0.00597577    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.04887       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.0223155     ms
+_dt_avg_rearrange_GCFP                                      0.0147891     ms
+_dt_avg_update_nfp                                          0.854544      ms
+================================================================================
+```
+
+## Neighborhood 코드 최적화 - update_nfp
+update_nfp는 각 Particle마다 Neighbor Geometry Cell에 들어 있는 모든 Particle들에 대한 연산이 필요한 함수이다.
+
+기존에는 Geometry Cell에 최대 64개 까지 Particle이 존재 할 수 있다는 사실에 기반하여 64개의 Thread를 사용하여 i번째 thread는 모든 Neighbor Geometry Cell에 들어있는 i번째 particle들에 대한 연산을 수행하였다. 
+
+하지만 일반적으로 Neighbor Geometry Cell에는 64개 보다 훨씬 적은 Particle이 존재함으로 작업을 하지 않는 Thread가 많이 발생할 수 있다.
+
+이를 개선하기 위해, i번째 thread는 i번 째 Neighbor Geometry Cell에 있는 모든 particle들에 대한 연산을 수행하도록 수정하였다.
+
+warp 단위를 맞추기 위해 32개의 thread를 사용하였고, 대부분의 Cell이 27개의 neighbor geometry cell을 갖음으로 작업을 하지 않는 thread를 줄일 수 있을것이라고 판단하였다.
+
+![update_nfp1](https://github.com/user-attachments/assets/fa8df285-cd85-4821-b94b-74ea6edecf5b)
+
+개선전 대비 약 `5%` 계산시간이 감소하였다.
+
+||개선전|개선후|
+|---|---|---|
+|Computation Time(ms)|0.899932|0.855475|
+
+### 실패한 개선
+InterLockAdd함수가 병목에 원인이 될 수 있다고 판단하여, local 변수를 활용하고 GroupMemoryBarrierWithGroupSync를 사용해 InterLockAdd함수를 제거하였다.
+
+하지만 개선전에 비해 계산시간이 증가하였고, GroupMemoryBarrierWithGroupSync로 인해 오히려 더 성능이 떨어진것으로 보인다.
+
+GroupMemoryBarrierWithGroupSync를 줄이는 추가적인 개선을 해보았지만 유의미한 성능 개선은 없었다.
+
+![update_nfp2](https://github.com/user-attachments/assets/ea47f084-05b8-4742-aa97-7829c8ceeb59)
+
+</br></br></br>
+
+# 2024.08.16
+## 결과
+
+최종 최적화 결과는 다음과 같다.
+
+```
+PCISPH_GPU Performance Analysis Result per frame
+================================================================================
+_dt_avg_update                                              4.00479       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.14807       ms
+_dt_avg_update_number_density                               0.173746      ms
+_dt_avg_update_scailing_factor                              0.0178631     ms
+_dt_avg_init_fluid_acceleration                             0.271192      ms
+_dt_avg_init_pressure_and_a_pressure                        0.00498217    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187285     ms
+_dt_avg_predict_velocity_and_position                       0.0399128     ms
+_dt_avg_predict_density_error_and_update_pressure           0.545056      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.814734      ms
+_dt_avg_apply_BC                                            0.00592225    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.09833       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.0222131     ms
+_dt_avg_rearrange_GCFP                                      0.0146923     ms
+_dt_avg_update_nfp                                          0.895872      ms
+================================================================================
+```
+
+## PCISPH 코드 최적화 - init_fluid_acceleration
+기존 코드는 한 thread당 neighbor particle개수 만큼 v_laplacian velocity를 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 v_laplacian velocity를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+![update_init_fluid_acceleration](https://github.com/user-attachments/assets/933f0311-ea1d-4c27-89e8-d9f87bf5aa7c)
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=2일 때 개선전 대비 `약 82%`의 계산시간 감소를 얻을 수 있었다.
+
+|N|1(original)|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|1.48523|0.270606|0.308372|0.356083|
+
+
+## PCISPH 코드 최적화 - update_number_density
+기존 코드는 한 thread당 neighbor particle개수 만큼 W값을 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 W를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+![update_number_density](https://github.com/user-attachments/assets/aa4fed50-de4e-43d7-b0c8-a36b1c0d3817)
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 N=2일 때 개선전 대비 `약 48%`의 계산시간 감소를 얻을 수 있었다.
+
+|N|1(original)|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.329368|0.172437|0.206938|0.228883|
+
+## PCISPH 코드 최적화 - predict density error and update pressure
+기존 코드는 한 thread당 neighbor particle개수 만큼 W값을 계산하였다.
+
+neighbor particle개수는 최대 200까지 될 수 있어 한 Thread의 연산부하가 너무 커 병렬화 효율이 떨어질 수 있다.
+
+따라서, 한 Thread가 N개의 neighbor particle에 대해 W를 계산하게 수정하여 병렬처리 성능을 개선하였다.
+
+![update_predict_den_err](https://github.com/user-attachments/assets/0b601fc2-f8d4-46ba-b672-d513e3a4e7e0)
+
+
+N을 바꾸어 가면서 계산시간을 테스트 해보았고, 결론적으로 개선전 코드가 항상 더 나은 성능을 보였다.
+
+|N|original|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.66788|0.784055|0.927477|1.09307|
+
+따라서, 개선전 코드에서 NUM_THREAD를 바꿔가면서 성능을 테스트해보았고, 결론적으로 NUM_THREAD가 32일 때, 약 17% 계산시간이 감소하였다.
+
+|NUM_THREAD|32|64|128|256|
+|---|---|---|---|---|
+|Computation Time(ms)|0.553398|0.622605|0.636829|0.671903|
+
+### 고민
+다른 코드와 비슷한 형태인데, 왜 이 코드만 개선전이 성능이 더 좋은지 고민중이다.
+
+
+
+</br></br></br>
+
 # 2024.08.14
+## 결과
+
+최적화 결과는 다음과 같다.
+
+```
+PCISPH_GPU Performance Analysis Result per frame
+================================================================================
+_dt_avg_update                                              5.56771       ms
+================================================================================
+_dt_avg_update_neighborhood                                 1.15773       ms
+_dt_avg_update_scailing_factor                              0.345694      ms
+_dt_avg_init_fluid_acceleration                             1.48523       ms
+_dt_avg_init_pressure_and_a_pressure                        0.00508841    ms
+_dt_avg_copy_cur_pos_and_vel                                0.0187942     ms
+_dt_avg_predict_velocity_and_position                       0.0388983     ms
+_dt_avg_predict_density_error_and_update_pressure           0.672252      ms
+_dt_avg_cal_max_density_error                               0             ms
+_dt_avg_update_a_pressure                                   0.81341       ms
+_dt_avg_apply_BC                                            0.00583697    ms
+================================================================================
+
+Neighborhood_Uniform_Grid_GPU Performance Analysis Result Per Frame
+================================================================================
+_dt_avg_update                                              1.10597       ms
+================================================================================
+_dt_avg_update_GCFP                                         0.021993      ms
+_dt_avg_rearrange_GCFP                                      0.0145832     ms
+_dt_avg_update_nfp                                          0.891356      ms
+================================================================================
+```
+
 ## PCISPH 코드 최적화 - update a_pressure
 하나의 Thread에서 하나의 neighbor particle에 대한 정보를 계산하여 Group Shared Memory에 계산값을 저장하고 있었다.
 

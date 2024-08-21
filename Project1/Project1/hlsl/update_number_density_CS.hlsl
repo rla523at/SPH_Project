@@ -1,7 +1,7 @@
-#define NUM_THREAD 32
+#define NUM_THREAD 128
 #define NUM_MAX_GROUP 65535
 #define NUM_FP_CHUNK_MAX 64
-#define N 8
+#define N 2
 
 #include "uniform_grid_output.hlsli"
 #include "Cubic_Spline_Kernel.hlsli"
