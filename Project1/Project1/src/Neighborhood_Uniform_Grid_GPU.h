@@ -24,7 +24,7 @@ inline constexpr UINT g_estimated_num_ngc  = 27;
 inline constexpr UINT g_estimated_num_gcfp = 64;
 inline constexpr UINT g_estimated_num_nfp  = 200;
 
-#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
+//#define UNIFORM_GRID_PERFORMANCE_ANALYSIS
 
 namespace ms
 {

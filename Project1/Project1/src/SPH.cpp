@@ -37,6 +37,23 @@ SPH::SPH(Device_Manager& device_manager)
   solution_domain.z_start = -1.5f;
   solution_domain.z_end   = 1.5f;
 
+  ////4 dam
+  //solution_domain.x_start = -2.0f;
+  //solution_domain.x_end   = 2.0f;
+  //solution_domain.y_start = 0.0f;
+  //solution_domain.y_end   = 6.0f;
+  //solution_domain.z_start = -2.0f;
+  //solution_domain.z_end   = 2.0f;
+
+  ////water fall
+  //solution_domain.x_start = -2.0f;
+  //solution_domain.x_end   = 2.0f;
+  //solution_domain.y_start = 0.0f;
+  //solution_domain.y_end   = 30.0f;
+  //solution_domain.z_start = -2.0f;
+  //solution_domain.z_end   = 2.0f;
+
+
   std::vector<Domain> init_cond_domains;
 
   //IC Start
@@ -105,6 +122,60 @@ SPH::SPH(Device_Manager& device_manager)
   constexpr float eta         = 0.01f; // Tait's equation parameter
   const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
 
+  //////4 Dam breaking
+  //Domain dam1;
+  //dam1.x_start = -1.4f;
+  //dam1.x_end   = -0.4f;
+  //dam1.y_start = 0.1f;
+  //dam1.y_end   = 1.1f;
+  //dam1.z_start = -1.4f;
+  //dam1.z_end   = -0.4f;
+
+  //Domain dam2;
+  //dam2.x_start = 0.4f;
+  //dam2.x_end   = 1.4f;
+  //dam2.y_start = 0.1f;
+  //dam2.y_end   = 3.1f;
+  //dam2.z_start = 0.4f;
+  //dam2.z_end   = 1.4f;
+
+  //Domain dam3;
+  //dam3.x_start = 0.4f;
+  //dam3.x_end   = 1.4f;
+  //dam3.y_start = 0.1f;
+  //dam3.y_end   = 2.1f;
+  //dam3.z_start = -1.4f;
+  //dam3.z_end   = -0.4f;
+
+  //Domain dam4;
+  //dam4.x_start = -1.4f;
+  //dam4.x_end   = -0.4f;
+  //dam4.y_start = 0.1f;
+  //dam4.y_end   = 2.1f;
+  //dam4.z_start = 0.4f;
+  //dam4.z_end   = 1.4f;
+
+  //init_cond_domains.push_back(dam1);
+  //init_cond_domains.push_back(dam2);
+  //init_cond_domains.push_back(dam3);
+  //init_cond_domains.push_back(dam4);
+
+  //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
+
+  ////Water Fall
+  //Domain box1;
+  //box1.x_start = -0.4f;
+  //box1.x_end   = 0.4f;
+  //box1.y_start = 0.1f;
+  //box1.y_end   = 15.1f;
+  //box1.z_start = -0.3f;
+  //box1.z_end   = 0.3f;
+  //init_cond_domains.push_back(box1);
+
+  //constexpr float eta         = 0.01f; // Tait's equation parameter
+  //const float     square_cvel = 2.0f * 9.8f * box1.dy() / eta;
+
   // IC END
 
   Initial_Condition_Cubes init_cond;
@@ -162,20 +233,20 @@ void SPH::update(const Camera& camera, const ComPtr<ID3D11DeviceContext> cptr_co
 
   this->update_GS_Cbuffer(cptr_context);
 
-  //////////////////////////////////////////////////////////////////////////
-  static UINT num_frame = 0;
-  if (!stop_update)
-  {
-    ++num_frame;
-    if (num_frame == 400)
-    {
-      ms::PCISPH_GPU::print_performance_analysis_result_avg(num_frame);
-      ms::Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(num_frame);
-      //ms::PCISPH_GPU::print_performance_analysis_result();
-      exit(523);
-    }
-  }
-  //////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  //static UINT num_frame = 0;
+  //if (!stop_update)
+  //{
+  //  ++num_frame;
+  //  if (num_frame == 400)
+  //  {
+  //    ms::PCISPH_GPU::print_performance_analysis_result_avg(num_frame);
+  //    ms::Neighborhood_Uniform_Grid_GPU::print_avg_performance_analysis_result(num_frame);
+  //    //ms::PCISPH_GPU::print_performance_analysis_result();
+  //    exit(523);
+  //  }
+  //}
+  ////////////////////////////////////////////////////////////////////////////
 }
 
 void SPH::render(const ComPtr<ID3D11DeviceContext> cptr_context)
