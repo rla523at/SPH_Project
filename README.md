@@ -6,6 +6,18 @@
 ## 목표
 Smoothed Particle Hydronamics(SPH)를 이용하여 물을 물리 시뮬레이션하고 그 결과를 렌더링한다.
 
+## 설명
+
+물을 물리시뮬레이션 하기 위해 다음의 비압축성 유체의 linear momentum equation을 수치해석적으로 푼다.
+
+$$ \frac{dv}{dt} = -\frac{1}{\rho}\nabla p + \nu \nabla^2u + f_{ext} $$
+
+SPH를 사용해서 수치해석하는 과정은 `Document/SPH.md`에 설명되어 있다.
+
+WCSPH와 PCISPH가 구현되어 있으며 WCSPH는 CPU코드로 PCISPH는 CPU/GPU(Compute Shader) 코드로 구현되어 있다.
+
+참고로, 시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
+
 ## 결과
 
 **[Dam Breaking Simulation]**
@@ -71,16 +83,3 @@ https://github.com/user-attachments/assets/af6ce26a-3918-4c8d-a0f4-892266cb3743
 https://github.com/user-attachments/assets/04a60201-abd8-403d-a4be-05ab524502cb
 
 <br><br>
-
-## 설명
-
-물을 물리시뮬레이션 하기 위해 다음의 비압축성 유체의 linear momentum equation을 수치해석적으로 푼다.
-
-$$ \frac{dv}{dt} = -\frac{1}{\rho}\nabla p + \nu \nabla^2u + f_{ext} $$
-
-SPH를 사용해서 수치해석하는 과정은 `Document/SPH.md`에 설명되어 있다.
-
-WCSPH와 PCISPH가 구현되어 있으며 WCSPH는 CPU코드로 PCISPH는 CPU/GPU(Compute Shader) 코드로 구현되어 있다.
-
-참고로, 시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
-
