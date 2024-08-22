@@ -1,5 +1,101 @@
 </br></br></br>
 
+# 2024.08.21
+
+## PCISPH 코드 최적화 - Using CHUNK
+
+### [문제]
+기존 코드는 한 Group당 128개의 thread를 할당하고 한 thread당 2개의 neighbor particle에 대한 계산을 수행하고 있다.
+
+이는, neighbor particle 개수가 최대 200개 까지 될 수 있기 때문이다.
+
+그러나 neighbor particle의 개수를 산술평균내면 일반적으로 50정도임으로 평균적으로 하나의 그룹에 너무 많은 thread가 할당되어 있어 비효율적인 상황이다.
+
+### [해결]
+
+이를 해결하기 위해 neighbor particle의 개수가 256개 보다 작으면서 가능한 많은 particle들을 묶어서 Chunk를 만든 다음 기존에 하나의 particle마다 thread group을 할당하였던것을, 하나의 chunk마다 thread group을 할당하게 하였다.
+
+이를 위해 매 Frame마다 chunk를 계산하고, dispatch_indirect를 활용하여 chunk 개수만큼 thread group이 생성되게 하였다.
+
+또한, 현재 하나의 Thread가 N개의 neighbor particle에 대해서 계산을 하여 하나의 Thread당 최적의 연산부하를 갖도록 N을 조절하면서 성능 테스트를 수행하였다.
+
+### [결과]
+
+* predict density error and update pressure
+  * N=4일 때, 계산시간이 약 `0.1ms(22%)`정도 감소하였다.
+
+|N|original|2|4|8|
+|---|---|---|---|---|
+|Computation Time(ms)|0.558781|0.445285|0.435239|0.512811|
+
+* update a_pressure
+  * N=2일 때, 계산시간이 약 `0.2ms(24%)`정도 감소하였다.
+
+|N|original|1|2|4|8|
+|---|---|---|---|---|---|
+|Computation Time(ms)|0.819914|0.658873|0.62808|0.649539|0.74020|
+
+* init fluid acceleration
+  * N=2일 때, 계산시간이 약`0.1ms(31%)`정도 감소하였다.
+
+|N|original|1|2|4|8|
+|---|---|---|---|---|---|
+|Computation Time(ms)|0.270125|0.20389|0.186825|0.193016|0.241233|
+
+* update number density
+  * N=2일 때, 계산시간이 약`0.05ms(27%)`정도 감소하였다.
+
+|N|original|1|2|4|8|
+|---|---|---|---|---|---|
+|Computation Time(ms)|0.172424|0.142533|0.125352|0.134076|0.173651|
+
+Chunk를 사용함으로써 계산시간이 약 `0.45ms`정도 감소하였다.
+
+## Chunk 배열 생성 최적화
+### [문제]
+Chunk는 particle index를 기준으로 앞에서부터 neighbor particle 개수의 합이 256개 보다 작으면서 가능한 많은 particle들을 포함한다는 조건을 만족하게 만들며, 마지막 index의 다음 index를 저장한 chunk 배열로 chunk들을 구분한다.
+
+예를 들어, particle index가 {0,1,2,3,4,5,7,8,9,10,...}이 있고 조건을 만족하게 묶으면 {0,1,2},{3,4,5,6,7},{8,9,10},...였다고 하자.
+
+그러면 chunk 정보를 저장하기 위해 마지막 index의 다음 index인 {3,8,11,....}이 chunk 배열이 된다/
+
+이 과정을 병렬화 없이 계산하면 Frame당 약 2ms의 계산시간이 소요된다.
+
+즉, `0.45ms`를 감소시키기 위해 `2ms`의 추가 계산시간이 필요한 문제가 발생한다.
+
+### [해결]
+Chunk 배열를 계산하는 방식을 병렬화하기 위해 다음과 같은 방법을 고안하였다.
+
+1. 각 Particle index마다 병렬적으로 자신을 시작점으로해서 조건을 만족하는 Chunk를 찾고 Chunk의 마지막 index의 다음 index를 기록한다.
+2. 직렬적으로 0번 index를 저장하고 index 배열에 0번 index전에 있는 element들은 무시한다.
+3. 이 과정을 반복하여서 chunk 배열을 구한다.
+
+예를 들어, num nbr이 {1,4,7,2,8,3,5,9}가 주어져있고, 합이 10이하가 되게 Chunk를 만들어야 되는 경우를 보면
+
+1번 과정을 거치면 index 배열 {2,2,4,5,5,7,7,8}을 얻게 된다. 
+
+다음으로 2번 과정을 시작하게 되면 먼저 2를 저장하고 index 배열에 2번 element전에 있는 값은 무시한다. {2}
+
+다음으로 2번 element인 4를 저장하고 index 배열에 4번 element전에 있는 값은 무시한다. {2,4}
+
+다음으로 4번 element인 5를 저장하고 index 배열에 5번 element전에 있는 값은 무시한다. {2,4,5}
+
+이 과정을 반복하면 최종적으로 chunk를 구분할 수 있는 index 배열 {2,4,5,6,8}을 얻게 된다.
+
+### [결과]
+병렬적으로 chunk를 계산하는데 0.00630265ms가 소요되고 직렬적으로 chunk index 배열을 찾는데 0.693381ms가 소요되어 총 0.69968365ms가 소요된다.
+
+||개선 전|개선 후|
+|---|---|---|
+|Computation Time(ms)|1.94196|0.69968365|
+
+0.7ms로 개선이 되었어도, 아직 chunk를 사용함으로써 개선된 0.45ms 보다 소요시간이 큼으로 비효율적이다.
+
+추가적인 병렬화를 통해 Chunk 배열 생성시간을 줄여야 한다.
+
+
+</br></br></br>
+
 # 2024.08.20
 
 ## PCISPH 코드 최적화 - predict density error and update pressure
