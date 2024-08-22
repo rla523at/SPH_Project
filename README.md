@@ -74,6 +74,8 @@ https://github.com/user-attachments/assets/04a60201-abd8-403d-a4be-05ab524502cb
 
 ## 설명
 
+간략하게 쓰고, Document를 참고할 수 있게 유도
+
 ### 물리시뮬레이션
 물을 물리시뮬레이션 하기 위해 다음의 비압축성 유체의 linear momentum equation을 수치해석적으로 푼다.
 

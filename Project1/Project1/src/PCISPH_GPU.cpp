@@ -308,12 +308,12 @@ size_t PCISPH_GPU::num_fluid_particle(void) const
   return _num_FP;
 }
 
-const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_v_pos_BS(void) const
+const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_v_pos_RWBS(void) const
 {
   return _fluid_v_pos_RWBS;
 }
 
-const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_density_BS(void) const
+const Read_Write_Buffer_Set& PCISPH_GPU::get_fluid_density_RWBS(void) const
 {
   return _fluid_density_RWBS;
 }

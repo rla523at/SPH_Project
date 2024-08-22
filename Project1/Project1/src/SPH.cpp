@@ -2,11 +2,11 @@
 
 #include "Camera.h"
 #include "Device_Manager.h"
+#include "Neighborhood_Uniform_Grid_GPU.h"
 #include "PCISPH.h"
 #include "PCISPH_GPU.h"
 #include "WCSPH.h"
 #include "Window_Manager.h"
-#include "Neighborhood_Uniform_Grid_GPU.h"
 
 #include "../../_lib/_header/msexception/Exception.h"
 #include <d3dcompiler.h>
@@ -19,182 +19,15 @@ SPH::SPH(Device_Manager& device_manager)
 {
   _DM_ptr = &device_manager;
 
-  Domain solution_domain;
-
-  ////dam breaking
-  //solution_domain.x_start = -2.0f;
-  //solution_domain.x_end   = 2.0f;
-  //solution_domain.y_start = 0.0f;
-  //solution_domain.y_end   = 6.0f;
-  //solution_domain.z_start = -0.3f;
-  //solution_domain.z_end   = 0.3f;
-
-  // double dam
-  solution_domain.x_start = -1.5f;
-  solution_domain.x_end   = 1.5f;
-  solution_domain.y_start = 0.0f;
-  solution_domain.y_end   = 6.0f;
-  solution_domain.z_start = -1.5f;
-  solution_domain.z_end   = 1.5f;
-
-  ////4 dam
-  //solution_domain.x_start = -2.0f;
-  //solution_domain.x_end   = 2.0f;
-  //solution_domain.y_start = 0.0f;
-  //solution_domain.y_end   = 6.0f;
-  //solution_domain.z_start = -2.0f;
-  //solution_domain.z_end   = 2.0f;
-
-  ////water fall
-  //solution_domain.x_start = -2.0f;
-  //solution_domain.x_end   = 2.0f;
-  //solution_domain.y_start = 0.0f;
-  //solution_domain.y_end   = 30.0f;
-  //solution_domain.z_start = -2.0f;
-  //solution_domain.z_end   = 2.0f;
-
-
-  std::vector<Domain> init_cond_domains;
-
-  //IC Start
-
-  ////zero gravity domain
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = -0.1f;
-  //init_cond_domain.x_end   = 0.1f;
-  //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.2f;
-  //init_cond_domain.z_start = -0.1f;
-  //init_cond_domain.z_end   = 0.1f;
-  //
-  //init_cond_domains.push_back(init_cond_domain);
-
-  //constexpr float square_cvel = 1000;
-
-  //// Solo Particle
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = -0.1f;
-  //init_cond_domain.x_end   = 0.1f;
-  //init_cond_domain.y_start = 1.0f;
-  //init_cond_domain.y_end   = 1.2f;
-  //init_cond_domain.z_start = -0.1f;
-  //init_cond_domain.z_end   = 0.1f;
-
-  //init_cond_domains.push_back(init_cond_domain);
-
-  //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 100.0f;
-
-  ////Dam breaking
-  //Domain init_cond_domain;
-  //init_cond_domain.x_start = -1.9f;
-  //init_cond_domain.x_end   = -0.9f;
-  //init_cond_domain.y_start = 0.1f;
-  //init_cond_domain.y_end   = 2.1f;
-  //init_cond_domain.z_start = -0.2f;
-  //init_cond_domain.z_end   = 0.2f;
-
-  //init_cond_domains.push_back(init_cond_domain);
-
-  //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 2.0f * 9.8f * init_cond_domain.dy() / eta;
-
-  //Double Dam breaking
-  Domain dam1;
-  dam1.x_start = -1.4f;
-  dam1.x_end   = -0.4f;
-  dam1.y_start = 0.1f;
-  dam1.y_end   = 2.1f;
-  dam1.z_start = -1.4f;
-  dam1.z_end   = -0.4f;
-
-  Domain dam2;
-  dam2.x_start = 0.4f;
-  dam2.x_end   = 1.4f;
-  dam2.y_start = 0.1f;
-  dam2.y_end   = 2.1f;
-  dam2.z_start = 0.4f;
-  dam2.z_end   = 1.4f;
-
-  init_cond_domains.push_back(dam1);
-  init_cond_domains.push_back(dam2);
-
-  constexpr float eta         = 0.01f; // Tait's equation parameter
-  const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
-
-  //////4 Dam breaking
-  //Domain dam1;
-  //dam1.x_start = -1.4f;
-  //dam1.x_end   = -0.4f;
-  //dam1.y_start = 0.1f;
-  //dam1.y_end   = 1.1f;
-  //dam1.z_start = -1.4f;
-  //dam1.z_end   = -0.4f;
-
-  //Domain dam2;
-  //dam2.x_start = 0.4f;
-  //dam2.x_end   = 1.4f;
-  //dam2.y_start = 0.1f;
-  //dam2.y_end   = 3.1f;
-  //dam2.z_start = 0.4f;
-  //dam2.z_end   = 1.4f;
-
-  //Domain dam3;
-  //dam3.x_start = 0.4f;
-  //dam3.x_end   = 1.4f;
-  //dam3.y_start = 0.1f;
-  //dam3.y_end   = 2.1f;
-  //dam3.z_start = -1.4f;
-  //dam3.z_end   = -0.4f;
-
-  //Domain dam4;
-  //dam4.x_start = -1.4f;
-  //dam4.x_end   = -0.4f;
-  //dam4.y_start = 0.1f;
-  //dam4.y_end   = 2.1f;
-  //dam4.z_start = 0.4f;
-  //dam4.z_end   = 1.4f;
-
-  //init_cond_domains.push_back(dam1);
-  //init_cond_domains.push_back(dam2);
-  //init_cond_domains.push_back(dam3);
-  //init_cond_domains.push_back(dam4);
-
-  //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 2.0f * 9.8f * (std::max)(dam1.dy(), dam2.dy()) / eta;
-
-  ////Water Fall
-  //Domain box1;
-  //box1.x_start = -0.4f;
-  //box1.x_end   = 0.4f;
-  //box1.y_start = 0.1f;
-  //box1.y_end   = 15.1f;
-  //box1.z_start = -0.3f;
-  //box1.z_end   = 0.3f;
-  //init_cond_domains.push_back(box1);
-
-  //constexpr float eta         = 0.01f; // Tait's equation parameter
-  //const float     square_cvel = 2.0f * 9.8f * box1.dy() / eta;
-
-  // IC END
+  auto solution_domain = this->make_dam_breaking_solution_domain();
 
   Initial_Condition_Cubes init_cond;
-  init_cond.domains          = init_cond_domains;
+  init_cond.domains          = this->make_dam_breaking_IC_domain();
   init_cond.particle_spacing = 0.05f;
 
-  constexpr float rest_density = 1.0e3f;
-  constexpr float gamma        = 7.0f; // Tait's equation parameter
-
-  Material_Property mat_prop;
-  mat_prop.sqaure_sound_speed   = square_cvel;
-  mat_prop.rest_density         = rest_density;
-  mat_prop.gamma                = gamma;
-  mat_prop.pressure_coefficient = rest_density * square_cvel / (gamma);
-  mat_prop.viscosity            = 1.0e-2f;
-
-  //_uptr_SPH_Scheme = std::make_unique<WCSPH>(mat_prop, init_cond, solution_domain);
+  _uptr_SPH_Scheme = std::make_unique<WCSPH>(init_cond, solution_domain, device_manager);
   //_uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain, device_manager);
-  _uptr_SPH_Scheme = std::make_unique<PCISPH_GPU>(init_cond, solution_domain, device_manager);
+  //_uptr_SPH_Scheme = std::make_unique<PCISPH_GPU>(init_cond, solution_domain, device_manager);
 
   _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius() * 0.5f;
 
@@ -419,8 +252,8 @@ void SPH::update_GS_Cbuffer(const ComPtr<ID3D11DeviceContext> cptr_context)
 
 void SPH::set_fluid_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context)
 {
-  const auto& v_pos_BS   = _uptr_SPH_Scheme->get_fluid_v_pos_BS();
-  const auto& density_BS = _uptr_SPH_Scheme->get_fluid_density_BS();
+  const auto& v_pos_BS   = _uptr_SPH_Scheme->get_fluid_v_pos_RWBS();
+  const auto& density_BS = _uptr_SPH_Scheme->get_fluid_density_RWBS();
 
   constexpr UINT num_SRV = 2;
 
@@ -462,6 +295,151 @@ void SPH::reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context
   cptr_context->PSSetShader(nullptr, nullptr, 0);
 
   cptr_context->OMSetBlendState(nullptr, nullptr, 0XFFFFFFFF); //SAMPLE MASK�� NULL ������ �ȵȴ�.
+}
+
+Domain SPH::make_dam_breaking_solution_domain(void) const
+{
+  Domain solution_domain;
+
+  solution_domain.x_start = -2.0f;
+  solution_domain.x_end   = 2.0f;
+  solution_domain.y_start = 0.0f;
+  solution_domain.y_end   = 6.0f;
+  solution_domain.z_start = -0.3f;
+  solution_domain.z_end   = 0.3f;
+
+  return solution_domain;
+}
+
+Domain SPH::make_multiple_box_solution_domain(void) const
+{
+  Domain solution_domain;
+
+  solution_domain.x_start = -2.0f;
+  solution_domain.x_end   = 2.0f;
+  solution_domain.y_start = 0.0f;
+  solution_domain.y_end   = 6.0f;
+  solution_domain.z_start = -2.0f;
+  solution_domain.z_end   = 2.0f;
+
+  return solution_domain;
+}
+
+Domain SPH::make_long_box_solution_domain(void) const
+{
+  Domain solution_domain;
+
+  solution_domain.x_start = -2.0f;
+  solution_domain.x_end   = 2.0f;
+  solution_domain.y_start = 0.0f;
+  solution_domain.y_end   = 30.0f;
+  solution_domain.z_start = -2.0f;
+  solution_domain.z_end   = 2.0f;
+
+  return solution_domain;
+}
+
+std::vector<Domain> SPH::make_dam_breaking_IC_domain(void) const
+{
+  std::vector<Domain> init_cond_domains;
+
+  Domain init_cond_domain;
+  init_cond_domain.x_start = -1.9f;
+  init_cond_domain.x_end   = -0.9f;
+  init_cond_domain.y_start = 0.1f;
+  init_cond_domain.y_end   = 2.1f;
+  init_cond_domain.z_start = -0.2f;
+  init_cond_domain.z_end   = 0.2f;
+
+  init_cond_domains.push_back(init_cond_domain);
+
+  return init_cond_domains;
+}
+
+std::vector<Domain> SPH::make_2box_IC_domain(void) const
+{
+  std::vector<Domain> init_cond_domains;
+
+  Domain dam1;
+  dam1.x_start = -1.4f;
+  dam1.x_end   = -0.4f;
+  dam1.y_start = 0.1f;
+  dam1.y_end   = 2.1f;
+  dam1.z_start = -1.4f;
+  dam1.z_end   = -0.4f;
+
+  Domain dam2;
+  dam2.x_start = 0.4f;
+  dam2.x_end   = 1.4f;
+  dam2.y_start = 0.1f;
+  dam2.y_end   = 2.1f;
+  dam2.z_start = 0.4f;
+  dam2.z_end   = 1.4f;
+
+  init_cond_domains.push_back(dam1);
+  init_cond_domains.push_back(dam2);
+
+  return init_cond_domains;
+}
+
+std::vector<Domain> SPH::make_4box_IC_domain(void) const
+{
+  std::vector<Domain> init_cond_domains;
+
+  Domain dam1;
+  dam1.x_start = -1.4f;
+  dam1.x_end   = -0.4f;
+  dam1.y_start = 0.1f;
+  dam1.y_end   = 1.1f;
+  dam1.z_start = -1.4f;
+  dam1.z_end   = -0.4f;
+
+  Domain dam2;
+  dam2.x_start = 0.4f;
+  dam2.x_end   = 1.4f;
+  dam2.y_start = 0.1f;
+  dam2.y_end   = 3.1f;
+  dam2.z_start = 0.4f;
+  dam2.z_end   = 1.4f;
+
+  Domain dam3;
+  dam3.x_start = 0.4f;
+  dam3.x_end   = 1.4f;
+  dam3.y_start = 0.1f;
+  dam3.y_end   = 2.1f;
+  dam3.z_start = -1.4f;
+  dam3.z_end   = -0.4f;
+
+  Domain dam4;
+  dam4.x_start = -1.4f;
+  dam4.x_end   = -0.4f;
+  dam4.y_start = 0.1f;
+  dam4.y_end   = 2.1f;
+  dam4.z_start = 0.4f;
+  dam4.z_end   = 1.4f;
+
+  init_cond_domains.push_back(dam1);
+  init_cond_domains.push_back(dam2);
+  init_cond_domains.push_back(dam3);
+  init_cond_domains.push_back(dam4);
+
+  return init_cond_domains;
+}
+
+std::vector<Domain> SPH::make_long_box_IC_domain(void) const
+{
+  std::vector<Domain> init_cond_domains;
+
+  Domain box1;
+  box1.x_start = -0.4f;
+  box1.x_end   = 0.4f;
+  box1.y_start = 0.1f;
+  box1.y_end   = 15.1f;
+  box1.z_start = -0.3f;
+  box1.z_end   = 0.3f;
+  init_cond_domains.push_back(box1);
+
+  return init_cond_domains;
 }
 
 void SPH::init_boundary_Vbuffer(const ComPtr<ID3D11Device> cptr_device)

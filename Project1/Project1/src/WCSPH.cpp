@@ -14,18 +14,34 @@
 namespace ms
 {
 WCSPH::WCSPH(
-  const Material_Property&       property,
   const Initial_Condition_Cubes& initial_condition,
   const Domain&                  solution_domain,
-  const Device_Manager&          device_manager)
-    : _material_proeprty(property), _domain(solution_domain)
+  Device_Manager&                device_manager)
+    : _domain(solution_domain)
 
 {
-
+  constexpr float rest_density        = 1.0e3f;
+  constexpr float gamma               = 7.0f; // Tait's equation parameter
   constexpr float smooth_length_param = 1.2f;
+  constexpr float eta                 = 0.01f; // Tait's equation parameter
+  constexpr float viscosity           = 1.0e-2f;
+  constexpr float dt                  = 1.0e-03f;
+  constexpr float free_surface_param  = 0.95f;
 
-  _dt                     = 1.0e-03f;
-  _free_surface_parameter = 1.00f;
+  _dt                 = dt;
+  _free_surface_param = free_surface_param;
+
+  float max_height = 0.0f;
+  for (const auto& cube : initial_condition.domains)
+    max_height = (std::max)(max_height, cube.dy());
+
+  const float square_cvel = 2.0f * 9.8f * max_height / eta;
+
+  _material_proeprty.sqaure_sound_speed   = square_cvel;
+  _material_proeprty.rest_density         = rest_density;
+  _material_proeprty.gamma                = gamma;
+  _material_proeprty.pressure_coefficient = rest_density * square_cvel / gamma;
+  _material_proeprty.viscosity            = viscosity;
 
   const auto& ic = initial_condition;
 
@@ -41,8 +57,6 @@ WCSPH::WCSPH(
   _fluid_particles.velocity_vectors.resize(_num_fluid_particle);
   _fluid_particles.acceleration_vectors.resize(_num_fluid_particle);
 
-  //this->init_boundary_position_and_normal(solution_domain, ic.particle_spacing * 0.5f);
-
   _uptr_kernel = std::make_unique<Cubic_Spline_Kernel>(_smoothing_length);
 
   const float divide_length = _uptr_kernel->supprot_radius();
@@ -56,8 +70,8 @@ WCSPH::WCSPH(
   //for output
   _DM_ptr = &device_manager;
 
-  _fluid_v_pos_BS   = _DM_ptr->create_STRB_RWBS<Vector3>((UINT)(_num_fluid_particle));
-  _fluid_density_BS = _DM_ptr->create_STRB_RWBS<float>((UINT)(_num_fluid_particle));
+  _fluid_v_pos_RWBS   = _DM_ptr->create_STRB_RWBS<Vector3>((UINT)(_num_fluid_particle));
+  _fluid_density_RWBS = _DM_ptr->create_STRB_RWBS<float>((UINT)(_num_fluid_particle));
 }
 
 WCSPH::~WCSPH(void) = default;
@@ -66,8 +80,8 @@ void WCSPH::update(void)
 {
   this->time_integration();
 
-  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
-  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_RWBS.cptr_buffer);
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_RWBS.cptr_buffer);
 }
 
 size_t WCSPH::num_fluid_particle(void) const
@@ -75,14 +89,18 @@ size_t WCSPH::num_fluid_particle(void) const
   return _num_fluid_particle;
 }
 
-const Read_Write_Buffer_Set& WCSPH::get_fluid_v_pos_BS(void) const
+const Read_Write_Buffer_Set& WCSPH::get_fluid_v_pos_RWBS(void) const
 {
-  return _fluid_v_pos_BS;
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_RWBS.cptr_buffer);
+
+  return _fluid_v_pos_RWBS;
 }
 
-const Read_Write_Buffer_Set& WCSPH::get_fluid_density_BS(void) const
+const Read_Write_Buffer_Set& WCSPH::get_fluid_density_RWBS(void) const
 {
-  return _fluid_density_BS;
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_RWBS.cptr_buffer);
+
+  return _fluid_density_RWBS;
 }
 
 float WCSPH::particle_radius(void) const
@@ -122,7 +140,7 @@ void WCSPH::update_density_and_pressure(void)
 
     rho *= m0;
 
-    if (rho < _free_surface_parameter * rho0)
+    if (rho < _free_surface_param * rho0)
       rho = rho0;
 
     //update pressure
@@ -133,7 +151,6 @@ void WCSPH::update_density_and_pressure(void)
 void WCSPH::update_acceleration(void)
 {
   constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
 
   this->update_density_and_pressure();
 
@@ -171,7 +188,7 @@ void WCSPH::update_acceleration(void)
     const auto& neighbor_distances         = neighbor_informations.distances;
     const auto  num_neighbor               = neighbor_distances.size();
 
-    for (size_t j = 0; j < num_neighbor; j++)
+    for (UINT j = 0; j < num_neighbor; j++)
     {
       const auto neighbor_index = neighbor_indexes[j];
 
@@ -246,8 +263,6 @@ void WCSPH::update_acceleration(void)
 void WCSPH::time_integration(void)
 {
   this->semi_implicit_euler(_dt);
-  // this->leap_frog_DKD(dt);
-  // this->leap_frog_KDK(dt);
 }
 
 void WCSPH::semi_implicit_euler(const float dt)
@@ -382,7 +397,6 @@ void WCSPH::apply_boundary_condition(void)
 
 float WCSPH::B(const float dist) const
 {
-  // const float h = 2*_support_radius;
   const float h    = _smoothing_length;
   const float v_c2 = _material_proeprty.sqaure_sound_speed;
   const float q    = dist / h;

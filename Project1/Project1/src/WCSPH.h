@@ -30,10 +30,9 @@ class WCSPH : public SPH_Scheme
 {
 public:
   WCSPH(
-    const Material_Property&       property,
     const Initial_Condition_Cubes& initial_condition,
     const Domain&                  solution_domain,
-    const Device_Manager&          device_manager);
+    Device_Manager&          device_manager);
 
   ~WCSPH(void);
 
@@ -41,10 +40,10 @@ public:
   void update(void) override;
 
 public:
-  float             particle_radius(void) const override;
-  size_t            num_fluid_particle(void) const override;
-  const Read_Write_Buffer_Set& get_fluid_v_pos_BS(void) const override;
-  const Read_Write_Buffer_Set& get_fluid_density_BS(void) const override;
+  float                        particle_radius(void) const override;
+  size_t                       num_fluid_particle(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_v_pos_RWBS(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_density_RWBS(void) const override;
 
   //const Vector3* boundary_particle_position_data(void) const override;
   //size_t         num_boundary_particle(void) const override;
@@ -70,13 +69,13 @@ private:
   void init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length);
 
 private:
-  size_t _num_fluid_particle     = 0;
-  float  _smoothing_length       = 0.0f;
-  float  _particle_radius        = 0.0f;
-  float  _volume_per_particle    = 0.0f;
-  float  _mass_per_particle      = 0.0f;
-  float  _dt                     = 0.0f;
-  float  _free_surface_parameter = 0.0f;
+  size_t _num_fluid_particle  = 0;
+  float  _smoothing_length    = 0.0f;
+  float  _particle_radius     = 0.0f;
+  float  _volume_per_particle = 0.0f;
+  float  _mass_per_particle   = 0.0f;
+  float  _dt                  = 0.0f;
+  float  _free_surface_param  = 0.0f;
 
   Fluid_Particles                      _fluid_particles;
   std::unique_ptr<Neighborhood>        _uptr_neighborhood;
@@ -88,10 +87,10 @@ private:
   std::vector<Vector3> _boundary_normal_vectors;
 
   // for ouput
-  const Device_Manager* _DM_ptr;
+  Device_Manager* _DM_ptr;
 
-  Read_Write_Buffer_Set _fluid_v_pos_BS;
-  Read_Write_Buffer_Set _fluid_density_BS;
+  Read_Write_Buffer_Set _fluid_v_pos_RWBS;
+  Read_Write_Buffer_Set _fluid_density_RWBS;
 };
 
 } // namespace ms

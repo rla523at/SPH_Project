@@ -1,6 +1,7 @@
 #pragma once
 #include "Abbreviation.h"
 #include "Mesh.h"
+#include "SPH_Common_Data.h"
 
 #include <d3d11.h>
 #include <memory>
@@ -59,6 +60,16 @@ private:
   void set_fluid_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context);
   void set_boundary_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context);
   void reset_graphics_pipeline(const ComPtr<ID3D11DeviceContext> cptr_context);
+
+  Domain make_dam_breaking_solution_domain(void) const;
+  Domain make_multiple_box_solution_domain(void) const;
+  Domain make_long_box_solution_domain(void) const;
+
+  std::vector<Domain> make_dam_breaking_IC_domain(void) const;
+  std::vector<Domain> make_2box_IC_domain(void) const;
+  std::vector<Domain> make_4box_IC_domain(void) const;
+  std::vector<Domain> make_long_box_IC_domain(void) const;
+
 
 private:
   Device_Manager* _DM_ptr;

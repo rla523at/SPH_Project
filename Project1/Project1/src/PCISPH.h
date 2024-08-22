@@ -30,8 +30,8 @@ public:
 public:
   float             particle_radius(void) const override;
   size_t            num_fluid_particle(void) const override;
-  const Read_Write_Buffer_Set& get_fluid_v_pos_BS(void) const override;
-  const Read_Write_Buffer_Set& get_fluid_density_BS(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_v_pos_RWBS(void) const override;
+  const Read_Write_Buffer_Set& get_fluid_density_RWBS(void) const override;
 
 private:
   //it doesn't consider acceleration by pressure

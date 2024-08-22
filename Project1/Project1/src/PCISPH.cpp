@@ -147,12 +147,12 @@ size_t PCISPH::num_fluid_particle(void) const
   return _fluid_particles.num_particles();
 }
 
-const Read_Write_Buffer_Set& PCISPH::get_fluid_v_pos_BS(void) const
+const Read_Write_Buffer_Set& PCISPH::get_fluid_v_pos_RWBS(void) const
 {
   return _fluid_v_pos_BS;
 }
 
-const Read_Write_Buffer_Set& PCISPH::get_fluid_density_BS(void) const
+const Read_Write_Buffer_Set& PCISPH::get_fluid_density_RWBS(void) const
 {
   return _fluid_density_BS;
 }
