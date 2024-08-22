@@ -74,37 +74,13 @@ https://github.com/user-attachments/assets/04a60201-abd8-403d-a4be-05ab524502cb
 
 ## 설명
 
-간략하게 쓰고, Document를 참고할 수 있게 유도
-
-### 물리시뮬레이션
 물을 물리시뮬레이션 하기 위해 다음의 비압축성 유체의 linear momentum equation을 수치해석적으로 푼다.
 
 $$ \frac{dv}{dt} = -\frac{1}{\rho}\nabla p + \nu \nabla^2u + f_{ext} $$
 
-SPH frame work에서는 유한개의 particle(approximation point)과 kernel 함수 $W$를 이용하여 임의의 물리량을 근사한다.
+SPH를 사용해서 수치해석하는 과정은 `Document/SPH.md`에 설명되어 있다.
 
-이 frame work을 통해 비압축성 유체의 linear momentum equation의 우측항(RHS)을 이산화하면 다음과 같다.
+WCSPH와 PCISPH가 구현되어 있으며 WCSPH는 CPU코드로 PCISPH는 CPU/GPU(Compute Shader) 코드로 구현되어 있다.
 
-$$ \frac{dv}{dt} = f(v,x) $$
+참고로, 시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
 
-$$ f(v,x) = - m_0 \sum_j (\frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}) \nabla W_{ij} + 2 \nu (d+2) m_0 \sum_j \frac{1}{\rho_j} \frac{v_{ij} \cdot x_{ij}}{x_{ij} \cdot x_{ij}+0.01h^2} \nabla W_{ij} + g $$
-
-이후에 계산된 RHS값과 수치적분을 통해 속도와 위치를 업데이트하면 한 time step($\Delta t)$에 대한 수치해석이 끝이난다.
-
-$$ \begin{aligned}
-\frac{v^{n+1} - v^{n}}{\Delta t} &= f(v^n,x^n) \\
-\frac{x^{n+1} - x^{n}}{\Delta t} &= v^{n+1}  
-\end{aligned} $$
-
-### 수치적분
-
-논문을 통해, explicit scheme 중 semi implicit euler과 leap frog 방법이 가장 많이 사용되어 두 scheme의 stability를 비교하였으나 차이는 없었다.
-
-그래서, 계산과정이 더 단순하여 성능상에 이점이 있는 semi implcit euler scheme을 프로젝트에 사용하였다.
-
-### SPH Scheme
-SPH를 이용한 수치해석 과정에서 가장 핵심이 되는 부분은 비압축성 가정을 만족하는 압력을 결정하는 방법이다.
-
-압력 결정 방법에 따라 다양한 SPH기법이 존재하며 이번 프로젝트에서는 linear solver가 필요없는 기법인 Weakly Compsressible SPH(WCSPH)와 Prediction Correction Incompressible SPH(PCISPH)를 사용하였다.
-
-압력을 간단한 수식으로 계산할 수 있어, solver가 단순하고 압력 계산을 매우 빠르게 계산할 수 있다는 장점이 있는 WCSPH를 구현하였지만  $\Delta t$가 매우 작은 값만 가능한 WCSPH의 한계로 인해, PCISPH을 구현 및 적용하였으며 결론적으로 동일 simulation 기준 $\Delta t$를 `10배 증가`시킬 수 있었다.
