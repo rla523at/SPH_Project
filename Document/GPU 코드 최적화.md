@@ -167,3 +167,36 @@ _dt_avg_init_nbr_chunk                                            0.686535    ms
 Chunk를 사용함으로써 4개의 함수에서 총 0.45ms의 계산시간을 줄였지만, chunk를 계산하는 비용 약 0.7ms가 추가되어 계산시간이 오히려 증가하였다.
 
 Chunk를 계산하는데 드는 비용을 개선할 필요가 있다.
+
+## 데이터 구조 최적화
+기존에 Texture2D로 구현된 데이터들이 있었다.
+
+```
+// geometry cell마다 neighbor geometry cell의 index들을 저장한 texture
+ComPtr<ID3D11Texture2D>          _cptr_ngc_texture;
+
+// geometry cell마다 속해있는 fluid particle의 index들을 저장한 texture
+ComPtr<ID3D11Texture2D>           _cptr_GCFP_texture;
+
+// fluid particle마다 neighbor fluid particle의 index를 저장한 texture
+ComPtr<ID3D11Texture2D>           _cptr_nfp_texture;
+
+...
+```
+
+실제로 이 데이터들을 사용할 때, data access는 width 방향으로만 이루어진다.
+
+하지만 Texture2D에서는 Tiling하여 데이터를 저장하기 때문에 전체 width에 대해서 spatial locality가 보장되지 않아 적합하지 않은 데이터 구조이다.
+
+따라서, 현재 data access pattern에는 Texture2D보다 StructuredBuffer가 더 적합하기 때문에 Texture2D를 StructuredBuffer로 전부 수정하였다.
+
+```
+// geometry cell * estimated ngc만큼 ngc index을 저장한 buffer
+ComPtr<ID3D11Buffer>             _cptr_ngc_index_buffer;
+
+// geometry cell * estimated gcfp만큼 fp index를 저장한 buffer
+ComPtr<ID3D11Buffer>              _cptr_fp_index_buffer;
+
+//fluid particle * estimated neighbor만큼 Neighbor_Information을 저장한 Buffer
+ComPtr<ID3D11Buffer>              _cptr_nfp_info_buffer;
+```

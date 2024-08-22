@@ -89,3 +89,33 @@ $$\text{FPS} = 1200 \rightarrow 500 \rightarrow 200$$
 **2016 (Shobeyri) A Simplified SPH Method for Simulation of Free Surface Flows**
 * 3.2.1 Free Surfaces
   * $\beta = 0.8 - 0.95$
+
+<br><br>
+
+## Mass
+`2012 (Mostafa et al) A robust weakly compressible SPH method and its comparison with an incompressible SPH`에서 제시한 방법을 사용하였다.
+
+### 참고
+**1992 (monaghan) Smoothed Particle Hydrodynamics - 10.1 The Particle Setup**
+* $m_a = \rho \Delta V_a$
+* $\Delta V_a$가 뭔지 안알려줌
+
+**1994 (monaghan) Simulating Free Surface Flows with SPH - 5. Implementation**
+* $m_b = \rho_b \Delta A$
+* $\Delta A$ is the area per particle
+
+**[note] 2011 (cornell)**  
+* normalized mass
+
+**2012 (Mostafa et al) A robust weakly compressible SPH method and its comparison with an incompressible SPH**
+* number density
+
+**SPlisHSPlasH**
+* void FluidModel::initMasses()
+* const Real diam = static_cast<Real>(2.0)*particleRadius;
+* m_V = static_cast<Real>(0.8) * diam*diam*diam;
+  * each particle represents a cube with a side length of r
+
+**[Book] (Violeau) Fluid Mechanics and the SPH Method_ Theory and Applications**
+* $V_0 = L^3$
+* $L$은 initial interparticular distance
