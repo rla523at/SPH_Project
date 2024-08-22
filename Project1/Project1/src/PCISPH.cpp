@@ -17,7 +17,7 @@ namespace ms
 PCISPH::PCISPH(
   const Initial_Condition_Cubes& initial_condition,
   const Domain&                  solution_domain,
-  const Device_Manager&          device_manager)
+  Device_Manager&          device_manager)
     : _domain(solution_domain)
 {
 
@@ -94,47 +94,14 @@ void PCISPH::update(void)
     if (_max_iter < num_iter)
     {
       break;
-      //std::cout << "too many iter\n";
-
-      //  //auto debug = this->cal_scailing_factor();
-
-      //  //const auto num_data = this->num_particle();
-
-      //  //const auto* pos_data = this->fluid_particle_position_data();
-      //  //const auto  cptr_SRbuffer = Device_Manager_Debug::_cptr_buffers[0];
-      //  //const auto  cptr_Sbuffer = Device_Manager_Debug::_cptr_buffers[1];
-
-      //  //Device_Manager_Debug::copy(pos_data, num_data, cptr_Sbuffer, cptr_SRbuffer);
-
-      //  //const auto* density_data      = this->fluid_particle_density_data();
-      //  //const auto  cptr_SRbuffer2 = Device_Manager_Debug::_cptr_buffers[2];
-      //  //const auto  cptr_Sbuffer2  = Device_Manager_Debug::_cptr_buffers[3];
-
-      //  //Device_Manager_Debug::copy(density_data, num_data, cptr_Sbuffer2, cptr_SRbuffer2);
-
-      //  //Device_Manager_Debug::_cptr_context->Draw(num_data, 0);
-      //  //Device_Manager_Debug::_cptr_swap_chain->Present(1, 0);
-
-      //  int debug1231232 = 0;
     }
   }
-
-  //std::cout << "\n\n";                      //debug
-  //if (_time > 0.2f && num_iter < _max_iter) //debug
-  //  exit(523);                              // debug
 
   //마지막으로 update된 pressure에 의한 accleration을 반영
   this->predict_velocity_and_position();
   this->apply_boundary_condition();
 
   _time += _dt;
-
-  //std::cout << _time << " " << num_iter << "\n"; //debug
-  //if (_time > 8.0f)                              //debug
-  //  exit(523);                                   //debug
-
-  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
-  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
 }
 
 float PCISPH::particle_radius(void) const
@@ -149,18 +116,21 @@ size_t PCISPH::num_fluid_particle(void) const
 
 const Read_Write_Buffer_Set& PCISPH::get_fluid_v_pos_RWBS(void) const
 {
+  _DM_ptr->write(_fluid_particles.position_vectors.data(), _fluid_v_pos_BS.cptr_buffer);
+ 
   return _fluid_v_pos_BS;
 }
 
 const Read_Write_Buffer_Set& PCISPH::get_fluid_density_RWBS(void) const
 {
+  _DM_ptr->write(_fluid_particles.densities.data(), _fluid_density_BS.cptr_buffer);
+  
   return _fluid_density_BS;
 }
 
 void PCISPH::initialize_fluid_acceleration_vectors(void)
 {
   constexpr Vector3 v_a_gravity = {0.0f, -9.8f, 0.0f};
-  //constexpr Vector3 v_a_gravity = {0.0f, 0.0f, 0.0f};
 
   //viscosity constant
   const float m0                  = _mass_per_particle;
@@ -268,9 +238,6 @@ void PCISPH::predict_velocity_and_position(void)
     v_v = v_v_cur + v_a * _dt;
     v_p = v_p_cur + v_v * _dt;
   }
-
-  //this->apply_boundary_condition();
-  //매번 boundary condition 적용해도 dt를 늘릴 수 없음
 }
 
 float PCISPH::predict_density_and_update_pressure_and_cal_error(void)
@@ -317,9 +284,6 @@ float PCISPH::predict_density_and_update_pressure_and_cal_error(void)
 
     p += _scailing_factor * density_error;
     p = std::max(p, 0.0f);
-
-    //const float density_error = std::max(0.0f, rho - rho0);
-    //p += _scailing_factor * density_error;
 
     max_error = (std::max)(max_error, density_error);
   }
@@ -450,14 +414,14 @@ void PCISPH::apply_boundary_condition(void)
 
 void PCISPH::init_mass_and_scailing_factor(void)
 {
-  size_t max_index = 0;
+  UINT max_index = 0;
 
   // init mass
   {
     const auto num_fluid_particle = _fluid_particles.num_particles();
     float      max_number_density = 0.0f;
 
-    for (size_t i = 0; i < num_fluid_particle; i++)
+    for (UINT i = 0; i < num_fluid_particle; i++)
     {
       float number_density = 0.0;
 
@@ -465,7 +429,7 @@ void PCISPH::init_mass_and_scailing_factor(void)
       const auto& neighbor_distances    = neighbor_informations.distances;
       const auto  num_neighbor          = neighbor_distances.size();
 
-      for (size_t j = 0; j < num_neighbor; j++)
+      for (UINT j = 0; j < num_neighbor; j++)
       {
         const float dist = neighbor_distances[j];
         number_density += _uptr_kernel->W(dist);
@@ -523,10 +487,10 @@ float PCISPH::cal_scailing_factor(void) const
   const auto num_particle = _fluid_particles.num_particles();
 
   //find particle which has maximum number density
-  size_t max_index          = 0;
+  UINT max_index          = 0;
   float  max_number_density = 0.0f;
 
-  for (size_t i = 0; i < num_particle; i++)
+  for (UINT i = 0; i < num_particle; i++)
   {
     const float number_density = this->cal_number_density(i);
 
@@ -571,7 +535,7 @@ float PCISPH::cal_scailing_factor(void) const
   return 1.0f / (beta * (sum_dot_sum + size_sum));
 }
 
-float PCISPH::cal_number_density(const size_t fluid_particle_id) const
+float PCISPH::cal_number_density(const UINT fluid_particle_id) const
 {
   float number_density = 0.0;
 
@@ -579,7 +543,7 @@ float PCISPH::cal_number_density(const size_t fluid_particle_id) const
   const auto& neighbor_distances    = neighbor_informations.distances;
   const auto  num_neighbor          = neighbor_distances.size();
 
-  for (size_t j = 0; j < num_neighbor; j++)
+  for (UINT j = 0; j < num_neighbor; j++)
   {
     const float dist = neighbor_distances[j];
     number_density += _uptr_kernel->W(dist);

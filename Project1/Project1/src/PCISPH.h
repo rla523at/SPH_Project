@@ -21,7 +21,7 @@ class PCISPH : public SPH_Scheme
 public:
   PCISPH(const Initial_Condition_Cubes& initial_condition,
          const Domain&                  solution_domain,
-         const Device_Manager&          device_manager);
+         Device_Manager&          device_manager);
   ~PCISPH();
 
 public:
@@ -46,7 +46,7 @@ private:
 
 private:
   float cal_scailing_factor(void) const;
-  float cal_number_density(const size_t fluid_particle_id) const;
+  float cal_number_density(const UINT fluid_particle_id) const;
 
 private:
   float  _time                 = 0.0f;
@@ -78,7 +78,7 @@ private:
   std::vector<Vector3> _boundary_position_vectors;
 
   // for ouput
-  const Device_Manager* _DM_ptr;
+  Device_Manager* _DM_ptr;
 
   Read_Write_Buffer_Set _fluid_v_pos_BS;
   Read_Write_Buffer_Set _fluid_density_BS;

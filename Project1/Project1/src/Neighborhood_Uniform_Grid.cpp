@@ -30,7 +30,7 @@ Neighborhood_Uniform_Grid::Neighborhood_Uniform_Grid(
   const UINT num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
   _gcid_to_fpids.resize(num_cells);
 
-  const UINT num_fluid_particle = fluid_particle_pos_vectors.size();
+  const UINT num_fluid_particle = static_cast<UINT>(fluid_particle_pos_vectors.size());
   _fpid_to_gcid.resize(num_fluid_particle);
   _fpid_to_neighbor_informations.resize(num_fluid_particle);
 
@@ -76,9 +76,9 @@ UINT Neighborhood_Uniform_Grid::search(const Vector3& pos, UINT* pids) const
 {
   const auto gcid_vector = this->grid_cell_index_vector(pos);
 
-  const long long num_xy_cell = _num_x_cell * _num_y_cell;
+  const UINT num_xy_cell = _num_x_cell * _num_y_cell;
 
-  const long long delta[3] = {-1, 0, 1};
+  const int delta[3] = {-1, 0, 1};
 
   UINT index = 0;
 
@@ -98,8 +98,8 @@ UINT Neighborhood_Uniform_Grid::search(const Vector3& pos, UINT* pids) const
 
         const auto neighbor_gcid = grid_cell_index(neighbor_gcid_vector);
 
-        const auto&  neighbor_pids    = _gcid_to_fpids[neighbor_gcid];
-        const UINT num_neighbor_pid = neighbor_pids.size();
+        const auto& neighbor_pids    = _gcid_to_fpids[neighbor_gcid];
+        const UINT  num_neighbor_pid = static_cast<UINT>(neighbor_pids.size());
 
         for (UINT i = 0; i < num_neighbor_pid; ++i)
           pids[index + i] = neighbor_pids[i];
@@ -126,7 +126,7 @@ void Neighborhood_Uniform_Grid::update(
   const std::vector<Vector3>& fluid_particle_pos_vectors,
   const std::vector<Vector3>& boundary_particle_pos_vectors)
 {
-  const UINT num_fluid_particles = fluid_particle_pos_vectors.size();
+  const UINT num_fluid_particles = static_cast<UINT>(fluid_particle_pos_vectors.size());
 
   // update fpid_to_gcid and gcid_to_fpids
   for (UINT fpid = 0; fpid < num_fluid_particles; ++fpid)
@@ -212,7 +212,7 @@ bool Neighborhood_Uniform_Grid::is_valid_index(const UINT gcid) const
 
 void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<Vector3>& fluid_particle_pos_vectors)
 {
-  const UINT num_particles = fluid_particle_pos_vectors.size();
+  const int num_particles = static_cast<int>(fluid_particle_pos_vectors.size());
 
 #pragma omp parallel for
   for (int i = 0; i < num_particles; ++i)
@@ -255,15 +255,14 @@ void Neighborhood_Uniform_Grid::update_fpid_to_neighbor_fpids(const std::vector<
         distances.push_back(distance);
       }
     }
-
-  } 
+  }
 }
 
 void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(
   const std::vector<Vector3>& fluid_particle_pos_vectors,
   const std::vector<Vector3>& boundary_particle_pos_vectors)
 {
-  const UINT num_particles = boundary_particle_pos_vectors.size();
+  const int num_particles = static_cast<int>(boundary_particle_pos_vectors.size());
 
 #pragma omp parallel for
   for (int bpid = 0; bpid < num_particles; ++bpid)
@@ -293,7 +292,7 @@ void Neighborhood_Uniform_Grid::update_bpid_to_neighbor_fpids(
 
 void Neighborhood_Uniform_Grid::init_gcid_to_neighbor_gcids(void)
 {
-  constexpr long long delta[3] = {-1, 0, 1};
+  constexpr int delta[3] = {-1, 0, 1};
 
   const auto num_cells = _num_x_cell * _num_y_cell * _num_z_cell;
   _gcid_to_neighbor_gcids.resize(num_cells);

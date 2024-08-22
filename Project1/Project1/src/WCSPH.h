@@ -64,7 +64,7 @@ private:
   float cal_mass_per_particle_number_density_max(void) const;
   float cal_mass_per_particle_number_density_min(void) const;
   float cal_mass_per_particle_1994_monaghan(const float total_volume) const;
-  float cal_number_density(const size_t fluid_particle_id) const;
+  float cal_number_density(const UINT fluid_particle_id) const;
 
   void init_boundary_position_and_normal(const Domain& solution_domain, const float divide_length);
 

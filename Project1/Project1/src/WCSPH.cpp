@@ -11,7 +11,7 @@
 #include <numbers>
 #include <omp.h>
 
-namespace ms
+namespace ms 
 {
 WCSPH::WCSPH(
   const Initial_Condition_Cubes& initial_condition,
@@ -422,7 +422,7 @@ float WCSPH::cal_mass_per_particle_1994_monaghan(const float total_volume) const
   return _material_proeprty.rest_density * volume_per_particle;
 }
 
-float WCSPH::cal_number_density(const size_t fluid_particle_id) const
+float WCSPH::cal_number_density(const UINT fluid_particle_id) const
 {
   float number_density = 0.0;
 
@@ -569,7 +569,7 @@ float WCSPH::cal_mass_per_particle_number_density_max(void) const
 
   float max_number_density = 0.0f;
 
-  for (size_t i = 0; i < _num_fluid_particle; i++)
+  for (UINT i = 0; i < _num_fluid_particle; i++)
   {
     const float number_density = this->cal_number_density(i);
 
@@ -585,7 +585,7 @@ float WCSPH::cal_mass_per_particle_number_density_min(void) const
 
   float min_number_density = (std::numeric_limits<float>::max)();
 
-  for (size_t i = 0; i < _num_fluid_particle; i++)
+  for (UINT i = 0; i < _num_fluid_particle; i++)
   {
     const float number_density = this->cal_number_density(i);
 

@@ -25,8 +25,8 @@ SPH::SPH(Device_Manager& device_manager)
   init_cond.domains          = this->make_dam_breaking_IC_domain();
   init_cond.particle_spacing = 0.05f;
 
-  _uptr_SPH_Scheme = std::make_unique<WCSPH>(init_cond, solution_domain, device_manager);
-  //_uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain, device_manager);
+  //_uptr_SPH_Scheme = std::make_unique<WCSPH>(init_cond, solution_domain, device_manager);
+  _uptr_SPH_Scheme = std::make_unique<PCISPH>(init_cond, solution_domain, device_manager);
   //_uptr_SPH_Scheme = std::make_unique<PCISPH_GPU>(init_cond, solution_domain, device_manager);
 
   _GS_Cbuffer_data.radius = _uptr_SPH_Scheme->particle_radius() * 0.5f;
