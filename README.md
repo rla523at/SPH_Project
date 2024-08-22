@@ -18,6 +18,13 @@ WCSPH와 PCISPH가 구현되어 있으며 WCSPH는 CPU코드로 PCISPH는 CPU/GP
 
 참고로, 시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
 
+### 외부 라이브러리
+
+* directxmath:x64-windows            
+* directxtex:x64-windows               
+* directxtk:x64-windows                
+* imgui:x64-windows                    
+
 ## 결과
 
 **[Dam Breaking Simulation]**
