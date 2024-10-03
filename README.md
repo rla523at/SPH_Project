@@ -16,7 +16,9 @@ SPH를 사용해서 수치해석하는 과정은 `Document/SPH.md`에 설명되�
 
 WCSPH와 PCISPH가 구현되어 있으며 WCSPH는 CPU코드로 PCISPH는 CPU/GPU(Compute Shader) 코드로 구현되어 있다.
 
-참고로, 시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
+시뮬레이션에 사용된 parameter의 경우 `Document/Simulation Parameter.md`에 어떤 값을 사용하였는지 설명되어 있다.
+
+개발 과정중에 수행했던 GPU 코드 최적화와 관련된 내용은 `Document/GPU 코드 최적화.md`에 작성되어 있다.
 
 ### 외부 라이브러리
 
